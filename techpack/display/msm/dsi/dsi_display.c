@@ -7605,6 +7605,8 @@ int dsi_display_enable(struct dsi_display *display)
 {
 	int rc = 0;
 	struct dsi_display_mode *mode;
+	struct drm_connector *connector = NULL;
+	u32 prv_bl_lvl = display->panel->bl_config.bl_level;
 
 	if (!display || !display->panel) {
 		DSI_ERR("Invalid params\n");
@@ -7699,6 +7701,11 @@ int dsi_display_enable(struct dsi_display *display)
 		rc = -EINVAL;
 		goto error_disable_panel;
 	}
+
+	rc = dsi_display_set_backlight(connector, display, prv_bl_lvl);
+	if (rc)
+		DSI_ERR("[%s]failed to restore previous bl_level, rc=%d\n",
+			display->name, rc);
 
 	goto error;
 
