@@ -46,8 +46,6 @@ PHONY += dtbs
 dtbs: scripts
 	$(Q)$(MAKE) $(build)=arch/h8300/boot/dts
 
-archmrproper:
-
 archclean:
 	$(Q)$(MAKE) $(clean)=$(boot)
 
