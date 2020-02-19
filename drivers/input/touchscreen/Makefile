@@ -116,3 +116,4 @@ obj-$(CONFIG_TOUCHSCREEN_FTS)		+= ft3418_i2c/
 obj-$(CONFIG_TOUCHSCREEN_NT36XXX)	+= nt36xxx/
 obj-$(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE)	+= xiaomi/
 obj-$(CONFIG_TP_LCT)			+= tp_lct.o
+obj-$(CONFIG_TP_COMMON)			+= tp_common.o
