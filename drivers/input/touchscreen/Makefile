@@ -117,4 +117,5 @@ obj-$(CONFIG_TOUCHSCREEN_FTS_SPI)	+= ft8006s_spi/
 obj-$(CONFIG_TOUCHSCREEN_NT36XXX)	+= nt36xxx/
 obj-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI)	+= nt36525b_spi/
 obj-$(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE)	+= xiaomi/
+obj-$(CONFIG_TP_COMMON)			+= tp_common.o
 obj-$(CONFIG_TOUCHSCREEN_COMMON)	+= lct_tp_info.o lct_tp_selftest.o lct_tp_work.o lct_tp_palm.o lct_tp_gesture.o lct_tp_grip_area.o
