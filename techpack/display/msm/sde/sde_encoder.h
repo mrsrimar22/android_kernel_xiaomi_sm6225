@@ -374,6 +374,12 @@ void sde_encoder_needs_hw_reset(struct drm_encoder *enc);
 void sde_encoder_uidle_enable(struct drm_encoder *drm_enc, bool enable);
 
 /**
+ * sde_encoder_trigger_early_wakeup - trigger early wake up
+ * @drm_enc:    Pointer to drm encoder structure
+ */
+void sde_encoder_trigger_early_wakeup(struct drm_encoder *drm_enc);
+
+/**
  * sde_encoder_virt_reset - delay encoder virt reset
  * @drm_enc:	Pointer to drm encoder structure
  */
