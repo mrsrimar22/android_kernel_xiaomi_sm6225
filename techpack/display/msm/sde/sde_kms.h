@@ -664,6 +664,14 @@ void sde_kms_timeline_status(struct drm_device *dev);
 int sde_kms_handle_recovery(struct drm_encoder *encoder);
 
 /**
+ * sde_kms_trigger_early_wakeup - trigger early wake up
+ * @sde_kms: pointer to sde_kms structure
+ * @crtc: pointer to drm_crtc structure
+ */
+void sde_kms_trigger_early_wakeup(struct sde_kms *sde_kms,
+		struct drm_crtc *crtc);
+
+/**
  * sde_kms_update_pm_qos_irq_request - Update Qos vote for CPU receiving
  *					display IRQ
  * @sde_kms : pointer to sde_kms structure
