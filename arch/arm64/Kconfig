@@ -1180,14 +1180,22 @@ config COMPAT_VDSO
 	  You must have a 32-bit build of glibc 2.22 or later for programs
 	  to seamlessly take advantage of this.
 
-config MITIGATE_SPECTRE_BRANCH_HISTORY
-	bool "Mitigate Spectre style attacks against branch history" if EXPERT
+config THUMB2_COMPAT_VDSO
+	bool "Compile the 32-bit vDSO for Thumb-2 mode" if EXPERT
+	depends on COMPAT_VDSO
 	default y
 	help
-	  Speculation attacks against some high-performance processors can
-	  make use of branch history to influence future speculation.
-	  When taking an exception from user-space, a sequence of branches
-	  or a firmware call overwrites the branch history.
+	  Compile the compat vDSO with '-mthumb -fomit-frame-pointer' if y,
+	  otherwise with '-marm'.
+
+config MITIGATE_SPECTRE_BRANCH_HISTORY
+        bool "Mitigate Spectre style attacks against branch history" if EXPERT
+        default y
+        help
+          Speculation attacks against some high-performance processors can
+          make use of branch history to influence future speculation.
+          When taking an exception from user-space, a sequence of branches
+          or a firmware call overwrites the branch history.
 
 menuconfig ARMV8_DEPRECATED
 	bool "Emulate deprecated/obsolete ARMv8 instructions"
