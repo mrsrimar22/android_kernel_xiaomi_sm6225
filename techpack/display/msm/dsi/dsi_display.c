@@ -44,6 +44,12 @@ static const struct of_device_id dsi_display_dt_match[] = {
 	{}
 };
 
+struct dsi_display *get_main_display(void)
+{
+	return boot_displays[DSI_PRIMARY].disp;
+}
+EXPORT_SYMBOL(get_main_display);
+
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
 {
