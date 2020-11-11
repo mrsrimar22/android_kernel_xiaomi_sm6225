@@ -3693,13 +3693,13 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 }
 
 /**
- * _sde_crtc_vblank_enable_no_lock - update power resource and vblank request
+ * _sde_crtc_vblank_enable - update power resource and vblank request
  * @sde_crtc: Pointer to sde crtc structure
  * @enable: Whether to enable/disable vblanks
  *
  * @Return: error code
  */
-static int _sde_crtc_vblank_enable_no_lock(
+static int _sde_crtc_vblank_enable(
 		struct sde_crtc *sde_crtc, bool enable)
 {
 	struct drm_crtc *crtc;
@@ -3711,38 +3711,49 @@ static int _sde_crtc_vblank_enable_no_lock(
 	}
 
 	crtc = &sde_crtc->base;
+	/* Async worker: do not access crtc->state; use cached_encoder_mask */
+	SDE_EVT32(DRMID(crtc), enable, sde_crtc->enabled,
+			sde_crtc->cached_encoder_mask);
 
 	if (enable) {
 		int ret;
 
-		/* drop lock since power crtc cb may try to re-acquire lock */
-		mutex_unlock(&sde_crtc->crtc_lock);
+		/* Do not enable vblank if CRTC is already disabled */
+		if (!sde_crtc->enabled)
+			return -EINVAL;
+
 		ret = pm_runtime_get_sync(crtc->dev->dev);
-		mutex_lock(&sde_crtc->crtc_lock);
 		if (ret < 0)
 			return ret;
 
+		mutex_lock(&sde_crtc->crtc_lock);
 		drm_for_each_encoder_mask(enc, crtc->dev,
-			crtc->state->encoder_mask) {
-			SDE_EVT32(DRMID(&sde_crtc->base), DRMID(enc), enable,
-					sde_crtc->enabled);
+				sde_crtc->cached_encoder_mask) {
+			SDE_EVT32(DRMID(crtc), DRMID(enc));
 
 			sde_encoder_register_vblank_callback(enc,
 					sde_crtc_vblank_cb, (void *)crtc);
 		}
+
+		mutex_unlock(&sde_crtc->crtc_lock);
 	} else {
+		mutex_lock(&sde_crtc->crtc_lock);
 		drm_for_each_encoder_mask(enc, crtc->dev,
-			crtc->state->encoder_mask) {
-			SDE_EVT32(DRMID(&sde_crtc->base), DRMID(enc), enable,
-					sde_crtc->enabled);
+				sde_crtc->cached_encoder_mask) {
+			SDE_EVT32(DRMID(crtc), DRMID(enc));
 
 			sde_encoder_register_vblank_callback(enc, NULL, NULL);
 		}
 
-		/* drop lock since power crtc cb may try to re-acquire lock */
+		/*
+		 * Invalidate cached encoder mask once CRTC is disabled and
+		 * all encoder vblank callbacks have been unregistered.
+		 */
+		if (!sde_crtc->enabled)
+			sde_crtc->cached_encoder_mask = 0;
+
 		mutex_unlock(&sde_crtc->crtc_lock);
 		pm_runtime_put_sync(crtc->dev->dev);
-		mutex_lock(&sde_crtc->crtc_lock);
 	}
 
 	return 0;
@@ -4010,9 +4021,14 @@ static void sde_crtc_disable(struct drm_crtc *crtc)
 	_sde_crtc_flush_event_thread(crtc);
 	mutex_lock(&sde_crtc->crtc_lock);
 
-	SDE_EVT32(DRMID(crtc), sde_crtc->enabled,
-			crtc->state->active, crtc->state->enable);
+	SDE_EVT32(DRMID(crtc), sde_crtc->enabled, crtc->state->active,
+			crtc->state->enable, sde_crtc->cached_encoder_mask);
 	sde_crtc->enabled = false;
+	/*
+	 * Do not zero cached_encoder_mask here: the asynchronous
+	 * vblank disable worker still needs it to unregister encoder
+	 * callbacks. It is cleared once the worker completes.
+	 */
 
 	/* Try to disable uidle */
 	sde_core_perf_crtc_update_uidle(crtc, false);
@@ -4122,9 +4138,11 @@ static void sde_crtc_enable(struct drm_crtc *crtc,
 	sde_crtc = to_sde_crtc(crtc);
 
 	/*
-	 * Avoid drm_crtc_vblank_on during seamless DMS case
-	 * when CRTC is already in enabled state
+	 * Refresh cached_encoder_mask on every enable for vblank work.
+	 * Avoid drm_crtc_vblank_on during seamless DMS case when CRTC
+	 * is already in enabled state.
 	 */
+	sde_crtc->cached_encoder_mask = crtc->state->encoder_mask;
 	if (!sde_crtc->enabled)
 		drm_crtc_vblank_on(crtc);
 
@@ -4973,14 +4991,10 @@ int sde_crtc_vblank(struct drm_crtc *crtc, bool en)
 	sde_crtc = to_sde_crtc(crtc);
 
 	mutex_lock(&sde_crtc->vblank_modeset_ctrl_lock);
-	mutex_lock(&sde_crtc->crtc_lock);
-	SDE_EVT32(DRMID(&sde_crtc->base), en, sde_crtc->enabled);
-	ret = _sde_crtc_vblank_enable_no_lock(sde_crtc, en);
+	ret = _sde_crtc_vblank_enable(sde_crtc, en);
 	if (ret)
 		SDE_ERROR("%s vblank enable failed: %d\n",
 				sde_crtc->name, ret);
-
-	mutex_unlock(&sde_crtc->crtc_lock);
 	mutex_unlock(&sde_crtc->vblank_modeset_ctrl_lock);
 
 	return 0;

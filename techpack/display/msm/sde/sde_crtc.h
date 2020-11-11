@@ -289,6 +289,7 @@ struct sde_crtc_misr_info {
  * @needs_hw_reset  : Initiate a hw ctl reset
  * @comp_ratio      : Compression ratio
  * @dspp_blob_info  : blob containing dspp hw capability information
+ * @cached_encoder_mask : cached encoder_mask for vblank work
  */
 struct sde_crtc {
 	struct drm_crtc base;
@@ -378,6 +379,7 @@ struct sde_crtc {
 	int comp_ratio;
 
 	struct drm_property_blob *dspp_blob_info;
+	u32 cached_encoder_mask;
 };
 
 #define to_sde_crtc(x) container_of(x, struct sde_crtc, base)
