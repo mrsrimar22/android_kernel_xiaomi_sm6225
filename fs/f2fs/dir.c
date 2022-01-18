@@ -75,7 +75,7 @@ unsigned char f2fs_get_de_type(struct f2fs_dir_entry *de)
 int f2fs_init_casefolded_name(const struct inode *dir,
 			      struct f2fs_filename *fname)
 {
-#ifdef CONFIG_UNICODE
+#if IS_ENABLED(CONFIG_UNICODE)
 	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
 
 	if (IS_CASEFOLDED(dir)) {
@@ -170,7 +170,7 @@ void f2fs_free_filename(struct f2fs_filename *fname)
 	kfree(fname->crypto_buf.name);
 	fname->crypto_buf.name = NULL;
 #endif
-#ifdef CONFIG_UNICODE
+#if IS_ENABLED(CONFIG_UNICODE)
 	kfree(fname->cf_name.name);
 	fname->cf_name.name = NULL;
 #endif
@@ -208,7 +208,7 @@ static struct f2fs_dir_entry *find_in_block(struct inode *dir,
 	return de;
 }
 
-#ifdef CONFIG_UNICODE
+#if IS_ENABLED(CONFIG_UNICODE)
 /*
  * Test whether a case-insensitive directory entry matches the filename
  * being searched for.
@@ -263,7 +263,7 @@ static inline bool f2fs_match_name(const struct inode *dir,
 {
 	struct fscrypt_name f;
 
-#ifdef CONFIG_UNICODE
+#if IS_ENABLED(CONFIG_UNICODE)
 	if (fname->cf_name.name) {
 		struct qstr cf = FSTR_TO_QSTR(&fname->cf_name);
 
