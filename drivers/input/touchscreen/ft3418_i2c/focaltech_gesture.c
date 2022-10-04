@@ -33,6 +33,9 @@
 * 1.Included header files
 *****************************************************************************/
 #include "focaltech_core.h"
+#ifdef CONFIG_TP_COMMON
+#include <linux/input/tp_common.h>
+#endif
 
 /******************************************************************************
 * Private constant and macro definitions using #define
@@ -102,6 +105,36 @@ static struct fts_gesture_st fts_gesture_data;
 /*****************************************************************************
 * Static function prototypes
 *****************************************************************************/
+#ifdef CONFIG_TP_COMMON
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	struct fts_ts_data *ts_data = fts_data;
+
+	return sprintf(buf, "%d\n", ts_data->gesture_mode);
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct fts_ts_data *ts_data = fts_data;
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	ts_data->gesture_mode = !!val;
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store
+};
+#endif
+
 static ssize_t fts_gesture_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -480,6 +513,10 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
 	__set_bit(KEY_GESTURE_Z, input_dev->keybit);
 
 	fts_create_gesture_sysfs(ts_data->dev);
+
+#ifdef CONFIG_TP_COMMON
+	tp_common_set_double_tap_ops(&double_tap_ops);
+#endif
 
 	memset(&fts_gesture_data, 0, sizeof(struct fts_gesture_st));
 	ts_data->gesture_mode = FTS_GESTURE_EN;
