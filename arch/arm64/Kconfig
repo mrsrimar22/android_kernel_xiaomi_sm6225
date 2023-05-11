@@ -304,6 +304,13 @@ config ARCH_PROC_KCORE_TEXT
 
 source "arch/arm64/Kconfig.platforms"
 
+config TARGET_PROJECT_K7T
+	bool "Custom project for hardware K7T pcb"
+	default n
+	help
+	  Enable hardware-specific customization for the K7T printed
+	  circuit board, e.g. panel-specific USB PHY parameter selection.
+
 menu "Bus support"
 
 config PCI
@@ -1701,6 +1708,13 @@ config KRYO_PMU_WORKAROUND
 	  overflow interrupts from multiple monitors.
 
 	  Enable this flag for effect SoCs.
+
+config BOOT_INFO
+	bool "Boot information from bootloader"
+	default y
+	help
+	  On embedded linux device, we try to collect more information from
+	  bootloader to kernel. eg. powerup reason.
 
 config BUILD_ARM64_DT_OVERLAY
 	bool "enable DT overlay compilation support"

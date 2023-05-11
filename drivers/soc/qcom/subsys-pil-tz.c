@@ -33,6 +33,22 @@
 #define STOP_ACK_TIMEOUT_MS	1000
 #define CRASH_STOP_ACK_TO_MS	200
 
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+#include <linux/spinlock.h>
+static char last_ssr_reason[MAX_SSR_REASON_LEN] = "none";
+static struct proc_dir_entry *last_ssr_reason_entry;
+static DEFINE_SPINLOCK(last_ssr_reason_lock);
+
+/* 2019.12.09 longcheer weipuchao add for checknv begin */
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+#include <linux/slab.h>
+#define STR_NV_SIGNATURE_DESTROYED "CRITICAL_DATA_CHECK_FAILED"
+static char last_modem_sfr_reason[MAX_SSR_REASON_LEN] = "";
+static DEFINE_SPINLOCK(last_modem_sfr_reason_lock);
+#endif
+/* 2019.12.09 longcheer weipuchao add for checknv end */
+
 #define ERR_READY	0
 #define PBL_DONE	1
 
@@ -163,6 +179,116 @@ static struct msm_bus_scale_pdata scm_pas_bus_pdata = {
 	.usecase = scm_pas_bw_tbl,
 	.num_usecases = ARRAY_SIZE(scm_pas_bw_tbl),
 	.name = "scm_pas",
+};
+
+/* 2019.12.09 longcheer weipuchao add for checknv begin */
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+static struct kobject *checknv_kobj;
+static struct kset *checknv_kset;
+static const struct sysfs_ops checknv_sysfs_ops = {};
+
+static void kobj_release(struct kobject *kobj)
+{
+	kfree(kobj);
+}
+
+static struct kobj_type checknv_ktype = {
+	.sysfs_ops = &checknv_sysfs_ops,
+	.release = kobj_release,
+};
+
+static ssize_t reason_show(struct kobject *kobj,
+			   struct kobj_attribute *attr, char *buf)
+{
+	unsigned long flags;
+	ssize_t len;
+
+	spin_lock_irqsave(&last_modem_sfr_reason_lock, flags);
+	len = scnprintf(buf, PAGE_SIZE, "%s\n", last_modem_sfr_reason);
+	spin_unlock_irqrestore(&last_modem_sfr_reason_lock, flags);
+
+	return len;
+}
+static struct kobj_attribute reason_attr = __ATTR_RO(reason);
+
+static void checknv_sysfs_cleanup(void)
+{
+	if (checknv_kobj) {
+		kobject_del(checknv_kobj);
+		kobject_put(checknv_kobj);
+		checknv_kobj = NULL;
+	}
+	if (checknv_kset) {
+		kset_unregister(checknv_kset);
+		checknv_kset = NULL;
+	}
+}
+
+static int checknv_sysfs_init(void)
+{
+	int ret;
+
+	checknv_kset = kset_create_and_add("checknv_errimei", NULL, NULL);
+	if (!checknv_kset)
+		return -ENOMEM;
+
+	checknv_kobj = kzalloc(sizeof(*checknv_kobj), GFP_KERNEL);
+	if (!checknv_kobj) {
+		ret = -ENOMEM;
+		goto err_kset;
+	}
+
+	checknv_kobj->kset = checknv_kset;
+	ret = kobject_init_and_add(checknv_kobj, &checknv_ktype, NULL,
+				   "%s", "errimei");
+	if (ret) {
+		kobject_put(checknv_kobj);
+		checknv_kobj = NULL;
+		goto err_kset;
+	}
+
+	ret = sysfs_create_file(checknv_kobj, &reason_attr.attr);
+	if (ret) {
+		kobject_del(checknv_kobj);
+		kobject_put(checknv_kobj);
+		checknv_kobj = NULL;
+		goto err_kset;
+	}
+
+	return 0;
+
+err_kset:
+	kset_unregister(checknv_kset);
+	checknv_kset = NULL;
+	return ret;
+}
+#endif
+/* 2019.12.09 longcheer weipuchao add for checknv end */
+
+static int last_ssr_reason_proc_show(struct seq_file *m, void *v)
+{
+	unsigned long flags;
+	char buf[MAX_SSR_REASON_LEN];
+
+	spin_lock_irqsave(&last_ssr_reason_lock, flags);
+	strscpy(buf, last_ssr_reason, sizeof(buf));
+	spin_unlock_irqrestore(&last_ssr_reason_lock, flags);
+
+	seq_printf(m, "%s\n", buf);
+	return 0;
+}
+
+static int last_ssr_reason_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, last_ssr_reason_proc_show, NULL);
+}
+
+static const struct file_operations last_ssr_reason_file_ops = {
+	.owner	= THIS_MODULE,
+	.open	= last_ssr_reason_proc_open,
+	.read	= seq_read,
+	.llseek	= seq_lseek,
+	.release = single_release,
 };
 
 static uint32_t scm_perf_client;
@@ -822,8 +948,25 @@ static void log_failure_reason(const struct pil_tz_data *d)
 		return;
 	}
 
-	strlcpy(reason, smem_reason, min(size, (size_t)MAX_SSR_REASON_LEN));
+	strscpy(reason, smem_reason, min(size, (size_t)MAX_SSR_REASON_LEN));
 	pr_err("%s subsystem failure reason: %s.\n", name, reason);
+
+	spin_lock(&last_ssr_reason_lock);
+	snprintf(last_ssr_reason, sizeof(last_ssr_reason), "%s: %s", name, reason);
+	spin_unlock(&last_ssr_reason_lock);
+
+/* 2019.12.09 longcheer weipuchao add for checknv begin */
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+	spin_lock(&last_modem_sfr_reason_lock);
+	/*
+	 * Bounded by sizeof - 1: the reader below uses strlen()/strnstr(), so
+	 * this must stay NUL terminated even if smem_reason is not.
+	 */
+	strscpy(last_modem_sfr_reason, smem_reason,
+		min(size, sizeof(last_modem_sfr_reason) - 1));
+	spin_unlock(&last_modem_sfr_reason_lock);
+#endif
+/* 2019.12.09 longcheer weipuchao add for checknv end */
 }
 
 static int subsys_shutdown(const struct subsys_desc *subsys, bool force_stop)
@@ -895,6 +1038,12 @@ static void subsys_crash_shutdown(const struct subsys_desc *subsys)
 static irqreturn_t subsys_err_fatal_intr_handler (int irq, void *dev_id)
 {
 	struct pil_tz_data *d = subsys_to_data(dev_id);
+/* 2019.12.09 longcheer weipuchao add for checknv begin */
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+	unsigned long flags;
+	bool nv_destroyed = false;
+#endif
+/* 2019.12.09 longcheer weipuchao add for checknv end */
 
 	pr_err("Fatal error on %s!\n", d->subsys_desc.name);
 	if (subsys_get_crash_status(d->subsys)) {
@@ -905,6 +1054,22 @@ static irqreturn_t subsys_err_fatal_intr_handler (int irq, void *dev_id)
 	subsys_set_crash_status(d->subsys, CRASH_STATUS_ERR_FATAL);
 	log_failure_reason(d);
 	subsystem_restart_dev(d->subsys);
+
+/* 2019.12.09 longcheer weipuchao add for checknv begin */
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+	spin_lock_irqsave(&last_modem_sfr_reason_lock, flags);
+	nv_destroyed = last_modem_sfr_reason[0] != '\0' &&
+		strnstr(last_modem_sfr_reason, STR_NV_SIGNATURE_DESTROYED,
+			strlen(last_modem_sfr_reason));
+	spin_unlock_irqrestore(&last_modem_sfr_reason_lock, flags);
+
+	if (nv_destroyed) {
+		pr_err("errimei_dev: the NV has been destroyed, should restart to recovery\n");
+		if (checknv_kobj)
+			sysfs_notify(checknv_kobj, NULL, "reason");
+	}
+#endif
+/* 2019.12.09 longcheer weipuchao add for checknv end */
 
 	return IRQ_HANDLED;
 }
@@ -1314,13 +1479,60 @@ static struct platform_driver pil_tz_driver = {
 
 static int __init pil_tz_init(void)
 {
-	return platform_driver_register(&pil_tz_driver);
+	int ret;
+
+	last_ssr_reason_entry = proc_create("last_mcrash", 0444, NULL,
+					    &last_ssr_reason_file_ops);
+	if (!last_ssr_reason_entry) {
+		pr_err("%s: Cannot create proc last_mcrash entry\n",
+		       __func__);
+		return -ENOMEM;
+	}
+
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+	ret = checknv_sysfs_init();
+	if (ret) {
+		pr_err("%s: failed to create checknv sysfs: %d\n",
+		       __func__, ret);
+		proc_remove(last_ssr_reason_entry);
+		last_ssr_reason_entry = NULL;
+		return ret;
+	}
+#endif
+
+	ret = platform_driver_register(&pil_tz_driver);
+	if (ret) {
+		pr_err("%s: failed to register platform driver: %d\n",
+		       __func__, ret);
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+		checknv_sysfs_cleanup();
+#endif
+		proc_remove(last_ssr_reason_entry);
+		last_ssr_reason_entry = NULL;
+	}
+
+	return ret;
 }
 module_init(pil_tz_init);
 
 static void __exit pil_tz_exit(void)
 {
+	/*
+	 * Unregister first: this removes every device and frees the IRQs,
+	 * so the sysfs object cannot be used after it is torn down.
+	 */
 	platform_driver_unregister(&pil_tz_driver);
+
+/* 2019.12.09 longcheer weipuchao add for checknv begin */
+#if IS_ENABLED(CONFIG_MSM_PIL_CHECK_NV_DESTROYED)
+	checknv_sysfs_cleanup();
+#endif
+/* 2019.12.09 longcheer weipuchao add for checknv end */
+
+	if (last_ssr_reason_entry) {
+		proc_remove(last_ssr_reason_entry);
+		last_ssr_reason_entry = NULL;
+	}
 }
 module_exit(pil_tz_exit);
 

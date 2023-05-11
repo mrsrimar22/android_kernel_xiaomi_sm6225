@@ -492,6 +492,20 @@ config MSM_PIL_SSR_GENERIC
 	  interrupt for the subsystem and restarts it on a watchdog bite
 	  or a fatal error. Subsystems include LPASS, Venus, VPU, WCNSS and
 	  BCSS.
+
+config MSM_PIL_CHECK_NV_DESTROYED
+	bool "Check for destroyed NV after a modem subsystem restart"
+	depends on MSM_PIL_SSR_GENERIC
+	default y
+	help
+	  Watch the modem subsystem failure reason for the NV-destroyed
+	  signature. The reason is exposed through the
+	  checknv_errimei/errimei/reason sysfs attribute, which userspace
+	  can poll and read to restart the device into recovery.
+
+	  This is a vendor-specific diagnostic hook used by the matching
+	  userspace helper. If unsure, say Y.
+
 config MSM_BOOT_STATS
 	bool "Use MSM boot stats reporting"
 	help
