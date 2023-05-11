@@ -5336,6 +5336,88 @@ static void sdhci_msm_select_bus_mode(struct sdhci_host *host)
 	}
 }
 
+/*
+ * Card detect state for factory mode, exported as
+ * /sys/card_slot<index>/card_slot_status, one node per slot.
+ * kobj_sysfs_ops, not dev_attr_show: this kobject is not a struct device.
+ */
+static void card_slot_release(struct kobject *kobj)
+{
+}
+
+static struct kobj_type card_slot_ktype = {
+	.release = card_slot_release,
+	.sysfs_ops = &kobj_sysfs_ops,
+};
+
+static ssize_t card_slot_status_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	struct card_slot_kobj *slot =
+		container_of(kobj, struct card_slot_kobj, kobj);
+	int ret;
+
+	if (!slot->msm || !slot->msm->mmc)
+		return -ENODEV;
+
+	ret = mmc_gpio_get_cd(slot->msm->mmc);
+	if (ret < 0)
+		return ret;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", ret);
+}
+
+static struct kobj_attribute card_slot_status_attr =
+	__ATTR(card_slot_status, 0444, card_slot_status_show, NULL);
+
+static struct attribute *card_slot_attrs[] = {
+	&card_slot_status_attr.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(card_slot);
+
+/*
+ * No parent, so the node sits directly in /sys as card_slot<index>. The kobject
+ * ref is held past host teardown: release only runs on the final put, by which
+ * time this driver is done touching @msm.
+ */
+static int sdhci_msm_card_slot_init(struct sdhci_msm_host *msm_host)
+{
+	struct card_slot_kobj *slot = &msm_host->card_slot;
+	int ret;
+
+	slot->msm = msm_host;
+	ret = kobject_init_and_add(&slot->kobj, &card_slot_ktype, NULL,
+			"card_slot%d", msm_host->mmc->index);
+	if (ret)
+		goto put;
+
+	ret = sysfs_create_groups(&slot->kobj, card_slot_groups);
+	if (ret) {
+		kobject_del(&slot->kobj);
+		goto put;
+	}
+
+	return 0;
+
+put:
+	slot->msm = NULL;
+	kobject_put(&slot->kobj);
+	return ret;
+}
+
+static void sdhci_msm_card_slot_remove(struct sdhci_msm_host *msm_host)
+{
+	struct card_slot_kobj *slot = &msm_host->card_slot;
+
+	if (!slot->msm)
+		return;
+
+	slot->msm = NULL;	/* later readers see -ENODEV, not stale memory */
+	sysfs_remove_groups(&slot->kobj, card_slot_groups);
+	kobject_put(&slot->kobj);
+}
+
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
 	const struct sdhci_msm_offset *msm_host_offset;
@@ -5838,6 +5920,10 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		ret = device_create_file(&pdev->dev, &msm_host->polling);
 		if (ret)
 			goto remove_max_bus_bw_file;
+	} else {
+		ret = sdhci_msm_card_slot_init(msm_host);
+		if (ret)
+			goto remove_max_bus_bw_file;
 	}
 
 	msm_host->auto_cmd21_attr.show = show_auto_cmd21;
@@ -5923,6 +6009,8 @@ static int sdhci_msm_remove(struct platform_device *pdev)
 	pr_debug("%s: %s Enter\n", dev_name(&pdev->dev), __func__);
 	if (!gpio_is_valid(msm_host->pdata->status_gpio))
 		device_remove_file(&pdev->dev, &msm_host->polling);
+	else
+		sdhci_msm_card_slot_remove(msm_host);
 
 	device_remove_file(&pdev->dev, &msm_host->auto_cmd21_attr);
 	device_remove_file(&pdev->dev, &msm_host->msm_bus_vote.max_bus_bw);
