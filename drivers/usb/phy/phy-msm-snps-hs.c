@@ -83,6 +83,13 @@
 #define USB_HSPHY_1P8_VOL_MAX			1800000 /* uV */
 #define USB_HSPHY_1P8_HPM_LOAD			19000	/* uA */
 
+/*
+ * Set from the bootloader on K7T boards:
+ *   1 (default) -> qcom,param-override-seq
+ *   0           -> qcom,param-override-seq-no-panel
+ */
+static bool usb_hsphy_no_panel;
+
 struct msm_hsphy {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -726,6 +733,7 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	struct msm_hsphy *phy;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
+	const char *seq_name;
 	int ret = 0;
 
 	phy = devm_kzalloc(dev, sizeof(*phy), GFP_KERNEL);
@@ -802,11 +810,17 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	if (IS_ERR(phy->phy_reset))
 		return PTR_ERR(phy->phy_reset);
 
+	seq_name = usb_hsphy_no_panel ?
+			"qcom,param-override-seq-no-panel" :
+			"qcom,param-override-seq";
+
 	phy->param_override_seq_cnt = of_property_count_elems_of_size(
-					dev->of_node,
-					"qcom,param-override-seq",
+					dev->of_node, seq_name,
 					sizeof(*phy->param_override_seq));
-	if (phy->param_override_seq_cnt > 0) {
+	if (phy->param_override_seq_cnt < 0) {
+		dev_dbg(dev, "%s not found, override skipped\n", seq_name);
+		phy->param_override_seq_cnt = 0;
+	} else if (phy->param_override_seq_cnt > 0) {
 		phy->param_override_seq = devm_kcalloc(dev,
 					phy->param_override_seq_cnt,
 					sizeof(*phy->param_override_seq),
@@ -819,13 +833,11 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
-		ret = of_property_read_u32_array(dev->of_node,
-				"qcom,param-override-seq",
-				phy->param_override_seq,
-				phy->param_override_seq_cnt);
+		ret = of_property_read_u32_array(dev->of_node, seq_name,
+						 phy->param_override_seq,
+						 phy->param_override_seq_cnt);
 		if (ret) {
-			dev_err(dev, "qcom,param-override-seq read failed %d\n",
-				ret);
+			dev_err(dev, "%s read failed %d\n", seq_name, ret);
 			return ret;
 		}
 	}
@@ -904,6 +916,20 @@ static int msm_hsphy_remove(struct platform_device *pdev)
 	msm_hsphy_enable_power(phy, false);
 	return 0;
 }
+
+#ifdef CONFIG_TARGET_PROJECT_K7T
+static int __init usb_hsphy_panel_select(char *str)
+{
+	unsigned int val;
+
+	if (kstrtouint(str, 10, &val) || val > 1)
+		return 0;
+
+	usb_hsphy_no_panel = !val;
+	return 1;
+}
+__setup("panel_info=", usb_hsphy_panel_select);
+#endif
 
 static const struct of_device_id msm_usb_id_table[] = {
 	{
