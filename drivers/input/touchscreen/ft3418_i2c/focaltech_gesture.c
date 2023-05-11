@@ -1,0 +1,455 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * FocalTech TouchScreen driver.
+ *
+ * Copyright (c) 2012-2020, Focaltech Ltd. All rights reserved.
+ */
+
+/*****************************************************************************
+ * 1.Included header files
+ *****************************************************************************/
+#include "focaltech_gesture.h"
+
+/******************************************************************************
+ * Private constant and macro definitions using #define
+ *****************************************************************************/
+#define KEY_GESTURE_LEFT		KEY_LEFT
+#define KEY_GESTURE_RIGHT		KEY_RIGHT
+#define KEY_GESTURE_UP			KEY_UP
+#define KEY_GESTURE_DOWN		KEY_DOWN
+#define KEY_GESTURE_DOUBLECLICK		KEY_WAKEUP
+#define KEY_GESTURE_SINGLECLICK		KEY_GOTO
+#define KEY_GESTURE_O			KEY_O
+#define KEY_GESTURE_W			KEY_W
+#define KEY_GESTURE_M			KEY_M
+#define KEY_GESTURE_E			KEY_E
+#define KEY_GESTURE_C			KEY_C
+#define KEY_GESTURE_Z			KEY_Z
+#define KEY_GESTURE_L			KEY_L
+#define KEY_GESTURE_S			KEY_S
+#define KEY_GESTURE_V			KEY_V
+
+#define GESTURE_LEFT			0x20
+#define GESTURE_RIGHT			0x21
+#define GESTURE_UP			0x22
+#define GESTURE_DOWN			0x23
+#define GESTURE_DOUBLECLICK		0x24
+#define GESTURE_SINGLECLICK		0x25
+#define GESTURE_O			0x30
+#define GESTURE_W			0x31
+#define GESTURE_M			0x32
+#define GESTURE_E			0x33
+#define GESTURE_C			0x34
+#define GESTURE_Z			0x41
+#define GESTURE_L			0x44
+#define GESTURE_S			0x46
+#define GESTURE_V			0x54
+
+#define GESTURE_RETRY_COUNT		5
+#define GESTURE_RETRY_DELAY_US_MIN	1000
+#define GESTURE_RETRY_DELAY_US_MAX	1500
+
+/*****************************************************************************
+ * Static function prototypes
+ *****************************************************************************/
+
+static int fts_gesture_write_mask(struct fts_ts_data *ts_data)
+{
+	static const u8 regs[] = { 0xD1, 0xD2, 0xD5, 0xD6, 0xD7, 0xD8 };
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(regs); i++) {
+		ret = fts_write_reg(ts_data, regs[i], 0xFF);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+/*****************************************************************************
+ * Sysfs interface
+ *****************************************************************************/
+static ssize_t fts_gesture_mode_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+	u8 val = 0;
+	int count;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	fts_read_reg(ts_data, FTS_REG_GESTURE_EN, &val);
+	count = snprintf(buf, PAGE_SIZE, "Gesture Mode:%s\nReg(0xD0)=%d\n",
+			 ts_data->gesture_mode ? "On" : "Off", val);
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static ssize_t fts_gesture_mode_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	if (FTS_SYSFS_ECHO_ON(buf))
+		ts_data->gesture_mode = ENABLE;
+	else if (FTS_SYSFS_ECHO_OFF(buf))
+		ts_data->gesture_mode = DISABLE;
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static ssize_t fts_aod_mode_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+	u8 val = 0;
+	int count;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	fts_read_reg(ts_data, FTS_REG_GESTURE_EN, &val);
+	count = snprintf(buf, PAGE_SIZE, "AOD Mode:%s\nReg(0xD0)=%d\n",
+			 ts_data->aod_mode ? "On" : "Off", val);
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static ssize_t fts_aod_mode_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	if (FTS_SYSFS_ECHO_ON(buf))
+		ts_data->aod_mode = ENABLE;
+	else if (FTS_SYSFS_ECHO_OFF(buf))
+		ts_data->aod_mode = DISABLE;
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static ssize_t fts_gesture_buf_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+	struct fts_gesture_data *gesture;
+	int i, count = 0;
+
+	if (!ts_data || !ts_data->gesture)
+		return -ENODEV;
+
+	gesture = ts_data->gesture;
+
+	mutex_lock(&ts_data->state_lock);
+	count = snprintf(buf, PAGE_SIZE, "Gesture ID:%d\nPointNum:%d\nPoints:\n",
+			 gesture->gesture_id, gesture->point_num);
+
+	for (i = 0; i < FTS_GESTURE_POINTS_MAX; i++) {
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "%d(%d,%d) ", i,
+				  gesture->coordinate_x[i],
+				  gesture->coordinate_y[i]);
+		if ((i + 1) % 4 == 0)
+			count += snprintf(buf + count, PAGE_SIZE - count, "\n");
+	}
+
+	if (count > 0 && buf[count - 1] != '\n')
+		count += snprintf(buf + count, PAGE_SIZE - count, "\n");
+
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(fts_gesture_mode);
+static DEVICE_ATTR_RW(fts_aod_mode);
+static DEVICE_ATTR_RO(fts_gesture_buf);
+
+static struct attribute *fts_gesture_mode_attrs[] = {
+	&dev_attr_fts_gesture_mode.attr,
+	&dev_attr_fts_aod_mode.attr,
+	&dev_attr_fts_gesture_buf.attr,
+	NULL,
+};
+
+static struct attribute_group fts_gesture_group = {
+	.attrs = fts_gesture_mode_attrs,
+};
+
+/*****************************************************************************
+ * Public API Functions
+ *****************************************************************************/
+
+static void fts_gesture_report(struct fts_ts_data *ts_data, int gesture_id)
+{
+	int key;
+	struct input_dev *input_dev;
+
+	if (!ts_data || !ts_data->input_dev)
+		return;
+
+	input_dev = ts_data->input_dev;
+
+	switch (gesture_id) {
+	case GESTURE_LEFT:
+		key = KEY_GESTURE_LEFT;
+		break;
+	case GESTURE_RIGHT:
+		key = KEY_GESTURE_RIGHT;
+		break;
+	case GESTURE_UP:
+		key = KEY_GESTURE_UP;
+		break;
+	case GESTURE_DOWN:
+		key = KEY_GESTURE_DOWN;
+		break;
+	case GESTURE_DOUBLECLICK:
+		key = KEY_GESTURE_DOUBLECLICK;
+		break;
+	case GESTURE_SINGLECLICK:
+		key = KEY_GESTURE_SINGLECLICK;
+		break;
+	case GESTURE_O:
+		key = KEY_GESTURE_O;
+		break;
+	case GESTURE_W:
+		key = KEY_GESTURE_W;
+		break;
+	case GESTURE_M:
+		key = KEY_GESTURE_M;
+		break;
+	case GESTURE_E:
+		key = KEY_GESTURE_E;
+		break;
+	case GESTURE_C:
+		key = KEY_GESTURE_C;
+		break;
+	case GESTURE_Z:
+		key = KEY_GESTURE_Z;
+		break;
+	case GESTURE_L:
+		key = KEY_GESTURE_L;
+		break;
+	case GESTURE_S:
+		key = KEY_GESTURE_S;
+		break;
+	case GESTURE_V:
+		key = KEY_GESTURE_V;
+		break;
+	default:
+		return;
+	}
+
+	if ((key == KEY_GESTURE_SINGLECLICK && !READ_ONCE(ts_data->aod_mode)) ||
+	    (key != KEY_GESTURE_SINGLECLICK && !READ_ONCE(ts_data->gesture_mode)))
+		return;
+
+	input_report_key(input_dev, key, 1);
+	input_sync(input_dev);
+	input_report_key(input_dev, key, 0);
+	input_sync(input_dev);
+}
+
+static int fts_gesture_enable_hw(struct fts_ts_data *ts_data)
+{
+	int i, ret;
+	u8 state = 0;
+
+	for (i = 0; i < GESTURE_RETRY_COUNT; i++) {
+		ret = fts_gesture_write_mask(ts_data);
+		if (ret < 0) {
+			FTS_ERROR("write gesture mask fail: %d", ret);
+			return ret;
+		}
+
+		ret = fts_write_reg(ts_data, FTS_REG_GESTURE_EN, ENABLE);
+		if (ret < 0) {
+			FTS_ERROR("write gesture en fail: %d", ret);
+			return ret;
+		}
+
+		usleep_range(GESTURE_RETRY_DELAY_US_MIN, GESTURE_RETRY_DELAY_US_MAX);
+
+		ret = fts_read_reg(ts_data, FTS_REG_GESTURE_EN, &state);
+		if (ret < 0) {
+			FTS_ERROR("read gesture en fail: %d", ret);
+			return ret;
+		}
+
+		if (state == ENABLE)
+			return 0;
+	}
+
+	FTS_ERROR("IC did not enter gesture mode after %d tries, state:0x%x",
+		  GESTURE_RETRY_COUNT, state);
+	return -EIO;
+}
+
+int fts_gesture_readdata(struct fts_gesture_data *gesture, u8 *data)
+{
+	struct fts_ts_data *ts_data;
+	int i, idx;
+
+	if (!gesture || !gesture->ts_data || !data)
+		return -EINVAL;
+
+	ts_data = gesture->ts_data;
+
+	if (!READ_ONCE(ts_data->suspended) ||
+	    !READ_ONCE(ts_data->gesture_suspended))
+		return 1;
+
+	memcpy(gesture->gesture_buf, data, FTS_GESTURE_DATA_LEN);
+
+	gesture->gesture_id = data[2];
+	gesture->point_num = data[3];
+
+	for (i = 0; i < FTS_GESTURE_POINTS_MAX; i++) {
+		idx = 4 * i + 4;
+		gesture->coordinate_x[i] = (((u16)data[idx] & 0x0F) << 8) | data[idx + 1];
+		gesture->coordinate_y[i] = (((u16)data[idx + 2] & 0x0F) << 8) | data[idx + 3];
+	}
+
+	fts_gesture_report(ts_data, gesture->gesture_id);
+	return 0;
+}
+
+void fts_gesture_recovery(struct fts_gesture_data *gesture)
+{
+	struct fts_ts_data *ts_data;
+
+	if (!gesture || !gesture->ts_data)
+		return;
+
+	ts_data = gesture->ts_data;
+
+	if (!READ_ONCE(ts_data->suspended) ||
+	    !READ_ONCE(ts_data->gesture_suspended))
+		return;
+
+	if (fts_gesture_enable_hw(ts_data) < 0)
+		FTS_ERROR("gesture recovery failed");
+}
+
+int fts_gesture_suspend(struct fts_gesture_data *gesture)
+{
+	struct fts_ts_data *ts_data;
+	int ret;
+
+	if (!gesture || !gesture->ts_data)
+		return -EINVAL;
+
+	ts_data = gesture->ts_data;
+
+	ret = fts_gesture_enable_hw(ts_data);
+	if (ret < 0)
+		return ret;
+
+	if (device_may_wakeup(ts_data->dev))
+		enable_irq_wake(ts_data->irq);
+
+	FTS_INFO("gesture suspend: successfully");
+	return 0;
+}
+
+int fts_gesture_resume(struct fts_gesture_data *gesture)
+{
+	struct fts_ts_data *ts_data;
+	int i, ret;
+	u8 state = 0xFF;
+
+	if (!gesture || !gesture->ts_data)
+		return -EINVAL;
+
+	ts_data = gesture->ts_data;
+
+	if (device_may_wakeup(ts_data->dev))
+		disable_irq_wake(ts_data->irq);
+
+	for (i = 0; i < GESTURE_RETRY_COUNT; i++) {
+		ret = fts_write_reg(ts_data, FTS_REG_GESTURE_EN, DISABLE);
+		if (ret < 0) {
+			FTS_ERROR("write gesture en fail: %d", ret);
+			return ret;
+		}
+
+		usleep_range(GESTURE_RETRY_DELAY_US_MIN, GESTURE_RETRY_DELAY_US_MAX);
+
+		ret = fts_read_reg(ts_data, FTS_REG_GESTURE_EN, &state);
+		if (ret < 0) {
+			FTS_ERROR("read gesture en fail: %d", ret);
+			return ret;
+		}
+
+		if (state == DISABLE)
+			break;
+	}
+
+	if (i >= GESTURE_RETRY_COUNT) {
+		FTS_ERROR("IC did not exit gesture mode after %d tries, state:0x%x",
+			  GESTURE_RETRY_COUNT, state);
+		return -EIO;
+	}
+
+	FTS_INFO("gesture resume: successfully");
+	return 0;
+}
+
+int fts_gesture_init(struct fts_ts_data *ts_data)
+{
+	struct fts_gesture_data *gesture;
+	int ret;
+
+	FTS_FUNC_ENTER();
+
+	gesture = kzalloc(sizeof(*gesture), GFP_KERNEL);
+	if (!gesture)
+		return -ENOMEM;
+
+	gesture->ts_data = ts_data;
+	ts_data->gesture = gesture;
+
+	ret = sysfs_create_group(&ts_data->dev->kobj, &fts_gesture_group);
+	if (ret) {
+		FTS_ERROR("gesture sysfs node create fail: %d", ret);
+		kfree(ts_data->gesture);
+		return ret;
+	}
+
+	ts_data->gesture_mode = FTS_GESTURE_EN;
+	ts_data->aod_mode = FTS_GESTURE_EN;
+
+	FTS_FUNC_EXIT();
+	return 0;
+}
+
+int fts_gesture_exit(struct fts_ts_data *ts_data)
+{
+	FTS_FUNC_ENTER();
+	if (ts_data) {
+		if (ts_data->dev)
+			sysfs_remove_group(&ts_data->dev->kobj, &fts_gesture_group);
+
+		kfree(ts_data->gesture);
+	}
+	FTS_FUNC_EXIT();
+	return 0;
+}
