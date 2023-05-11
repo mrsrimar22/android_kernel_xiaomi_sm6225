@@ -265,6 +265,12 @@ struct sdhci_msm_debug_data {
 	struct sdhci_host copy_host;
 };
 
+/* sysfs node created by sdhci-msm.c for the factory mode card slot status */
+struct card_slot_kobj {
+	struct kobject kobj;
+	struct sdhci_msm_host *msm;
+};
+
 struct sdhci_msm_host {
 	struct platform_device	*pdev;
 	void __iomem *core_mem;    /* MSM SDCC mapped address */
@@ -294,6 +300,7 @@ struct sdhci_msm_host {
 	u8 saved_tuning_phase;
 	bool en_auto_cmd21;
 	struct device_attribute auto_cmd21_attr;
+	struct card_slot_kobj card_slot;
 	bool is_sdiowakeup_enabled;
 	bool sdio_pending_processing;
 	atomic_t controller_clock;
