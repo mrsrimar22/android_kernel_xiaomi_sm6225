@@ -28,7 +28,7 @@
 struct class *power_supply_class;
 EXPORT_SYMBOL_GPL(power_supply_class);
 
-ATOMIC_NOTIFIER_HEAD(power_supply_notifier);
+BLOCKING_NOTIFIER_HEAD(power_supply_notifier);
 EXPORT_SYMBOL_GPL(power_supply_notifier);
 
 static struct device_type power_supply_dev_type;
@@ -40,21 +40,26 @@ static bool __power_supply_is_supplied_by(struct power_supply *supplier,
 {
 	int i;
 
+	if (!supplier || !supply || supplier->removing || supply->removing)
+		return false;
+
 	if (!supply->supplied_from && !supplier->supplied_to)
 		return false;
 
 	/* Support both supplied_to and supplied_from modes */
 	if (supply->supplied_from) {
-		if (!supplier->desc->name)
+		if (!supplier->desc || !supplier->desc->name)
 			return false;
 		for (i = 0; i < supply->num_supplies; i++)
-			if (!strcmp(supplier->desc->name, supply->supplied_from[i]))
+			if (supply->supplied_from[i] &&
+			    !strcmp(supplier->desc->name, supply->supplied_from[i]))
 				return true;
 	} else {
-		if (!supply->desc->name)
+		if (!supply->desc || !supply->desc->name)
 			return false;
 		for (i = 0; i < supplier->num_supplicants; i++)
-			if (!strcmp(supplier->supplied_to[i], supply->desc->name))
+			if (supplier->supplied_to[i] &&
+			    !strcmp(supplier->supplied_to[i], supply->desc->name))
 				return true;
 	}
 
@@ -66,10 +71,11 @@ static int __power_supply_changed_work(struct device *dev, void *data)
 	struct power_supply *psy = data;
 	struct power_supply *pst = dev_get_drvdata(dev);
 
-	if (__power_supply_is_supplied_by(psy, pst)) {
-		if (pst->desc->external_power_changed)
-			pst->desc->external_power_changed(pst);
-	}
+	if (!pst || !pst->desc || pst->removing)
+		return 0;
+
+	if (__power_supply_is_supplied_by(psy, pst))
+		power_supply_external_power_changed(pst);
 
 	return 0;
 }
@@ -83,6 +89,13 @@ static void power_supply_changed_work(struct work_struct *work)
 	dev_dbg(&psy->dev, "%s\n", __func__);
 
 	spin_lock_irqsave(&psy->changed_lock, flags);
+	if (unlikely(psy->removing)) {
+		psy->changed = false;
+		pm_relax(&psy->dev);
+		spin_unlock_irqrestore(&psy->changed_lock, flags);
+		return;
+	}
+
 	/*
 	 * Check 'changed' here to avoid issues due to race between
 	 * power_supply_changed() and this routine. In worst case
@@ -96,7 +109,7 @@ static void power_supply_changed_work(struct work_struct *work)
 		class_for_each_device(power_supply_class, NULL, psy,
 				      __power_supply_changed_work);
 		power_supply_update_leds(psy);
-		atomic_notifier_call_chain(&power_supply_notifier,
+		blocking_notifier_call_chain(&power_supply_notifier,
 				PSY_EVENT_PROP_CHANGED, psy);
 		kobject_uevent(&psy->dev.kobj, KOBJ_CHANGE);
 		spin_lock_irqsave(&psy->changed_lock, flags);
@@ -116,13 +129,18 @@ void power_supply_changed(struct power_supply *psy)
 {
 	unsigned long flags;
 
+	if (!psy || psy->removing || !psy->initialized)
+		return;
+
 	dev_dbg(&psy->dev, "%s\n", __func__);
 
 	spin_lock_irqsave(&psy->changed_lock, flags);
-	psy->changed = true;
-	pm_stay_awake(&psy->dev);
+	if (likely(!psy->removing && psy->initialized)) {
+		psy->changed = true;
+		pm_stay_awake(&psy->dev);
+		schedule_work(&psy->changed_work);
+	}
 	spin_unlock_irqrestore(&psy->changed_lock, flags);
-	schedule_work(&psy->changed_work);
 }
 EXPORT_SYMBOL_GPL(power_supply_changed);
 
@@ -145,16 +163,26 @@ static void power_supply_deferred_register_work(struct work_struct *work)
 						deferred_register_work.work);
 
 	if (psy->dev.parent) {
+		int timeout = 100;
+
 		while (!mutex_trylock(&psy->dev.parent->mutex)) {
 			if (psy->removing)
 				return;
+			if (--timeout == 0) {
+				dev_warn(&psy->dev, "parent mutex timed out\n");
+				return;
+			}
 			msleep(10);
 		}
 	}
 
+	if (psy->removing)
+		goto unlock;
+
 	psy_register_cooler(psy->dev.parent, psy);
 	power_supply_changed(psy);
 
+unlock:
 	if (psy->dev.parent)
 		mutex_unlock(&psy->dev.parent->mutex);
 }
@@ -169,6 +197,9 @@ static int __power_supply_populate_supplied_from(struct device *dev,
 	struct power_supply *epsy = dev_get_drvdata(dev);
 	struct device_node *np;
 	int i = 0;
+
+	if (!epsy || !epsy->desc || !epsy->desc->name || epsy->removing)
+		return 0;
 
 	do {
 		np = of_parse_phandle(psy->of_node, "power-supplies", i++);
@@ -206,6 +237,9 @@ static int  __power_supply_find_supply_from_node(struct device *dev,
 {
 	struct device_node *np = data;
 	struct power_supply *epsy = dev_get_drvdata(dev);
+
+	if (!epsy || epsy->removing)
+		return 0;
 
 	/* returning non-zero breaks out of class_for_each_device loop */
 	if (epsy->of_node == np)
@@ -267,16 +301,10 @@ static int power_supply_check_supplies(struct power_supply *psy)
 	if (cnt == 1)
 		return 0;
 
-	/* All supplies found, allocate char ** array for filling */
-	psy->supplied_from = devm_kzalloc(&psy->dev, sizeof(psy->supplied_from),
+	psy->supplied_from = devm_kcalloc(&psy->dev,
+					  cnt - 1, sizeof(*psy->supplied_from),
 					  GFP_KERNEL);
 	if (!psy->supplied_from)
-		return -ENOMEM;
-
-	*psy->supplied_from = devm_kcalloc(&psy->dev,
-					   cnt - 1, sizeof(char *),
-					   GFP_KERNEL);
-	if (!*psy->supplied_from)
 		return -ENOMEM;
 
 	return power_supply_populate_supplied_from(psy);
@@ -321,9 +349,12 @@ static int __power_supply_am_i_supplied(struct device *dev, void *_data)
 	struct power_supply *epsy = dev_get_drvdata(dev);
 	struct psy_am_i_supplied_data *data = _data;
 
+	if (!epsy || !epsy->desc || epsy->removing)
+		return 0;
+
 	if (__power_supply_is_supplied_by(epsy, data->psy)) {
 		data->count++;
-		if (!epsy->desc->get_property(epsy, POWER_SUPPLY_PROP_ONLINE,
+		if (!power_supply_get_property(epsy, POWER_SUPPLY_PROP_ONLINE,
 					&ret))
 			return ret.intval;
 	}
@@ -354,13 +385,16 @@ static int __power_supply_is_system_supplied(struct device *dev, void *data)
 	struct power_supply *psy = dev_get_drvdata(dev);
 	unsigned int *count = data;
 
-	if (!psy->desc->get_property(psy, POWER_SUPPLY_PROP_SCOPE, &ret))
+	if (!psy || !psy->desc || psy->removing)
+		return 0;
+
+	if (!power_supply_get_property(psy, POWER_SUPPLY_PROP_SCOPE, &ret))
 		if (ret.intval == POWER_SUPPLY_SCOPE_DEVICE)
 			return 0;
 
 	(*count)++;
 	if (psy->desc->type != POWER_SUPPLY_TYPE_BATTERY)
-		if (!psy->desc->get_property(psy, POWER_SUPPLY_PROP_ONLINE,
+		if (!power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE,
 					&ret))
 			return ret.intval;
 
@@ -397,8 +431,11 @@ static int __power_supply_get_supplier_property(struct device *dev, void *_data)
 	struct power_supply *epsy = dev_get_drvdata(dev);
 	struct psy_get_supplier_prop_data *data = _data;
 
+	if (!epsy || !epsy->desc || epsy->removing)
+		return 0;
+
 	if (__power_supply_is_supplied_by(epsy, data->psy))
-		if (!epsy->desc->get_property(epsy, data->psp, data->val))
+		if (!power_supply_get_property(epsy, data->psp, data->val))
 			return 1; /* Success */
 
 	return 0; /* Continue iterating */
@@ -432,7 +469,10 @@ EXPORT_SYMBOL_GPL(power_supply_get_property_from_supplier);
 
 int power_supply_set_battery_charged(struct power_supply *psy)
 {
-	if (atomic_read(&psy->use_cnt) >= 0 &&
+	if (!psy || !psy->desc || psy->removing)
+		return -ENODEV;
+
+	if (atomic_read(&psy->use_cnt) > 0 &&
 			psy->desc->type == POWER_SUPPLY_TYPE_BATTERY &&
 			psy->desc->set_charged) {
 		psy->desc->set_charged(psy);
@@ -447,6 +487,9 @@ static int power_supply_match_device_by_name(struct device *dev, const void *dat
 {
 	const char *name = data;
 	struct power_supply *psy = dev_get_drvdata(dev);
+
+	if (!psy || !psy->desc || !psy->desc->name || psy->removing)
+		return 0;
 
 	return strcmp(psy->desc->name, name) == 0;
 }
@@ -465,14 +508,23 @@ static int power_supply_match_device_by_name(struct device *dev, const void *dat
 struct power_supply *power_supply_get_by_name(const char *name)
 {
 	struct power_supply *psy = NULL;
-	struct device *dev = class_find_device(power_supply_class, NULL, name,
-					power_supply_match_device_by_name);
+	struct device *dev;
 
-	if (dev) {
-		psy = dev_get_drvdata(dev);
-		atomic_inc(&psy->use_cnt);
+	if (!name)
+		return NULL;
+
+	dev = class_find_device(power_supply_class, NULL, name,
+				power_supply_match_device_by_name);
+	if (!dev)
+		return NULL;
+
+	psy = dev_get_drvdata(dev);
+	if (!psy || !psy->desc || psy->removing) {
+		put_device(dev);
+		return NULL;
 	}
 
+	atomic_inc(&psy->use_cnt);
 	return psy;
 }
 EXPORT_SYMBOL_GPL(power_supply_get_by_name);
@@ -486,6 +538,9 @@ EXPORT_SYMBOL_GPL(power_supply_get_by_name);
  */
 void power_supply_put(struct power_supply *psy)
 {
+	if (IS_ERR_OR_NULL(psy))
+		return;
+
 	atomic_dec(&psy->use_cnt);
 	put_device(&psy->dev);
 }
@@ -494,7 +549,14 @@ EXPORT_SYMBOL_GPL(power_supply_put);
 #ifdef CONFIG_OF
 static int power_supply_match_device_node(struct device *dev, const void *data)
 {
-	return dev->parent && dev->parent->of_node == data;
+	struct power_supply *psy = dev_get_drvdata(dev);
+
+	if (!psy || psy->removing)
+		return 0;
+
+	return (dev->parent && dev->parent->of_node == data) ||
+	       (dev->of_node == data) ||
+	       (psy->of_node == data);
 }
 
 /**
@@ -516,6 +578,9 @@ struct power_supply *power_supply_get_by_phandle(struct device_node *np,
 	struct power_supply *psy = NULL;
 	struct device *dev;
 
+	if (!np || !property)
+		return ERR_PTR(-EINVAL);
+
 	power_supply_np = of_parse_phandle(np, property, 0);
 	if (!power_supply_np)
 		return ERR_PTR(-ENODEV);
@@ -525,11 +590,16 @@ struct power_supply *power_supply_get_by_phandle(struct device_node *np,
 
 	of_node_put(power_supply_np);
 
-	if (dev) {
-		psy = dev_get_drvdata(dev);
-		atomic_inc(&psy->use_cnt);
+	if (!dev)
+		return NULL;
+
+	psy = dev_get_drvdata(dev);
+	if (!psy || !psy->desc || psy->removing) {
+		put_device(dev);
+		return NULL;
 	}
 
+	atomic_inc(&psy->use_cnt);
 	return psy;
 }
 EXPORT_SYMBOL_GPL(power_supply_get_by_phandle);
@@ -634,6 +704,9 @@ int power_supply_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    union power_supply_propval *val)
 {
+	if (!psy || !psy->desc || psy->removing)
+		return -ENODEV;
+
 	if (atomic_read(&psy->use_cnt) <= 0) {
 		if (!psy->initialized)
 			return -EAGAIN;
@@ -648,6 +721,9 @@ int power_supply_set_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    const union power_supply_propval *val)
 {
+	if (!psy || !psy->desc || psy->removing)
+		return -ENODEV;
+
 	if (atomic_read(&psy->use_cnt) <= 0 || !psy->desc->set_property)
 		return -ENODEV;
 
@@ -658,6 +734,9 @@ EXPORT_SYMBOL_GPL(power_supply_set_property);
 int power_supply_property_is_writeable(struct power_supply *psy,
 					enum power_supply_property psp)
 {
+	if (!psy || !psy->desc || psy->removing)
+		return -ENODEV;
+
 	if (atomic_read(&psy->use_cnt) <= 0 ||
 			!psy->desc->property_is_writeable)
 		return -ENODEV;
@@ -668,6 +747,9 @@ EXPORT_SYMBOL_GPL(power_supply_property_is_writeable);
 
 void power_supply_external_power_changed(struct power_supply *psy)
 {
+	if (!psy || !psy->desc || psy->removing)
+		return;
+
 	if (atomic_read(&psy->use_cnt) <= 0 ||
 			!psy->desc->external_power_changed)
 		return;
@@ -686,18 +768,19 @@ static void power_supply_dev_release(struct device *dev)
 {
 	struct power_supply *psy = to_power_supply(dev);
 	dev_dbg(dev, "%s\n", __func__);
+	dev_set_drvdata(dev, NULL);
 	kfree(psy);
 }
 
 int power_supply_reg_notifier(struct notifier_block *nb)
 {
-	return atomic_notifier_chain_register(&power_supply_notifier, nb);
+	return blocking_notifier_chain_register(&power_supply_notifier, nb);
 }
 EXPORT_SYMBOL_GPL(power_supply_reg_notifier);
 
 void power_supply_unreg_notifier(struct notifier_block *nb)
 {
-	atomic_notifier_chain_unregister(&power_supply_notifier, nb);
+	blocking_notifier_chain_unregister(&power_supply_notifier, nb);
 }
 EXPORT_SYMBOL_GPL(power_supply_unreg_notifier);
 
@@ -792,14 +875,12 @@ static int ps_set_cur_charge_cntl_limit(struct thermal_cooling_device *tcd,
 {
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret;
 
 	psy = tcd->devdata;
 	val.intval = state;
-	ret = psy->desc->set_property(psy,
-		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
 
-	return ret;
+	return power_supply_set_property(psy,
+		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
 }
 
 static const struct thermal_cooling_device_ops psy_tcd_ops = {
@@ -867,12 +948,12 @@ __power_supply_register(struct device *parent,
 	struct power_supply *psy;
 	int i, rc;
 
+	if (!desc || !desc->name || !desc->properties || !desc->num_properties)
+		return ERR_PTR(-EINVAL);
+
 	if (!parent)
 		pr_warn("%s: Expected proper parent device for '%s'\n",
 			__func__, desc->name);
-
-	if (!desc || !desc->name || !desc->properties || !desc->num_properties)
-		return ERR_PTR(-EINVAL);
 
 	for (i = 0; i < desc->num_properties; ++i) {
 		if ((desc->properties[i] == POWER_SUPPLY_PROP_USB_TYPE) &&
@@ -954,11 +1035,13 @@ __power_supply_register(struct device *parent,
 create_triggers_failed:
 	psy_unregister_thermal(psy);
 register_thermal_failed:
+	device_init_wakeup(dev, false);
 wakeup_init_failed:
 	device_del(dev);
 device_add_failed:
 check_supplies_failed:
 dev_set_name_failed:
+	dev_set_drvdata(dev, NULL);
 	put_device(dev);
 	return ERR_PTR(rc);
 }
@@ -1098,6 +1181,8 @@ void power_supply_unregister(struct power_supply *psy)
 {
 	WARN_ON(atomic_dec_return(&psy->use_cnt));
 	psy->removing = true;
+	dev_set_drvdata(&psy->dev, NULL);
+	device_del(&psy->dev);
 	cancel_work_sync(&psy->changed_work);
 	cancel_delayed_work_sync(&psy->deferred_register_work);
 	sysfs_remove_link(&psy->dev.kobj, "powers");
@@ -1105,7 +1190,7 @@ void power_supply_unregister(struct power_supply *psy)
 	psy_unregister_cooler(psy);
 	psy_unregister_thermal(psy);
 	device_init_wakeup(&psy->dev, false);
-	device_unregister(&psy->dev);
+	put_device(&psy->dev);
 }
 EXPORT_SYMBOL_GPL(power_supply_unregister);
 
