@@ -464,7 +464,7 @@ static ssize_t request_vdm_cmd_store(struct device *dev,
 	char buffer[64];
 	unsigned char *data;
 	unsigned int count = 0;
-	int i;
+	int __maybe_unused i;
 	int sscanf_ret;
 	gfp_t gfp = in_interrupt() ? GFP_ATOMIC : GFP_KERNEL;
 	const size_t alloc_size = 40;
