@@ -25,6 +25,9 @@
 #include <asoc/msm-cdc-pinctrl.h>
 #include <dt-bindings/sound/audio-codec-port-types.h>
 #include <asoc/msm-cdc-supply.h>
+#ifdef CONFIG_SND_SOC_AW87XXX
+#include <asoc/aw87xxx_api.h>
+#endif /* CONFIG_SND_SOC_AW87XXX */
 
 #define DRV_NAME "wcd937x_codec"
 
@@ -52,7 +55,64 @@ enum {
 	AMIC2_BCS_ENABLE,
 	WCD_HPHL_EN,
 	WCD_EAR_EN,
+#ifdef CONFIG_SND_SOC_AW87XXX
+	/*
+	 * Set when the AW87XXX DAPM widget for the EAR path (DEV_1) is
+	 * actively powering up or down.  Used by wcd937x_codec_ear_dac_event()
+	 * to decide whether to bypass the WCD937X flyback boost and reduce
+	 * EAR PA gain.  Guards against the case where EAR DAC event fires
+	 * (e.g. via RDAC3_MUX -> RX1 shared with HPHL) but AW87XXX is not
+	 * actually in the active DAPM path for that particular use case.
+	 */
+	WCD_AW_EAR_ACTIVE,
+	/*
+	 * Set when the AW87XXX DAPM widget for the AUX path (DEV_0) is
+	 * actively powering up or down.  Used by wcd937x_codec_aux_dac_event()
+	 * to decide whether to skip the WCD937X Class-H FSM call and apply
+	 * line-level attenuation on CDC_RX2_CTL.
+	 */
+	WCD_AW_AUX_ACTIVE,
+#endif /* CONFIG_SND_SOC_AW87XXX */
 };
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+/*
+ * AW87XXX digital gain level for CDC_RX2_CTL bits[5:2].
+ *
+ * CDC_RX2_CTL maps exclusively to the AUX interpolator (clock bit2).
+ * It is not shared with HPHL (CDC_RX0_CTL, bit0) or HPHR (CDC_RX1_CTL,
+ * bit1), so modifying it here cannot affect headphone playback under
+ * any concurrent use scenario.
+ *
+ * Gain nibble encoding for bits[5:2]:
+ *   0xF = 0 dB   0xE = -3 dB   0xD = -6 dB   0xC = -9 dB
+ *   0xB = -12 dB  0xA = -15 dB  0x9 = -18 dB  ...
+ * Macro value = nibble << 2.  AW87XXX provides its own gain stage,
+ * so WCD937X output is kept at line level to avoid clipping at the
+ * AW87XXX input.  Adjust WCD937X_AW_LINE_GAIN_FIELD if a different
+ * attenuation is needed after measurement.
+ */
+#define WCD937X_AW_LINE_GAIN_FIELD	0x30	/* nibble 0xC << 2 = -9 dB */
+#define WCD937X_RX_GAIN_MASK		0x3C	/* CDC_RX2_CTL bits[5:2] */
+#define WCD937X_RX_GAIN_FULLSCALE	0x3C	/* nibble 0xF << 2 = 0 dB */
+
+/*
+ * EAR_EAR_PA_CON bits[6:4] control the EAR PA output gain stage.
+ * This register is exclusive to the EAR path and does not affect
+ * HPHL or HPHR.
+ *
+ * Bit field encoding for bits[6:4]:
+ *   000 = minimum gain   100 = default (register reset value 0x44)
+ *
+ * When AW87XXX is the active output stage for the EAR path, WCD937X
+ * must present a line-level signal.  Setting bits[6:4] to 000 provides
+ * minimum PA drive to the AW87XXX input without tristate-ing the EAR
+ * pin (PA_EN bit7 is not touched).
+ */
+#define WCD937X_EAR_PA_CON_GAIN_MASK		0x70	/* bits[6:4] */
+#define WCD937X_EAR_PA_CON_GAIN_MIN		0x00	/* 000 = minimum */
+#define WCD937X_EAR_PA_CON_GAIN_DEFAULT		0x40	/* 100 = reset value */
+#endif /* CONFIG_SND_SOC_AW87XXX */
 
 static const DECLARE_TLV_DB_SCALE(line_gain, 0, 7, 1);
 static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
@@ -131,10 +191,10 @@ static int wcd937x_init_reg(struct snd_soc_component *component)
 	}
 	snd_soc_component_update_bits(component, WCD937X_SLEEP_CTL,
 				0x80, 0x80);
-	usleep_range(1000, 1010);
+	usleep_range(1000, 1500);
 	snd_soc_component_update_bits(component, WCD937X_SLEEP_CTL,
 				0x40, 0x40);
-	usleep_range(1000, 1010);
+	usleep_range(1000, 1500);
 	snd_soc_component_update_bits(component, WCD937X_LDORXTX_CONFIG,
 				0x10, 0x00);
 	snd_soc_component_update_bits(component, WCD937X_BIAS_VBG_FINE_ADJ,
@@ -143,7 +203,7 @@ static int wcd937x_init_reg(struct snd_soc_component *component)
 				0x80, 0x80);
 	snd_soc_component_update_bits(component, WCD937X_ANA_BIAS,
 				0x40, 0x40);
-	usleep_range(10000, 10010);
+	usleep_range(10000, 10500);
 	snd_soc_component_update_bits(component, WCD937X_ANA_BIAS,
 				0x40, 0x00);
 	snd_soc_component_update_bits(component,
@@ -497,7 +557,7 @@ static int wcd937x_codec_hphl_dac_event(struct snd_soc_dapm_widget *w,
 			 * HW requirement
 			 */
 			if (test_bit(HPH_COMP_DELAY, &wcd937x->status_mask)) {
-				usleep_range(5000, 5100);
+				usleep_range(5000, 5500);
 				clear_bit(HPH_COMP_DELAY,
 					&wcd937x->status_mask);
 			}
@@ -583,7 +643,7 @@ static int wcd937x_codec_hphr_dac_event(struct snd_soc_dapm_widget *w,
 			 * HW requirement
 			 */
 			if (test_bit(HPH_COMP_DELAY, &wcd937x->status_mask)) {
-				usleep_range(5000, 5100);
+				usleep_range(5000, 5500);
 				clear_bit(HPH_COMP_DELAY,
 					&wcd937x->status_mask);
 			}
@@ -646,15 +706,37 @@ static int wcd937x_codec_ear_dac_event(struct snd_soc_dapm_widget *w,
 			snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_CDC_COMP_CTL_0,
 				0x02, 0x02);
-		usleep_range(5000, 5010);
+		usleep_range(5000, 5500);
+#ifdef CONFIG_SND_SOC_AW87XXX
+		if (test_bit(WCD_AW_EAR_ACTIVE, &wcd937x->status_mask)) {
+			snd_soc_component_update_bits(component,
+					WCD937X_EAR_EAR_PA_CON,
+					WCD937X_EAR_PA_CON_GAIN_MASK,
+					WCD937X_EAR_PA_CON_GAIN_MIN);
+			dev_dbg(component->dev,
+				"%s: EAR->AW87XXX active: flyback bypassed\n", __func__);
+			wcd_cls_h_fsm(component, &wcd937x->clsh_info,
+				     WCD_CLSH_EVENT_PRE_DAC,
+				     WCD_CLSH_STATE_EAR,
+				     hph_mode);
+		} else {
+			snd_soc_component_update_bits(component,
+					WCD937X_FLYBACK_EN, 0x04, 0x00);
+			wcd_cls_h_fsm(component, &wcd937x->clsh_info,
+				     WCD_CLSH_EVENT_PRE_DAC,
+				     WCD_CLSH_STATE_EAR,
+				     hph_mode);
+		}
+#else
 		snd_soc_component_update_bits(component, WCD937X_FLYBACK_EN,
 				0x04, 0x00);
 		wcd_cls_h_fsm(component, &wcd937x->clsh_info,
 			     WCD_CLSH_EVENT_PRE_DAC,
 			     WCD_CLSH_STATE_EAR,
 			     hph_mode);
-
+#endif
 		break;
+
 	case SND_SOC_DAPM_POST_PMD:
 		if (hph_mode == CLS_AB_HIFI || hph_mode == CLS_H_LOHIFI ||
 		    hph_mode == CLS_H_HIFI)
@@ -665,10 +747,24 @@ static int wcd937x_codec_ear_dac_event(struct snd_soc_dapm_widget *w,
 			snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_CDC_COMP_CTL_0,
 				0x02, 0x00);
+#ifdef CONFIG_SND_SOC_AW87XXX
+		if (test_bit(WCD_AW_EAR_ACTIVE, &wcd937x->status_mask)) {
+			snd_soc_component_update_bits(component,
+					WCD937X_EAR_EAR_PA_CON,
+					WCD937X_EAR_PA_CON_GAIN_MASK,
+					WCD937X_EAR_PA_CON_GAIN_DEFAULT);
+		} else {
+			snd_soc_component_update_bits(component,
+					WCD937X_FLYBACK_EN, 0x04, 0x04);
+		}
+#else
+		snd_soc_component_update_bits(component, WCD937X_FLYBACK_EN,
+				0x04, 0x04);
+#endif
 		break;
-	};
-	return 0;
+	}
 
+	return 0;
 }
 
 static int wcd937x_codec_aux_dac_event(struct snd_soc_dapm_widget *w,
@@ -695,20 +791,44 @@ static int wcd937x_codec_aux_dac_event(struct snd_soc_dapm_widget *w,
 		snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_CDC_AUX_GAIN_CTL,
 				0x01, 0x01);
+#ifdef CONFIG_SND_SOC_AW87XXX
+		if (test_bit(WCD_AW_AUX_ACTIVE, &wcd937x->status_mask)) {
+			snd_soc_component_update_bits(component,
+					WCD937X_DIGITAL_CDC_RX2_CTL,
+					WCD937X_RX_GAIN_MASK,
+					WCD937X_AW_LINE_GAIN_FIELD);
+			dev_dbg(component->dev,
+				"%s: AUX->AW87XXX active: Class-H bypassed\n", __func__);
+		} else {
+			wcd_cls_h_fsm(component, &wcd937x->clsh_info,
+				     WCD_CLSH_EVENT_PRE_DAC,
+				     WCD_CLSH_STATE_AUX,
+				     hph_mode);
+		}
+#else
 		wcd_cls_h_fsm(component, &wcd937x->clsh_info,
 			     WCD_CLSH_EVENT_PRE_DAC,
 			     WCD_CLSH_STATE_AUX,
 			     hph_mode);
-
+#endif
 		break;
+
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_CDC_ANA_CLK_CTL,
 				0x04, 0x00);
+#ifdef CONFIG_SND_SOC_AW87XXX
+		if (test_bit(WCD_AW_AUX_ACTIVE, &wcd937x->status_mask)) {
+			snd_soc_component_update_bits(component,
+					WCD937X_DIGITAL_CDC_RX2_CTL,
+					WCD937X_RX_GAIN_MASK,
+					WCD937X_RX_GAIN_FULLSCALE);
+		}
+#endif
 		break;
-	};
-	return 0;
+	}
 
+	return 0;
 }
 
 static int wcd937x_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
@@ -735,7 +855,7 @@ static int wcd937x_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 			     hph_mode);
 		snd_soc_component_update_bits(component, WCD937X_ANA_HPH,
 					0x10, 0x10);
-		usleep_range(100, 110);
+		usleep_range(100, 150);
 		set_bit(HPH_PA_DELAY, &wcd937x->status_mask);
 		ret = swr_slvdev_datapath_control(wcd937x->rx_swr_dev,
 					    wcd937x->rx_swr_dev->dev_num,
@@ -751,9 +871,9 @@ static int wcd937x_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 		 */
 		if (test_bit(HPH_PA_DELAY, &wcd937x->status_mask)) {
 			if (!wcd937x->comp2_enable)
-				usleep_range(20000, 20100);
+				usleep_range(20000, 20500);
 			else
-				usleep_range(7000, 7100);
+				usleep_range(7000, 7500);
 			clear_bit(HPH_PA_DELAY, &wcd937x->status_mask);
 		}
 
@@ -791,9 +911,9 @@ static int wcd937x_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 		 */
 		if (test_bit(HPH_PA_DELAY, &wcd937x->status_mask)) {
 			if (!wcd937x->comp2_enable)
-				usleep_range(20000, 20100);
+				usleep_range(20000, 20500);
 			else
-				usleep_range(7000, 7100);
+				usleep_range(7000, 7500);
 			clear_bit(HPH_PA_DELAY, &wcd937x->status_mask);
 		}
 
@@ -809,7 +929,8 @@ static int wcd937x_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 			     WCD_CLSH_STATE_HPHR,
 			     hph_mode);
 		break;
-	};
+	}
+
 	return ret;
 }
 
@@ -837,7 +958,7 @@ static int wcd937x_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 			     hph_mode);
 		snd_soc_component_update_bits(component, WCD937X_ANA_HPH,
 				0x20, 0x20);
-		usleep_range(100, 110);
+		usleep_range(100, 150);
 		set_bit(HPH_PA_DELAY, &wcd937x->status_mask);
 		snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_PDM_WD_CTL0, 0x17, 0x13);
@@ -851,9 +972,9 @@ static int wcd937x_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 		 */
 		if (test_bit(HPH_PA_DELAY, &wcd937x->status_mask)) {
 			if (!wcd937x->comp1_enable)
-				usleep_range(20000, 20100);
+				usleep_range(20000, 20500);
 			else
-				usleep_range(7000, 7100);
+				usleep_range(7000, 7500);
 			clear_bit(HPH_PA_DELAY, &wcd937x->status_mask);
 		}
 
@@ -893,9 +1014,9 @@ static int wcd937x_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 		 */
 		if (test_bit(HPH_PA_DELAY, &wcd937x->status_mask)) {
 			if (!wcd937x->comp1_enable)
-				usleep_range(20000, 20100);
+				usleep_range(20000, 20500);
 			else
-				usleep_range(7000, 7100);
+				usleep_range(7000, 7500);
 			clear_bit(HPH_PA_DELAY, &wcd937x->status_mask);
 		}
 
@@ -912,7 +1033,8 @@ static int wcd937x_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 			     hph_mode);
 		clear_bit(WCD_HPHL_EN, &wcd937x->status_mask);
 		break;
-	};
+	}
+
 	return ret;
 }
 
@@ -938,7 +1060,7 @@ static int wcd937x_codec_enable_aux_pa(struct snd_soc_dapm_widget *w,
 				WCD937X_DIGITAL_PDM_WD_CTL2, 0x05, 0x05);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
-		usleep_range(1000, 1010);
+		usleep_range(1000, 1500);
 		if (hph_mode == CLS_AB || hph_mode == CLS_AB_HIFI)
 			snd_soc_component_update_bits(component,
 					WCD937X_ANA_RX_SUPPLIES,
@@ -958,15 +1080,25 @@ static int wcd937x_codec_enable_aux_pa(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* Add delay as per hw requirement */
-		usleep_range(2000, 2010);
+		usleep_range(2000, 2500);
+#ifdef CONFIG_SND_SOC_AW87XXX
+		if (!test_bit(WCD_AW_AUX_ACTIVE, &wcd937x->status_mask))
+			wcd_cls_h_fsm(component, &wcd937x->clsh_info,
+				      WCD_CLSH_EVENT_POST_PA,
+				      WCD_CLSH_STATE_AUX,
+				      hph_mode);
+#else
 		wcd_cls_h_fsm(component, &wcd937x->clsh_info,
 			     WCD_CLSH_EVENT_POST_PA,
 			     WCD_CLSH_STATE_AUX,
 			     hph_mode);
+#endif
 		snd_soc_component_update_bits(component,
-				WCD937X_DIGITAL_PDM_WD_CTL2, 0x05, 0x00);
+					      WCD937X_DIGITAL_PDM_WD_CTL2,
+					      0x05, 0x00);
 		break;
-	};
+	}
+
 	return ret;
 }
 
@@ -1010,7 +1142,7 @@ static int wcd937x_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 				WCD937X_ANA_EAR_COMPANDER_CTL, 0x80, 0x80);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
-		usleep_range(6000, 6010);
+		usleep_range(6000, 6500);
 		if (hph_mode == CLS_AB || hph_mode == CLS_AB_HIFI)
 			snd_soc_component_update_bits(component,
 					WCD937X_ANA_RX_SUPPLIES,
@@ -1049,7 +1181,7 @@ static int wcd937x_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 		if (!wcd937x->comp1_enable)
 			snd_soc_component_update_bits(component,
 				WCD937X_ANA_EAR_COMPANDER_CTL, 0x80, 0x00);
-		usleep_range(7000, 7010);
+		usleep_range(7000, 7500);
 		wcd_cls_h_fsm(component, &wcd937x->clsh_info,
 			     WCD_CLSH_EVENT_POST_PA,
 			     WCD_CLSH_STATE_EAR,
@@ -1066,7 +1198,7 @@ static int wcd937x_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 					0x17, 0x00);
 			clear_bit(WCD_EAR_EN, &wcd937x->status_mask);
 		}
-		usleep_range(10000, 10010);
+		usleep_range(10000, 10500);
 		/* disable EAR CnP FSM */
 		snd_soc_component_update_bits(component,
 					WCD937X_EAR_EAR_EN_REG,
@@ -1083,7 +1215,8 @@ static int wcd937x_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 					WCD937X_EAR_EAR_EN_REG,
 					0x02, 0x02);
 		break;
-	};
+	}
+
 	return ret;
 }
 
@@ -1142,7 +1275,8 @@ static int wcd937x_enable_rx1(struct snd_soc_dapm_widget *w,
 				0x01, 0x00);
 		}
 		break;
-	};
+	}
+
 	return 0;
 }
 
@@ -1171,7 +1305,7 @@ static int wcd937x_enable_rx2(struct snd_soc_dapm_widget *w,
 				WCD937X_DIGITAL_CDC_DIG_CLK_CTL,
 				0x02, 0x00);
 		break;
-	};
+	}
 
 	return 0;
 }
@@ -1192,12 +1326,13 @@ static int wcd937x_enable_rx3(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		wcd937x_rx_connect_port(component, LO, false);
-		usleep_range(6000, 6010);
+		usleep_range(6000, 6500);
 		wcd937x_rx_clk_disable(component);
 		snd_soc_component_update_bits(component,
 			WCD937X_DIGITAL_CDC_DIG_CLK_CTL, 0x04, 0x00);
 		break;
 	}
+
 	return 0;
 
 }
@@ -1252,7 +1387,7 @@ static int wcd937x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 		dev_err(component->dev, "%s: Invalid DMIC Selection\n",
 			__func__);
 		return -EINVAL;
-	};
+	}
 	dev_dbg(component->dev, "%s: event %d DMIC%d dmic_clk_cnt %d\n",
 			__func__, event,  dmic, *dmic_clk_cnt);
 
@@ -1271,8 +1406,8 @@ static int wcd937x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		wcd937x_tx_connect_port(component, DMIC0 + (w->shift), false);
 		break;
+	}
 
-	};
 	return 0;
 }
 
@@ -1363,7 +1498,7 @@ int wcd937x_mbhc_micb_adjust_voltage(struct snd_soc_component *component,
 		 * Add 2ms delay as per HW requirement after enabling
 		 * micbias
 		 */
-		usleep_range(2000, 2100);
+		usleep_range(2000, 2500);
 	}
 exit:
 	mutex_unlock(&wcd937x->micb_lock);
@@ -1391,7 +1526,7 @@ static int wcd937x_tx_swr_ctrl(struct snd_soc_dapm_widget *w,
 		    wcd937x->tx_swr_dev->dev_num,
 		    false);
 		break;
-	};
+	}
 
 	return ret;
 }
@@ -1437,7 +1572,7 @@ static int wcd937x_codec_enable_adc(struct snd_soc_dapm_widget *w,
 		snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_CDC_ANA_CLK_CTL, 0x08, 0x00);
 		break;
-	};
+	}
 
 	return 0;
 }
@@ -1495,7 +1630,8 @@ static int wcd937x_enable_req(struct snd_soc_dapm_widget *w,
 		snd_soc_component_update_bits(component,
 				WCD937X_DIGITAL_CDC_DIG_CLK_CTL, 0x80, 0x00);
 		break;
-	};
+	}
+
 	return 0;
 }
 
@@ -1534,7 +1670,7 @@ int wcd937x_micbias_control(struct snd_soc_component *component,
 		dev_err(component->dev, "%s: Invalid micbias number: %d\n",
 			__func__, micb_num);
 		return -EINVAL;
-	};
+	}
 	mutex_lock(&wcd937x->micb_lock);
 
 	switch (req) {
@@ -1618,7 +1754,7 @@ int wcd937x_micbias_control(struct snd_soc_component *component,
 				&wcd937x->mbhc->notifier, post_dapm_off,
 				&wcd937x->mbhc->wcd_mbhc);
 		break;
-	};
+	}
 
 	dev_dbg(component->dev, "%s: micb_num:%d, micb_ref: %d, pullup_ref: %d\n",
 		__func__, micb_num, wcd937x->micb_ref[micb_index],
@@ -1657,7 +1793,7 @@ static int wcd937x_get_logical_addr(struct swr_device *swr_dev)
 				"%s get devnum %d for dev addr %llx failed\n",
 				__func__, devnum, swr_dev->addr);
 			/* retry after 1ms */
-			usleep_range(1000, 1010);
+			usleep_range(1000, 1500);
 		}
 	} while (ret && --num_retry);
 	swr_dev->dev_num = devnum;
@@ -1718,7 +1854,7 @@ static int wcd937x_event_notify(struct notifier_block *block,
 	case BOLERO_WCD_EVT_SSR_UP:
 		wcd937x_reset(wcd937x->dev);
 		/* allow reset to take effect */
-		usleep_range(10000, 10010);
+		usleep_range(10000, 10500);
 		wcd937x_get_logical_addr(wcd937x->tx_swr_dev);
 		wcd937x_get_logical_addr(wcd937x->rx_swr_dev);
 		wcd937x_init_reg(component);
@@ -1770,13 +1906,13 @@ static int __wcd937x_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 				MICB_ENABLE, true);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
-		usleep_range(1000, 1100);
+		usleep_range(1000, 1500);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		wcd937x_micbias_control(component, micb_num,
 				MICB_DISABLE, true);
 		break;
-	};
+	}
 
 	return 0;
 
@@ -1815,13 +1951,13 @@ static int __wcd937x_codec_enable_micbias_pullup(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* 1 msec delay as per HW requirement */
-		usleep_range(1000, 1100);
+		usleep_range(1000, 1500);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		wcd937x_micbias_control(component, micb_num,
 					MICB_PULLUP_DISABLE, true);
 		break;
-	};
+	}
 
 	return 0;
 
@@ -2041,6 +2177,164 @@ static int wcd937x_codec_enable_vdd_buck(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_AW87XXX
+#define AW_PROFILE_STR_MAX		32
+static char g_aw87xxx_dev0_profile[AW_PROFILE_STR_MAX] = "Receiver";
+static char g_aw87xxx_dev1_profile[AW_PROFILE_STR_MAX] = "Music";
+
+static const char * const wcd937x_aw87xxx_profile_text[] = {
+	"Music", "Voice", "Voip", "Ringtone", "Ringtone_hs", "Lowpower",
+	"Bypass", "Mmi", "Fm", "Notification", "Receiver", "Off"
+};
+
+static const struct soc_enum wcd937x_aw87xxx_dev0_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(wcd937x_aw87xxx_profile_text),
+			    wcd937x_aw87xxx_profile_text);
+
+static const struct soc_enum wcd937x_aw87xxx_dev1_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(wcd937x_aw87xxx_profile_text),
+			    wcd937x_aw87xxx_profile_text);
+
+static int wcd937x_aw87xxx_dev0_profile_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(wcd937x_aw87xxx_profile_text); i++) {
+		if (!strncmp(g_aw87xxx_dev0_profile,
+			     wcd937x_aw87xxx_profile_text[i],
+			     AW_PROFILE_STR_MAX)) {
+			ucontrol->value.integer.value[0] = i;
+			return 0;
+		}
+	}
+	ucontrol->value.integer.value[0] = ARRAY_SIZE(wcd937x_aw87xxx_profile_text) - 1;
+	return 0;
+}
+
+static int wcd937x_aw87xxx_dev0_profile_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int idx = ucontrol->value.integer.value[0];
+
+	if (idx < 0 || idx >= ARRAY_SIZE(wcd937x_aw87xxx_profile_text))
+		return -EINVAL;
+
+	if (!strncmp(wcd937x_aw87xxx_profile_text[idx], "Off", 3)) {
+		pr_debug("%s: Ignoring intent to set dev0 target to Off\n", __func__);
+		return 0;
+	}
+
+	strscpy(g_aw87xxx_dev0_profile,
+		wcd937x_aw87xxx_profile_text[idx],
+		AW_PROFILE_STR_MAX);
+
+	pr_info("%s: dev0 desired profile = [%s]\n",
+		__func__, g_aw87xxx_dev0_profile);
+
+	return 0;
+}
+
+static int wcd937x_aw87xxx_dev1_profile_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(wcd937x_aw87xxx_profile_text); i++) {
+		if (!strncmp(g_aw87xxx_dev1_profile,
+			     wcd937x_aw87xxx_profile_text[i],
+			     AW_PROFILE_STR_MAX)) {
+			ucontrol->value.integer.value[0] = i;
+			return 0;
+		}
+	}
+	ucontrol->value.integer.value[0] = ARRAY_SIZE(wcd937x_aw87xxx_profile_text) - 1;
+	return 0;
+}
+
+static int wcd937x_aw87xxx_dev1_profile_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int idx = ucontrol->value.integer.value[0];
+
+	if (idx < 0 || idx >= ARRAY_SIZE(wcd937x_aw87xxx_profile_text))
+		return -EINVAL;
+
+	if (!strncmp(wcd937x_aw87xxx_profile_text[idx], "Off", 3)) {
+		pr_debug("%s: Ignoring intent to set dev1 target to Off\n", __func__);
+		return 0;
+	}
+
+	strscpy(g_aw87xxx_dev1_profile,
+		wcd937x_aw87xxx_profile_text[idx],
+		AW_PROFILE_STR_MAX);
+
+	pr_info("%s: dev1 desired profile = [%s]\n",
+		__func__, g_aw87xxx_dev1_profile);
+
+	return 0;
+}
+#endif
+
+static const char * const wcd937x_aux_path_mode_text[] = {
+	"HP_MODE", "NORMAL_MODE",
+};
+
+static const struct soc_enum wcd937x_aux_path_mode_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(wcd937x_aux_path_mode_text),
+			    wcd937x_aux_path_mode_text);
+
+static int wcd937x_aux_path_mode_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component =
+				snd_soc_kcontrol_component(kcontrol);
+	int val;
+
+	val = snd_soc_component_read32(component,
+				       WCD937X_DIGITAL_CDC_PATH_MODE);
+
+	ucontrol->value.integer.value[0] = (val & 0x40) ? 1 : 0;
+
+	dev_dbg(component->dev, "%s: AUX PATH Mode = %s\n", __func__,
+		ucontrol->value.integer.value[0] ? "NORMAL_MODE" : "HP_MODE");
+
+	return 0;
+}
+
+static int wcd937x_aux_path_mode_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int aux_mode = ucontrol->value.integer.value[0];
+	struct snd_soc_component *component =
+				snd_soc_kcontrol_component(kcontrol);
+
+	if (aux_mode < 0 ||
+	    aux_mode >= ARRAY_SIZE(wcd937x_aux_path_mode_text))
+		return -EINVAL;
+
+	dev_info(component->dev, "%s: AUX PATH Mode = %s\n", __func__,
+		 wcd937x_aux_path_mode_text[aux_mode]);
+
+	if (aux_mode) {
+		snd_soc_component_update_bits(component,
+				WCD937X_DIGITAL_CDC_PATH_MODE,
+				0x40, 0x00);
+		snd_soc_component_update_bits(component,
+				WCD937X_AUX_AUXPA,
+				0x10, 0x10);
+		usleep_range(100, 150);
+	} else {
+		snd_soc_component_update_bits(component,
+				WCD937X_AUX_AUXPA,
+				0x10, 0x00);
+		snd_soc_component_update_bits(component,
+				WCD937X_DIGITAL_CDC_PATH_MODE,
+				0x40, 0x40);
+		usleep_range(100, 150);
+	}
+
+	return 0;
+}
+
 static const char * const rx_hph_mode_mux_text[] = {
 	"CLS_H_INVALID", "CLS_H_HIFI", "CLS_H_LP", "CLS_AB", "CLS_H_LOHIFI",
 	"CLS_H_ULP", "CLS_AB_HIFI",
@@ -2090,6 +2384,14 @@ static const struct snd_kcontrol_new wcd937x_snd_controls[] = {
 		wcd937x_tx_ch_pwr_level_get, wcd937x_tx_ch_pwr_level_put),
 	SOC_ENUM_EXT("TX CH3 PWR", wcd937x_tx_ch_pwr_level_enum,
 		wcd937x_tx_ch_pwr_level_get, wcd937x_tx_ch_pwr_level_put),
+	SOC_ENUM_EXT("AUX PATH Mode", wcd937x_aux_path_mode_enum,
+		wcd937x_aux_path_mode_get, wcd937x_aux_path_mode_put),
+#ifdef CONFIG_SND_SOC_AW87XXX
+	SOC_ENUM_EXT("AW87XXX Dev0 Profile", wcd937x_aw87xxx_dev0_enum,
+		wcd937x_aw87xxx_dev0_profile_get, wcd937x_aw87xxx_dev0_profile_put),
+	SOC_ENUM_EXT("AW87XXX Dev1 Profile", wcd937x_aw87xxx_dev1_enum,
+		wcd937x_aw87xxx_dev1_profile_get, wcd937x_aw87xxx_dev1_profile_put),
+#endif
 };
 
 static const struct snd_kcontrol_new adc1_switch[] = {
@@ -2166,6 +2468,80 @@ static const struct snd_kcontrol_new tx_adc2_mux =
 
 static const struct snd_kcontrol_new rx_rdac3_mux =
 	SOC_DAPM_ENUM("RDAC3_MUX Mux", rdac3_enum);
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+static int aw87xxx_dev_0_pa_event(struct snd_soc_dapm_widget *w,
+				  struct snd_kcontrol *control, int event)
+{
+	struct snd_soc_component *component =
+			snd_soc_dapm_to_component(w->dapm);
+	struct wcd937x_priv *wcd937x = snd_soc_component_get_drvdata(component);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		set_bit(WCD_AW_EAR_ACTIVE, &wcd937x->status_mask);
+		pr_info("%s: PRE_PMU dev0, asserting power\n", __func__);
+		aw87xxx_power_on_by_index(0);
+		break;
+	case SND_SOC_DAPM_POST_PMU:
+		usleep_range(2000, 2500);
+		pr_info("%s: POST_PMU dev0, applying profile [%s]\n",
+			__func__, g_aw87xxx_dev0_profile);
+		aw87xxx_set_profile_by_index(0, g_aw87xxx_dev0_profile);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		usleep_range(100, 150);
+		pr_info("%s: PRE_PMD dev0, soft power off\n", __func__);
+		aw87xxx_soft_off_by_index(0);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		usleep_range(7000, 7500);
+		pr_info("%s: POST_PMD dev0, assert reset low\n", __func__);
+		aw87xxx_power_off_by_index(0);
+		clear_bit(WCD_AW_EAR_ACTIVE, &wcd937x->status_mask);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
+static int aw87xxx_dev_1_pa_event(struct snd_soc_dapm_widget *w,
+				  struct snd_kcontrol *control, int event)
+{
+	struct snd_soc_component *component =
+			snd_soc_dapm_to_component(w->dapm);
+	struct wcd937x_priv *wcd937x = snd_soc_component_get_drvdata(component);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		set_bit(WCD_AW_AUX_ACTIVE, &wcd937x->status_mask);
+		pr_info("%s: PRE_PMU dev1, asserting power\n", __func__);
+		aw87xxx_power_on_by_index(1);
+		break;
+	case SND_SOC_DAPM_POST_PMU:
+		usleep_range(2000, 2500);
+		pr_info("%s: POST_PMU dev1, applying profile [%s]\n",
+			__func__, g_aw87xxx_dev1_profile);
+		aw87xxx_set_profile_by_index(1, g_aw87xxx_dev1_profile);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		usleep_range(100, 150);
+		pr_info("%s: PRE_PMD dev1, soft power off\n", __func__);
+		aw87xxx_soft_off_by_index(1);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		usleep_range(7000, 7500);
+		pr_info("%s: POST_PMD dev1, assert reset low\n", __func__);
+		aw87xxx_power_off_by_index(1);
+		clear_bit(WCD_AW_AUX_ACTIVE, &wcd937x->status_mask);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+#endif /* CONFIG_SND_SOC_AW87XXX */
 
 static const struct snd_soc_dapm_widget wcd937x_dapm_widgets[] = {
 
@@ -2311,6 +2687,16 @@ static const struct snd_soc_dapm_widget wcd937x_dapm_widgets[] = {
 				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 				SND_SOC_DAPM_POST_PMD),
 
+#ifdef CONFIG_SND_SOC_AW87XXX
+	SND_SOC_DAPM_OUT_DRV_E("AW87XXX_DEV_0", SND_SOC_NOPM, 0, 0, NULL, 0,
+				aw87xxx_dev_0_pa_event,
+				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
+				SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_OUT_DRV_E("AW87XXX_DEV_1", SND_SOC_NOPM, 0, 0, NULL, 0,
+				aw87xxx_dev_1_pa_event,
+				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
+				SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
+#endif
 };
 
 static const struct snd_soc_dapm_widget wcd9375_dapm_widgets[] = {
@@ -2421,14 +2807,24 @@ static const struct snd_soc_dapm_route wcd937x_audio_map[] = {
 	{"RDAC4", NULL, "RX3"},
 	{"AUX_RDAC", "Switch", "RDAC4"},
 	{"AUX PGA", NULL, "AUX_RDAC"},
+#ifdef CONFIG_SND_SOC_AW87XXX
+	{"AW87XXX_DEV_1", NULL, "AUX PGA"},
+	{"AUX", NULL, "AW87XXX_DEV_1"},
+#else
 	{"AUX", NULL, "AUX PGA"},
+#endif
 
 	{"RDAC3_MUX", "RX3", "RX3"},
 	{"RDAC3_MUX", "RX1", "RX1"},
 	{"RDAC3", NULL, "RDAC3_MUX"},
 	{"EAR_RDAC", "Switch", "RDAC3"},
 	{"EAR PGA", NULL, "EAR_RDAC"},
+#ifdef CONFIG_SND_SOC_AW87XXX
+	{"AW87XXX_DEV_0", NULL, "EAR PGA"},
+	{"EAR", NULL, "AW87XXX_DEV_0"},
+#else
 	{"EAR", NULL, "EAR PGA"},
+#endif
 };
 
 static const struct snd_soc_dapm_route wcd9375_audio_map[] = {
@@ -2837,7 +3233,7 @@ static int wcd937x_reset(struct device *dev)
 		return rc;
 	}
 	/* 20ms sleep required after pulling the reset gpio to LOW */
-	usleep_range(20, 30);
+	usleep_range(20000, 20500);
 
 	rc = msm_cdc_pinctrl_select_active_state(wcd937x->rst_np);
 	if (rc) {
@@ -2846,7 +3242,7 @@ static int wcd937x_reset(struct device *dev)
 		return rc;
 	}
 	/* 20ms sleep required after pulling the reset gpio to HIGH */
-	usleep_range(20, 30);
+	usleep_range(20000, 20500);
 
 	return rc;
 }
@@ -2935,7 +3331,7 @@ static int wcd937x_reset_low(struct device *dev)
 		return rc;
 	}
 	/* 20ms sleep required after pulling the reset gpio to LOW */
-	usleep_range(20, 30);
+	usleep_range(20000, 20500);
 
 	return rc;
 }
@@ -3073,7 +3469,7 @@ static int wcd937x_bind(struct device *dev)
 	 * soundwire auto enumeration of slave devices as
 	 * per HW requirement.
 	 */
-	usleep_range(5000, 5010);
+	usleep_range(5000, 5500);
 	wcd937x->wakeup = wcd937x_wakeup;
 
 	ret = component_bind_all(dev, wcd937x);
