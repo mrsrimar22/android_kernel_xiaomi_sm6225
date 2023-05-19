@@ -25,11 +25,17 @@ static int __init audio_q6_init(void)
 	msm_mdf_init();
 	voice_mhi_init();
 	digital_cdc_rsc_mgr_init();
+#ifdef CONFIG_AUDIO_ELLIPTIC_ULTRASOUND
+	elliptic_driver_init();
+#endif /* CONFIG_AUDIO_ELLIPTIC_ULTRASOUND */
 	return 0;
 }
 
 static void __exit audio_q6_exit(void)
 {
+#ifdef CONFIG_AUDIO_ELLIPTIC_ULTRASOUND
+	elliptic_driver_exit();
+#endif /* CONFIG_AUDIO_ELLIPTIC_ULTRASOUND */
 	digital_cdc_rsc_mgr_exit();
 	voice_mhi_exit();
 	msm_mdf_exit();

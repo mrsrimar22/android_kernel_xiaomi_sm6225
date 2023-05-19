@@ -36,6 +36,9 @@
 #include "codecs/wcd937x/wcd937x.h"
 #include "codecs/rouleur/rouleur.h"
 #include "codecs/bolero/bolero-cdc.h"
+#ifdef CONFIG_SND_SOC_AW87XXX
+#include "codecs/aw87xxx/aw87xxx_core.h"
+#endif
 #include <dt-bindings/sound/audio-codec-port-types.h>
 #include "bengal-port-config.h"
 
@@ -572,14 +575,16 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = true,
 	.key_code[0] = KEY_MEDIA,
-	.key_code[1] = KEY_VOICECOMMAND,
-	.key_code[2] = KEY_VOLUMEUP,
-	.key_code[3] = KEY_VOLUMEDOWN,
+/* import xiaomi headset patch begin */
+	.key_code[1] = KEY_VOLUMEUP,
+	.key_code[2] = KEY_VOLUMEDOWN,
+	.key_code[3] = 0,
+/* import xiaomi headset patch end */
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
 	.key_code[7] = 0,
-	.linein_th = 5000,
+	.linein_th = 4000,
 	.moisture_en = false,
 	.mbhc_micbias = MIC_BIAS_2,
 	.anc_micbias = MIC_BIAS_2,
@@ -4257,7 +4262,7 @@ static void msm_add_auxpcm_snd_controls(struct snd_soc_component *component)
 }
 #endif
 
-static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
+static __maybe_unused int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret = -EINVAL;
 	struct snd_soc_component *component;
@@ -4368,6 +4373,108 @@ err:
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_AW87XXX
+static int msm_int_audrx_sec_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int i, ret = -EINVAL;
+	struct snd_soc_component *component;
+	struct snd_soc_dapm_context *dapm;
+	struct snd_card *card;
+	struct snd_info_entry *entry;
+	struct msm_asoc_mach_data *pdata =
+				snd_soc_card_get_drvdata(rtd->card);
+
+	component = snd_soc_rtdcom_lookup(rtd, "bolero_codec");
+	if (!component) {
+		pr_err("%s: could not find component for bolero_codec\n",
+			__func__);
+		return ret;
+	}
+
+	dapm = snd_soc_component_get_dapm(component);
+
+	ret = snd_soc_add_component_controls(component, msm_int_snd_controls,
+				ARRAY_SIZE(msm_int_snd_controls));
+	if (ret < 0) {
+		pr_err("%s: add_component_controls failed: %d\n",
+			__func__, ret);
+		return ret;
+	}
+	ret = snd_soc_add_component_controls(component, msm_common_snd_controls,
+				ARRAY_SIZE(msm_common_snd_controls));
+	if (ret < 0) {
+		pr_err("%s: add common snd controls failed: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	for (i = 0; i < 3; i++) {
+		ret = aw87xxx_add_codec_controls(component);
+		if (!ret)
+			break;
+
+		pr_err("%s: aw87xxx_add_codec_controls failed (%d): %d\n",
+			__func__, i + 1, ret);
+		if (i < 2)
+			msleep(500);
+	}
+
+	if (ret < 0) {
+		pr_err("%s: aw87xxx_add_codec_controls failed: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	msm_add_tdm_snd_controls(component);
+	msm_add_mi2s_snd_controls(component);
+	msm_add_auxpcm_snd_controls(component);
+
+	snd_soc_dapm_new_controls(dapm, msm_int_dapm_widgets,
+				ARRAY_SIZE(msm_int_dapm_widgets));
+
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic0");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic1");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic2");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic3");
+
+	snd_soc_dapm_ignore_suspend(dapm, "Analog Mic1");
+	snd_soc_dapm_ignore_suspend(dapm, "Analog Mic2");
+	snd_soc_dapm_ignore_suspend(dapm, "Analog Mic3");
+	snd_soc_dapm_ignore_suspend(dapm, "Analog Mic4");
+
+	snd_soc_dapm_sync(dapm);
+
+	if (wcd_datalane_mismatch) {
+		bolero_set_port_map(component,
+			ARRAY_SIZE(sm_port_map_khaje),
+			sm_port_map_khaje);
+	} else {
+		bolero_set_port_map(component,
+			ARRAY_SIZE(sm_port_map),
+			sm_port_map);
+	}
+
+	card = rtd->card->snd_card;
+	if (!pdata->codec_root) {
+		entry = snd_info_create_subdir(card->module, "codecs",
+						 card->proc_root);
+		if (!entry) {
+			pr_debug("%s: Cannot create codecs module entry\n",
+				 __func__);
+			ret = 0;
+			goto err;
+		}
+		pdata->codec_root = entry;
+	}
+	bolero_info_create_codec_entry(pdata->codec_root, component);
+	bolero_register_wake_irq(component, false);
+	codec_reg_done = true;
+	return 0;
+err:
+	return ret;
+}
+#endif
+
 static void *def_wcd_mbhc_cal(void)
 {
 	void *wcd_mbhc_cal;
@@ -4386,8 +4493,10 @@ static void *def_wcd_mbhc_cal(void)
 		(sizeof(btn_cfg->_v_btn_low[0]) * btn_cfg->num_btn);
 
 	btn_high[0] = 75;
-	btn_high[1] = 150;
-	btn_high[2] = 237;
+/* import xiaomi headset patch begin */
+	btn_high[1] = 225;
+	btn_high[2] = 450;
+/* import xiaomi headset patch end */
 	btn_high[3] = 500;
 	btn_high[4] = 500;
 	btn_high[5] = 500;
@@ -5054,6 +5163,25 @@ static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm_cdc_dma_be_ops,
 	},
+#ifdef CONFIG_AUDIO_ELLIPTIC_ULTRASOUND
+	{/* hw:x,39 */
+		.name = "CDC_DMA_2 Hostless",
+		.stream_name = "CDC_DMA_2 Hostless",
+		.cpu_dai_name = "CDC_DMA_2_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.dpcm_capture = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		 /* this dailink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+#endif /* CONFIG_AUDIO_ELLIPTIC_ULTRASOUND */
 };
 
 static struct snd_soc_dai_link msm_common_be_dai_links[] = {
@@ -5719,7 +5847,11 @@ static struct snd_soc_dai_link msm_va_cdc_dma_be_dai_links[] = {
 		.codec_dai_name = "va_macro_tx1",
 		.no_pcm = 1,
 		.dpcm_capture = 1,
+#ifdef CONFIG_SND_SOC_AW87XXX
+		.init = &msm_int_audrx_sec_init,
+#else
 		.init = &msm_int_audrx_init,
+#endif
 		.id = MSM_BACKEND_DAI_VA_CDC_DMA_TX_0,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,

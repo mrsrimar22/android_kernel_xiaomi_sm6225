@@ -201,6 +201,18 @@ int msm_cdc_pinctrl_get_state(struct device_node *np)
 EXPORT_SYMBOL(msm_cdc_pinctrl_get_state);
 
 /*
+ * msm_cdc_pinctrl_is_ready: check if pinctrl for a node is probed and ready
+ * @np: pointer to struct device_node
+ *
+ * Returns true if ready, false otherwise
+ */
+bool msm_cdc_pinctrl_is_ready(struct device_node *np)
+{
+	return msm_cdc_pinctrl_get_gpiodata(np) != NULL;
+}
+EXPORT_SYMBOL(msm_cdc_pinctrl_is_ready);
+
+/*
  * msm_cdc_pinctrl_set_wakeup_capable: Set a pinctrl to wakeup capable
  * @np: pointer to struct device_node
  * @enable: wakeup capable when set to true
