@@ -16,6 +16,10 @@ int core_init(void);
 int rtac_init(void);
 int msm_audio_ion_init(void);
 int avtimer_init(void);
+#ifdef CONFIG_AUDIO_ELLIPTIC_ULTRASOUND
+int elliptic_driver_init(void);
+void elliptic_driver_exit(void);
+#endif /* CONFIG_AUDIO_ELLIPTIC_ULTRASOUND */
 #ifdef CONFIG_MSM_MDF
 int msm_mdf_init(void);
 void msm_mdf_exit(void);

@@ -8,6 +8,7 @@
 #include <linux/platform_device.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/component.h>
 #include <soc/soundwire.h>
 
@@ -18,7 +19,7 @@ struct wcd937x_slave_priv {
 static int wcd937x_slave_bind(struct device *dev,
 				struct device *master, void *data)
 {
-	int ret = 0;
+	int i, ret = 0;
 	struct wcd937x_slave_priv *wcd937x_slave = NULL;
 	uint8_t devnum = 0;
 	struct swr_device *pdev = to_swr_device(dev);
@@ -37,7 +38,15 @@ static int wcd937x_slave_bind(struct device *dev,
 
 	wcd937x_slave->swr_slave = pdev;
 
-	ret = swr_get_logical_dev_num(pdev, pdev->addr, &devnum);
+	for (i = 0; i < 5; i++) {
+		ret = swr_get_logical_dev_num(pdev, pdev->addr, &devnum);
+		if (!ret)
+			break;
+
+		if (i < 4)
+			usleep_range(100, 110);
+	}
+
 	if (ret) {
 		dev_dbg(&pdev->dev,
 				"%s get devnum %d for dev addr %llx failed\n",
