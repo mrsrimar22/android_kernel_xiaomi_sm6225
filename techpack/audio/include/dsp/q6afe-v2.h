@@ -295,6 +295,9 @@ enum {
 	IDX_RT_PROXY_PORT_002_TX,
 	/* IDX 212 */
 	IDX_HDMI_RX_MS,
+#ifdef CONFIG_AUDIO_ELLIPTIC_ULTRASOUND
+	IDX_AFE_PORT_ID_PSEUDOPORT_01,
+#endif /* CONFIG_AUDIO_ELLIPTIC_ULTRASOUND */
 	AFE_MAX_PORTS
 };
 
@@ -589,4 +592,11 @@ int afe_get_spk_v_vali_flag(void);
 void afe_get_spk_v_vali_sts(int *spk_v_vali_sts);
 void afe_set_spk_initial_cal(int initial_cal);
 void afe_set_spk_v_vali_flag(int v_vali_flag);
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+int aw_send_afe_cal_apr(uint32_t param_id, void *buf, int cmd_size, bool write);
+void aw_cal_unmap_memory(void);
+void aw_set_port_id(int rx_port_id);
+#endif /* CONFIG_SND_SOC_AW87XXX */
+
 #endif /* __Q6AFE_V2_H__ */
