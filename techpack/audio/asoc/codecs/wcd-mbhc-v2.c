@@ -690,8 +690,10 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 					&mbhc->zl, &mbhc->zr);
 			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_FSM_EN,
 						 fsm_en);
-			if ((mbhc->zl > mbhc->mbhc_cfg->linein_th) &&
-				(mbhc->zr > mbhc->mbhc_cfg->linein_th) &&
+			if ((((mbhc->zl > mbhc->mbhc_cfg->linein_th) &&
+				(mbhc->zr > mbhc->mbhc_cfg->linein_th)) ||
+				(mbhc->zl == 0) ||
+				(mbhc->zr == 0)) &&
 				(jack_type == SND_JACK_HEADPHONE)) {
 				jack_type = SND_JACK_LINEOUT;
 				mbhc->force_linein = true;
@@ -742,6 +744,9 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				    WCD_MBHC_JACK_MASK);
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
 	}
+	/* lct modify for 05514178 */
+	if (mbhc->mbhc_cb->mbhc_test_ctrl)
+		mbhc->mbhc_cb->mbhc_test_ctrl(mbhc, false);
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
 }
 EXPORT_SYMBOL(wcd_mbhc_report_plug);
@@ -1057,6 +1062,9 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		pr_err("%s: NULL irq data\n", __func__);
 		return IRQ_NONE;
 	}
+	/* lct modify for 05514178 */
+	if (mbhc->mbhc_cb->mbhc_test_ctrl)
+		mbhc->mbhc_cb->mbhc_test_ctrl(mbhc, true);
 	if (unlikely((mbhc->mbhc_cb->lock_sleep(mbhc, true)) == false)) {
 		pr_warn("%s: failed to hold suspend\n", __func__);
 		r = IRQ_NONE;
