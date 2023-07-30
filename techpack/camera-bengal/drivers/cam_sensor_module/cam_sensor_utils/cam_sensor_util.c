@@ -26,6 +26,10 @@
 #define VALIDATE_VOLTAGE(min, max, config_val) ((config_val) && \
 	(config_val >= min) && (config_val <= max))
 
+static atomic_t custom_gpio1_powernum = ATOMIC_INIT(0);
+static DEFINE_MUTEX(powernum_lock);
+static bool powernum_inited;
+
 static struct i2c_settings_list*
 	cam_sensor_get_i2c_ptr(struct i2c_settings_array *i2c_reg_settings,
 		uint32_t size)
@@ -1132,6 +1136,18 @@ int cam_sensor_util_request_gpio_table(
 					gpio_tbl[i].gpio,
 					gpio_tbl[i].flags, gpio_tbl[i].label);
 			if (rc) {
+				/* CUSTOM_GPIO1 is shared gpio and it's busy,
+				 * treat -EBUSY and continue.
+				 */
+				if (rc == -EBUSY && gpio_tbl[i].label &&
+				    strcmp(gpio_tbl[i].label, "CUSTOM_GPIO1") == 0) {
+					CAM_WARN(CAM_SENSOR,
+						"gpio %d:%s busy (shared), skip",
+						gpio_tbl[i].gpio, gpio_tbl[i].label);
+					rc = 0;
+					continue;
+				}
+
 				/*
 				 * After GPIO request fails, contine to
 				 * apply new gpios, outout a error message
@@ -1857,6 +1873,45 @@ static int cam_config_mclk_reg(struct cam_sensor_power_ctrl_t *ctrl,
 	return rc;
 }
 
+static void powernum_inc(void)
+{
+	int count = atomic_inc_return(&custom_gpio1_powernum);
+
+	if (count == 1) {
+		mutex_lock(&powernum_lock);
+		if (!powernum_inited) {
+			powernum_inited = true;
+			CAM_INFO(CAM_SENSOR,
+					"initialized on first acquire");
+		}
+		mutex_unlock(&powernum_lock);
+	}
+}
+
+static bool powernum_dec(void)
+{
+	bool zero = false;
+
+	mutex_lock(&powernum_lock);
+
+	if (atomic_read(&custom_gpio1_powernum) > 0) {
+		int count = atomic_dec_return(&custom_gpio1_powernum);
+		if (count == 0) {
+			if (powernum_inited) {
+				powernum_inited = false;
+				CAM_INFO(CAM_SENSOR,
+						"cleaned up on last release");
+			}
+			zero = true;
+		}
+	} else {
+		zero = false;
+	}
+
+	mutex_unlock(&powernum_lock);
+	return zero;
+}
+
 int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 		struct cam_hw_soc_info *soc_info)
 {
@@ -2002,7 +2057,8 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 		case SENSOR_STANDBY:
 		case SENSOR_CUSTOM_GPIO1:
 		case SENSOR_CUSTOM_GPIO2:
-			if (no_gpio) {
+			if (no_gpio &&
+			    power_setting->seq_type != SENSOR_CUSTOM_GPIO1) {
 				CAM_ERR(CAM_SENSOR, "request gpio failed");
 				goto power_up_failed;
 			}
@@ -2013,6 +2069,9 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 			CAM_DBG(CAM_SENSOR, "gpio set val %d",
 				gpio_num_info->gpio_num
 				[power_setting->seq_type]);
+
+			if (power_setting->seq_type == SENSOR_CUSTOM_GPIO1)
+				powernum_inc();
 
 			rc = msm_cam_sensor_handle_reg_gpio(
 				power_setting->seq_type,
@@ -2340,6 +2399,15 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 
 			if (!gpio_num_info->valid[pd->seq_type])
 				continue;
+
+			if (pd->seq_type == SENSOR_CUSTOM_GPIO1) {
+				bool last = powernum_dec();
+				if (!last) {
+					CAM_DBG(CAM_SENSOR, "custom_gpio1_powernum > 0, continue");
+					continue;
+				}
+				CAM_DBG(CAM_SENSOR, "custom_gpio1_powernum is 0, do power-down");
+			}
 
 			cam_res_mgr_gpio_set_value(
 				gpio_num_info->gpio_num
