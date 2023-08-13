@@ -49,6 +49,9 @@ static const struct of_device_id dsi_display_dt_match[] = {
 struct dsi_display *primary_display;
 static atomic_t is_display_enabled = ATOMIC_INIT(0);
 
+extern void dsi_set_backlight_control(struct dsi_panel *panel,
+			struct dsi_display_mode *adj_mode);
+
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
 {
@@ -7062,6 +7065,10 @@ int dsi_display_set_mode(struct dsi_display *display,
 		DSI_ERR("[%s] failed to set mode\n", display->name);
 		goto error;
 	}
+
+	if (display->panel->panel_initialized &&
+			(adj_mode.timing.refresh_rate == 90))
+		dsi_set_backlight_control(display->panel, &adj_mode);
 
 	DSI_INFO("mdp_transfer_time_us=%d us\n",
 			adj_mode.priv_info->mdp_transfer_time_us);
