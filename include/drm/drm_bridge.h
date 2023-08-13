@@ -334,6 +334,8 @@ struct drm_bridge_funcs {
 	 */
 	void (*atomic_post_disable)(struct drm_bridge *bridge,
 				    struct drm_atomic_state *state);
+
+	int (*disp_get_panel_info)(struct drm_bridge *bridge, char *buf, size_t size);
 };
 
 /**
@@ -419,6 +421,7 @@ void drm_bridge_mode_set(struct drm_bridge *bridge,
 			 struct drm_display_mode *adjusted_mode);
 void drm_bridge_pre_enable(struct drm_bridge *bridge);
 void drm_bridge_enable(struct drm_bridge *bridge);
+int drm_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size);
 
 void drm_atomic_bridge_disable(struct drm_bridge *bridge,
 			       struct drm_atomic_state *state);
