@@ -5049,7 +5049,87 @@ error:
 	return rc;
 }
 
+static ssize_t hbm_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	struct dsi_panel *panel;
+	int hbm_mode;
+
+	if (!display || !display->panel)
+		return -EINVAL;
+
+	panel = display->panel;
+
+	dsi_panel_acquire_panel_lock(panel);
+	hbm_mode = panel->hbm_mode;
+	dsi_panel_release_panel_lock(panel);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", hbm_mode);
+}
+
+static ssize_t hbm_store(struct device *dev,
+			 struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	struct dsi_panel *panel = NULL;
+	u32 cached_bl_level = 0;
+	bool switch_off = false;
+	int hbm_mode;
+	int ret = 0;
+
+	if (!display || !display->panel)
+		return -EINVAL;
+
+	panel = display->panel;
+
+	ret = kstrtoint(buf, 10, &hbm_mode);
+	if (ret)
+		return ret;
+
+	dsi_panel_acquire_panel_lock(panel);
+	if (!dsi_panel_initialized(panel)) {
+		ret = -EINVAL;
+		goto error;
+	}
+
+	cached_bl_level = dsi_panel_get_bl_level(panel);
+	if (panel->hbm_mode > 0 && hbm_mode == 0)
+		switch_off = true;
+
+	panel->hbm_mode = hbm_mode;
+
+	ret = dsi_display_clk_ctrl(display->dsi_clk_handle,
+			DSI_CORE_CLK, DSI_CLK_ON);
+	if (ret) {
+		DSI_ERR("[%s] failed to enable DSI core clocks, rc=%d\n",
+		       display->name, ret);
+		goto error;
+	}
+
+	ret = dsi_panel_apply_hbm_mode(panel);
+	if (ret)
+		DSI_ERR("unable to set hbm mode, ret=%d\n", ret);
+
+	if (switch_off && ret == 0) {
+		ret = dsi_panel_set_backlight(panel, cached_bl_level);
+		if (ret)
+			DSI_ERR("failed to restore backlight, ret=%d\n", ret);
+	}
+
+	(void)dsi_display_clk_ctrl(display->dsi_clk_handle,
+			DSI_CORE_CLK, DSI_CLK_OFF);
+
+error:
+	dsi_panel_release_panel_lock(panel);
+	return ret == 0 ? count : ret;
+}
+
+static DEVICE_ATTR_RW(hbm);
+
 static struct attribute *display_fs_attrs[] = {
+	&dev_attr_hbm.attr,
 	NULL,
 };
 
