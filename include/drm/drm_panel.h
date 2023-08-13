@@ -34,6 +34,9 @@
 /* A hardware display blank early change occurred */
 #define DRM_PANEL_EARLY_EVENT_BLANK	0x02
 
+#define DRM_EARLY_EVENT_BLANK		0x01
+#define DRM_EVENT_BLANK			0x02
+
 enum {
 	/* panel: power on */
 	DRM_PANEL_BLANK_UNBLANK,
@@ -45,10 +48,24 @@ enum {
 	DRM_PANEL_BLANK_FPS_CHANGE,
 };
 
+enum {
+	DRM_BLANK_UNBLANK = 0,
+	DRM_BLANK_LP1,
+	DRM_BLANK_LP2,
+	DRM_BLANK_STANDBY,
+	DRM_BLANK_SUSPEND,
+	DRM_BLANK_POWERDOWN,
+};
+
 struct drm_panel_notifier {
 	int refresh_rate;
 	void *data;
 	uint32_t id;
+};
+
+struct drm_notify_data {
+	bool is_primary;
+	void *data;
 };
 
 struct device_node;
@@ -232,6 +249,10 @@ int drm_panel_notifier_unregister(struct drm_panel *panel,
 	struct notifier_block *nb);
 int drm_panel_notifier_call_chain(struct drm_panel *panel,
 	unsigned long val, void *v);
+
+int drm_register_client(struct notifier_block *nb);
+int drm_unregister_client(struct notifier_block *nb);
+int drm_notifier_call_chain(unsigned long val, void *v);
 
 #if defined(CONFIG_OF) && defined(CONFIG_DRM_PANEL)
 struct drm_panel *of_drm_find_panel(const struct device_node *np);
