@@ -34,6 +34,8 @@
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define MIN_PREFILL_LINES      35
 
+extern void lcd_esd_enable(bool on);
+
 enum dsi_dsc_ratio_type {
 	DSC_8BPC_8BPP,
 	DSC_10BPC_8BPP,
@@ -3302,6 +3304,25 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 
 	esd_config = &panel->esd_config;
 	esd_config->status_mode = ESD_MODE_MAX;
+	esd_config->esd_err_irq_gpio = of_get_named_gpio(panel->panel_of_node,
+			"qcom,esd-err-irq-gpio", 0);
+	esd_config->esd_err_irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
+
+	if (gpio_is_valid(esd_config->esd_err_irq_gpio)) {
+		DSI_DEBUG("esd irq gpio is valid\n");
+		esd_config->esd_err_irq = gpio_to_irq(esd_config->esd_err_irq_gpio);
+		rc = gpio_request(esd_config->esd_err_irq_gpio, "esd_err_int_gpio");
+		if (rc) {
+			DSI_ERR("%s: Failed to get esd irq GPIO%d (rc = %d)",
+					__func__, esd_config->esd_err_irq_gpio, rc);
+		} else {
+			DSI_INFO("%s: Succeed to get esd irq GPIO%d (rc = %d)",
+					__func__, esd_config->esd_err_irq_gpio, rc);
+			gpio_direction_input(esd_config->esd_err_irq_gpio);
+		}
+
+		return 0;
+	}
 	esd_config->esd_enabled = utils->read_bool(utils->data,
 		"qcom,esd-check-enabled");
 
@@ -4480,6 +4501,8 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		       panel->name, rc);
 	else
 		panel->panel_initialized = true;
+
+	lcd_esd_enable(1);
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -4551,6 +4574,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			panel->power_mode == SDE_MODE_DPMS_LP2))
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
+		lcd_esd_enable(0);
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
 		if (rc) {
 			/*
