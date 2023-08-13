@@ -572,6 +572,27 @@ int dsi_conn_get_mode_info(struct drm_connector *connector,
 	return 0;
 }
 
+static int dsi_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	const char *name;
+
+	if (!c_bridge || !c_bridge->display || !buf || !size)
+		return -EINVAL;
+
+	name = c_bridge->display->name;
+	if (!name)
+		return -ENODATA;
+
+	/*
+	 * Userspace expects the DT node name without the "qcom,mdss_" prefix,
+	 * capped at 32 characters, with a "_display" suffix.
+	 */
+	name += str_has_prefix(name, "qcom,mdss_");
+
+	return scnprintf(buf, size, "%.32s_display", name);
+}
+
 static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.attach       = dsi_bridge_attach,
 	.mode_fixup   = dsi_bridge_mode_fixup,
@@ -580,6 +601,7 @@ static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.disable      = dsi_bridge_disable,
 	.post_disable = dsi_bridge_post_disable,
 	.mode_set     = dsi_bridge_mode_set,
+	.get_panel_info = dsi_bridge_get_panel_info,
 };
 
 int dsi_conn_set_info_blob(struct drm_connector *connector,

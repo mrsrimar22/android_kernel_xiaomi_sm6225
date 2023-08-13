@@ -18,6 +18,8 @@
 #include <linux/err.h>
 #include <linux/export.h>
 
+#include <drm/drm_encoder.h>
+#include <drm/drm_bridge.h>
 #include <drm/drm_sysfs.h>
 #include <drm/drmP.h>
 #include "drm_internal.h"
@@ -229,16 +231,37 @@ static ssize_t modes_show(struct device *device,
 	return written;
 }
 
+static ssize_t panel_info_show(struct device *device,
+			       struct device_attribute *attr,
+			       char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	char pname[128] = {0};
+	int ret;
+
+	if (!connector->encoder || !connector->encoder->bridge)
+		return -ENODEV;
+
+	ret = drm_bridge_get_panel_info(connector->encoder->bridge, pname,
+					sizeof(pname));
+	if (ret <= 0)
+		return ret < 0 ? ret : -ENODATA;
+
+	return scnprintf(buf, PAGE_SIZE, "panel_name=%s\n", pname);
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
 static DEVICE_ATTR_RO(modes);
+static DEVICE_ATTR_RO(panel_info);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
 	&dev_attr_enabled.attr,
 	&dev_attr_dpms.attr,
 	&dev_attr_modes.attr,
+	&dev_attr_panel_info.attr,
 	NULL
 };
 
