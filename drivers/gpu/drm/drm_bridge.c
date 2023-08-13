@@ -326,6 +326,19 @@ void drm_bridge_pre_enable(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(drm_bridge_pre_enable);
 
+/* Panel info */
+int drm_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->disp_get_panel_info)
+		return bridge->funcs->disp_get_panel_info(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_get_panel_info);
+
 /**
  * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure

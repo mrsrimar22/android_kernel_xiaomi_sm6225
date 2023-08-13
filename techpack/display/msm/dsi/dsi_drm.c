@@ -232,6 +232,19 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 									rc);
 }
 
+static int dsi_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+
+	if (!c_bridge || !c_bridge->display || !buf || !size)
+		return -EINVAL;
+
+	if (c_bridge->display->name)
+		return scnprintf(buf, size, "%s", c_bridge->display->name);
+
+	return -ENODATA;
+}
+
 static void dsi_bridge_enable(struct drm_bridge *bridge)
 {
 	int rc = 0;
@@ -580,6 +593,7 @@ static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.disable      = dsi_bridge_disable,
 	.post_disable = dsi_bridge_post_disable,
 	.mode_set     = dsi_bridge_mode_set,
+	.disp_get_panel_info = dsi_bridge_get_panel_info,
 };
 
 int dsi_conn_set_info_blob(struct drm_connector *connector,
