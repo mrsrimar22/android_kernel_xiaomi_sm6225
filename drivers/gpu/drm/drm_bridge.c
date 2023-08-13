@@ -327,6 +327,26 @@ void drm_bridge_pre_enable(struct drm_bridge *bridge)
 EXPORT_SYMBOL(drm_bridge_pre_enable);
 
 /**
+ * drm_bridge_get_panel_info - get the panel name behind a bridge
+ * @bridge: bridge to query
+ * @buf: destination buffer
+ * @size: size of @buf
+ *
+ * Returns the number of bytes written to @buf, or a negative error code.
+ */
+int drm_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->get_panel_info)
+		return bridge->funcs->get_panel_info(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_get_panel_info);
+
+/**
  * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  *
