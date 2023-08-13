@@ -5053,7 +5053,85 @@ error:
 	return rc;
 }
 
+static ssize_t sysfs_hbm_read(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	struct dsi_panel *panel;
+	int hbm_mode;
+
+	if (!display || !display->panel) {
+		DSI_ERR("Invalid display/panel\n");
+		return -EINVAL;
+	}
+
+	panel = display->panel;
+
+	dsi_panel_acquire_panel_lock(panel);
+	hbm_mode = panel->hbm_mode;
+	dsi_panel_release_panel_lock(panel);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", hbm_mode);
+}
+
+static ssize_t sysfs_hbm_write(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	struct dsi_panel *panel;
+	u32 cached_bl_level;
+	bool switch_off = false;
+	int hbm_mode;
+	int ret = 0;
+
+	if (!display || !display->panel) {
+		DSI_ERR("Invalid display/panel\n");
+		return -EINVAL;
+	}
+
+	ret = kstrtoint(buf, 10, &hbm_mode);
+	if (ret) {
+		DSI_ERR("kstrtoint failed, ret=%d\n", ret);
+		return ret;
+	}
+
+	panel = display->panel;
+
+	dsi_panel_acquire_panel_lock(panel);
+	if (!dsi_panel_initialized(panel)) {
+		dsi_panel_release_panel_lock(panel);
+		return -EINVAL;
+	}
+
+	cached_bl_level = dsi_panel_get_bl_level(panel);
+	if (panel->hbm_mode > 0 && hbm_mode == 0)
+		switch_off = true;
+
+	panel->hbm_mode = hbm_mode;
+	dsi_panel_release_panel_lock(panel);
+
+	ret = dsi_panel_apply_hbm_mode(panel);
+	if (ret)
+		DSI_ERR("unable to set hbm mode, ret=%d\n", ret);
+
+	if (switch_off && ret == 0) {
+		dsi_panel_acquire_panel_lock(panel);
+		ret = dsi_panel_set_backlight(panel, cached_bl_level);
+		if (ret)
+			DSI_ERR("failed to restore backlight, ret=%d\n", ret);
+		dsi_panel_release_panel_lock(panel);
+	}
+
+	return ret == 0 ? count : ret;
+}
+
+static DEVICE_ATTR(hbm, 0644,
+			sysfs_hbm_read,
+			sysfs_hbm_write);
+
 static struct attribute *display_fs_attrs[] = {
+	&dev_attr_hbm.attr,
 	NULL,
 };
 
