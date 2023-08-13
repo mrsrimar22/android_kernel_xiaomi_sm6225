@@ -373,6 +373,7 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 		}
 	}
 
+	usleep_range(10000, 10010);
 	if (r_config->count) {
 		rc = gpio_direction_output(r_config->reset_gpio,
 			r_config->sequence[0].level);
@@ -453,6 +454,8 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
+	int power_status = DRM_PANEL_BLANK_UNBLANK;
+	struct drm_panel_notifier notifier_data;
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
@@ -477,6 +480,13 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto error_disable_gpio;
 	}
 
+	notifier_data.data = &power_status;
+	notifier_data.refresh_rate = 90;
+	notifier_data.id = 1;
+	DSI_INFO("[%s]: dsi panel power on\n", __func__);
+	drm_panel_notifier_call_chain(&panel->drm_panel,
+			DRM_PANEL_EVENT_BLANK, &notifier_data);
+
 	goto exit;
 
 error_disable_gpio:
@@ -499,6 +509,7 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
 
+	usleep_range(11000, 11010);
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
@@ -1899,6 +1910,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-hbm2-on-command",
 	"qcom,mdss-dsi-doze-hbm-command",
 	"qcom,mdss-dsi-doze-lbm-command",
+	"qcom,mdss-dsi-dispparam-bc-90hz-command",
+	"qcom,mdss-dsi-dispparam-bc-60hz-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1931,6 +1944,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-hbm2-on-command-state",
 	"qcom,mdss-dsi-doze-hbm-command-state",
 	"qcom,mdss-dsi-doze-lbm-command-state",
+	"qcom,mdss-dsi-dispparam-bc-90hz-command-state",
+	"qcom,mdss-dsi-dispparam-bc-60hz-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -4577,6 +4592,20 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		       panel->name, rc);
 	else
 		panel->panel_initialized = true;
+
+	DSI_INFO("[%s]: dsi panel send DSI_CMD_SET_ON\n", __func__);
+	if (panel->cur_mode->timing.refresh_rate == 90) {
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_BC_90HZ);
+		if (rc) {
+			DSI_ERR("[%s][%s] failed to send DSI_CMD_SET_DISP_BC_90HZ cmd, rc=%d\n",
+				__func__, panel->name, rc);
+		} else {
+			panel->dsi_refresh_flag = 90;
+			DSI_INFO("%s: refresh_rate = %d\n",
+				__func__, panel->cur_mode->timing.refresh_rate);
+		}
+	}
+
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -4601,6 +4630,43 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
+}
+
+void dsi_set_backlight_control(struct dsi_panel *panel,
+			       struct dsi_display_mode *adj_mode)
+{
+	int rc = 0;
+
+	if (!panel || !adj_mode) {
+		pr_err("Invalid params\n");
+		return;
+	}
+
+	mutex_lock(&panel->panel_lock);
+	if (adj_mode->timing.refresh_rate == 90) {
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_BC_90HZ);
+		if (rc) {
+			pr_err("[%s][%s] failed to send DSI_CMD_SET_DISP_BC_90HZ cmd, rc=%d\n",
+				__func__, panel->name, rc);
+		} else {
+			panel->dsi_refresh_flag = 90;
+			DSI_INFO("%s: refresh_rate = %d\n",
+				__func__, adj_mode->timing.refresh_rate);
+		}
+	} else if (adj_mode->timing.refresh_rate == 60) {
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_BC_60HZ);
+		if (rc) {
+			DSI_ERR("[%s][%s] failed to send DSI_CMD_SET_DISP_BC_60HZ cmd, rc=%d\n",
+				__func__, panel->name, rc);
+		} else {
+			panel->dsi_refresh_flag = 60;
+			DSI_INFO("%s: refresh_rate = %d\n",
+				__func__, adj_mode->timing.refresh_rate);
+		}
+	}
+	mutex_unlock(&panel->panel_lock);
+
+	return;
 }
 
 int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
@@ -4660,6 +4726,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
+		panel->panel_initialized = false;
 		/*
 		 * Need to set IBB/AB regulator mode to STANDBY,
 		 * if panel is going off from AOD mode.
@@ -4716,6 +4783,8 @@ error:
 int dsi_panel_post_unprepare(struct dsi_panel *panel)
 {
 	int rc = 0;
+	int power_status = DRM_PANEL_BLANK_POWERDOWN;
+	struct drm_panel_notifier notifier_data;
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
@@ -4730,6 +4799,14 @@ int dsi_panel_post_unprepare(struct dsi_panel *panel)
 		       panel->name, rc);
 		goto error;
 	}
+
+	notifier_data.data = &power_status;
+	notifier_data.refresh_rate = 90;
+	notifier_data.id = 1;
+	DSI_INFO("[%s]: dsi panel power off\n", __func__);
+	drm_panel_notifier_call_chain(&panel->drm_panel,
+			DRM_PANEL_EARLY_EVENT_BLANK, &notifier_data);
+
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
