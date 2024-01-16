@@ -1056,11 +1056,7 @@ static int aw87xxx_spk_pa_mode_get(struct snd_kcontrol *kcontrol,
 	if (!ucontrol)
 		return -EINVAL;
 
-#if defined(CONFIG_TARGET_PROJECT_C3Q)
-	current_mode = aw87xxx_show_current_profile_index(0);
-#else
 	current_mode = aw87xxx_show_current_profile_index(1);
-#endif
 	if (current_mode < 0)
 		return current_mode;
 
