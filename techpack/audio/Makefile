@@ -20,17 +20,12 @@ include $(srctree)/techpack/audio/config/litoauto.conf
 export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/litoauto.conf)
 endif
 ifeq ($(CONFIG_ARCH_BENGAL), y)
-ifdef CONFIG_TARGET_PROJECT_C3Q
-include $(srctree)/techpack/audio/config/fogauto.conf
-export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/fogauto.conf)
+ifdef CONFIG_TARGET_PROJECT_K7T
+include $(srctree)/techpack/audio/config/spesauto.conf
+export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/spesauto.conf)
 else
-    ifdef CONFIG_TARGET_PROJECT_K7T
-	include $(srctree)/techpack/audio/config/spesauto.conf
-	export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/spesauto.conf)
-    else
-	include $(srctree)/techpack/audio/config/bengalauto.conf
-	export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/bengalauto.conf)
-    endif
+include $(srctree)/techpack/audio/config/bengalauto.conf
+export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/bengalauto.conf)
 endif
 endif
 ifeq ($(CONFIG_ARCH_SDM660), y)
@@ -75,17 +70,12 @@ LINUXINCLUDE    += \
                 -include $(srctree)/techpack/audio/config/litoautoconf.h
 endif
 ifeq ($(CONFIG_ARCH_BENGAL), y)
-ifdef CONFIG_TARGET_PROJECT_C3Q
+ifdef CONFIG_TARGET_PROJECT_K7T
 LINUXINCLUDE    += \
-                -include $(srctree)/techpack/audio/config/fogautoconf.h
+		-include $(srctree)/techpack/audio/config/spesautoconf.h
 else
-    ifdef CONFIG_TARGET_PROJECT_K7T
-	LINUXINCLUDE    += \
-			-include $(srctree)/techpack/audio/config/spesautoconf.h
-    else
-	LINUXINCLUDE    += \
-			-include $(srctree)/techpack/audio/config/bengalautoconf.h
-    endif
+LINUXINCLUDE    += \
+		-include $(srctree)/techpack/audio/config/bengalautoconf.h
 endif
 endif
 ifeq ($(CONFIG_ARCH_SDM660), y)
