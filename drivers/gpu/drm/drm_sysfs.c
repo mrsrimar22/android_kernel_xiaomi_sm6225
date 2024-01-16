@@ -264,11 +264,6 @@ static ssize_t panel_info_show(struct device *device,
 		return snprintf(buf, PAGE_SIZE, "panel_name=%.*s_display\n",
 				(written - 10) > 32 ? 32 : (written - 10),
 				pname + 10);
-#elif defined(CONFIG_TARGET_PROJECT_C3Q)
-	if (written > 10)
-		return snprintf(buf, PAGE_SIZE, "panel_name=%.*s_display\n",
-				(written - 10) > 33 ? 33 : (written - 10),
-				pname + 10);
 #else
 	return snprintf(buf, PAGE_SIZE, "panel_name=%s\n", pname);
 #endif
