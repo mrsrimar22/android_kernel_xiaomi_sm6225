@@ -60,3 +60,5 @@ ARM_ENTRY(__kernel_rt_sigreturn_thumb)
 	svc #0
 	.fnend
 ARM_ENDPROC(__kernel_rt_sigreturn_thumb)
+
+.section .note.GNU-stack,"",%progbits
