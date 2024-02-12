@@ -66,15 +66,15 @@ obj-y				+= gpu/
 obj-$(CONFIG_CONNECTOR)		+= connector/
 
 # i810fb and intelfb depend on char/agp/
-obj-$(CONFIG_FB_I810)           += video/fbdev/i810/
-obj-$(CONFIG_FB_INTEL)          += video/fbdev/intelfb/
+obj-$(CONFIG_FB_I810)		+= video/fbdev/i810/
+obj-$(CONFIG_FB_INTEL)		+= video/fbdev/intelfb/
 
 obj-$(CONFIG_PARPORT)		+= parport/
 obj-$(CONFIG_NVM)		+= lightnvm/
 obj-y				+= base/ block/ misc/ mfd/ nfc/
 obj-$(CONFIG_LIBNVDIMM)		+= nvdimm/
 obj-$(CONFIG_DAX)		+= dax/
-obj-$(CONFIG_DMA_SHARED_BUFFER) += dma-buf/
+obj-$(CONFIG_DMA_SHARED_BUFFER)	+= dma-buf/
 obj-$(CONFIG_NUBUS)		+= nubus/
 obj-y				+= macintosh/
 obj-$(CONFIG_IDE)		+= ide/
@@ -187,7 +187,7 @@ obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
-obj-$(CONFIG_ESOC)              += esoc/
+obj-$(CONFIG_ESOC)		+= esoc/
 obj-$(CONFIG_UNISYS_VISORBUS)	+= visorbus/
 obj-$(CONFIG_SIOX)		+= siox/
 obj-$(CONFIG_GNSS)		+= gnss/

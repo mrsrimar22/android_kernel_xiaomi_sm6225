@@ -3142,7 +3142,7 @@ static int dwc3_gadget_ep_cleanup_completed_request(struct dwc3_ep *dep,
 		struct dwc3_request *req, int status)
 {
 	struct dwc3 *dwc = dep->dwc;
-        int request_status;
+	int request_status;
 	int ret;
 
 	/*
@@ -3290,7 +3290,7 @@ static void dwc3_gadget_endpoint_transfer_in_progress(struct dwc3_ep *dep,
 	}
 
 	if (stop)
-                dwc3_stop_active_transfer(dwc, dep->number, true, true);
+		dwc3_stop_active_transfer(dwc, dep->number, true, true);
 	else if (dwc3_gadget_ep_should_continue(dep))
 		__dwc3_gadget_kick_transfer(dep);
 
