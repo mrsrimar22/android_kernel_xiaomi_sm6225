@@ -842,7 +842,16 @@ static int ax88179_bind(struct ax_device *axdev)
 
 static void ax88179_unbind(struct ax_device *axdev)
 {
+	u16 reg16;
 
+	reg16 = AX_RX_CTL_STOP;
+	ax_write_cmd(axdev, AX_ACCESS_MAC, AX_RX_CTL, 2, 2, &reg16);
+
+	reg16 = 0;
+	ax_write_cmd(axdev, AX_ACCESS_MAC, AX_CLK_SELECT, 1, 1, &reg16);
+
+	reg16 = 0;
+	ax_write_cmd(axdev, AX_ACCESS_MAC, AX_PHYPWR_RSTCTL, 2, 2, &reg16);
 }
 
 static int ax88179_stop(struct ax_device *axdev)
