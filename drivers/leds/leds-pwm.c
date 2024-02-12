@@ -174,7 +174,7 @@ static int led_pwm_set(struct led_classdev *led_cdev,
 	struct led_pwm_data *led_data =
 		container_of(led_cdev, struct led_pwm_data, cdev);
 	unsigned int max = led_data->cdev.max_brightness;
-	unsigned long long duty =  led_data->period;
+	unsigned long long duty = led_data->period;
 
 	duty *= brightness;
 	do_div(duty, max);
@@ -206,7 +206,6 @@ static int led_pwm_add(struct device *dev, struct led_pwm_priv *priv,
 		       struct led_pwm *led, struct device_node *child)
 {
 	struct led_pwm_data *led_data = &priv->leds[priv->num_leds];
-	struct pwm_args pargs;
 	int ret;
 
 	led_data->active_low = led->active_low;

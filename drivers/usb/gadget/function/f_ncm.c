@@ -1435,7 +1435,7 @@ static int ncm_bind(struct usb_configuration *c, struct usb_function *f)
 	struct usb_composite_dev *cdev = c->cdev;
 	struct f_ncm		*ncm = func_to_ncm(f);
 	struct usb_string	*us;
-	int			status;
+	int			status = 0;
 	struct usb_ep		*ep;
 	struct f_ncm_opts	*ncm_opts;
 
@@ -1453,30 +1453,23 @@ static int ncm_bind(struct usb_configuration *c, struct usb_function *f)
 		f->os_desc_table[0].os_desc = &ncm_opts->ncm_os_desc;
 	}
 
-	/*
-	 * in drivers/usb/gadget/configfs.c:configfs_composite_bind()
-	 * configurations are bound in sequence with list_for_each_entry,
-	 * in each configuration its functions are bound in sequence
-	 * with list_for_each_entry, so we assume no race condition
-	 * with regard to ncm_opts->bound access
-	 */
+	mutex_lock(&ncm_opts->lock);
+	gether_set_gadget(ncm_opts->net, cdev->gadget);
 	if (!ncm_opts->bound) {
-		mutex_lock(&ncm_opts->lock);
 		ncm_opts->net = gether_setup_default();
 		if (IS_ERR(ncm_opts->net)) {
 			status = PTR_ERR(ncm_opts->net);
 			mutex_unlock(&ncm_opts->lock);
-			goto error;
+			goto fail;
 		}
-		gether_set_gadget(ncm_opts->net, cdev->gadget);
 		status = gether_register_netdev(ncm_opts->net);
-		mutex_unlock(&ncm_opts->lock);
-		if (status) {
-			free_netdev(ncm_opts->net);
-			goto error;
-		}
-		ncm_opts->bound = true;
 	}
+	mutex_unlock(&ncm_opts->lock);
+
+	if (status)
+		goto fail;
+
+	ncm_opts->bound = true;
 
 	/* export host's Ethernet address in CDC format */
 	status = gether_get_host_addr_cdc(ncm_opts->net, ncm->ethaddr,
@@ -1485,7 +1478,7 @@ static int ncm_bind(struct usb_configuration *c, struct usb_function *f)
 		ERROR(cdev, "%s: failed to get host eth addr, err %d\n",
 		__func__, status);
 		status = -EINVAL;
-		goto netdev_cleanup;
+		goto fail;
 	}
 	ncm->port.ioport = netdev_priv(ncm_opts->net);
 
@@ -1493,7 +1486,7 @@ static int ncm_bind(struct usb_configuration *c, struct usb_function *f)
 				 ARRAY_SIZE(ncm_string_defs));
 	if (IS_ERR(us)) {
 		status = PTR_ERR(us);
-		goto netdev_cleanup;
+		goto fail;
 	}
 	ncm_control_intf.iInterface = us[STRING_CTRL_IDX].id;
 	ncm_data_nop_intf.iInterface = us[STRING_DATA_IDX].id;
@@ -1601,10 +1594,9 @@ fail:
 		kfree(ncm->notify_req->buf);
 		usb_ep_free_request(ncm->notify, ncm->notify_req);
 	}
-netdev_cleanup:
+
 	gether_cleanup(netdev_priv(ncm_opts->net));
 
-error:
 	ERROR(cdev, "%s: can't bind, err %d\n", f->name, status);
 
 	return status;
