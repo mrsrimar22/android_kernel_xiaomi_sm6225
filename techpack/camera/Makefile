@@ -19,6 +19,11 @@ LINUXINCLUDE    += \
 		-include $(srctree)/techpack/camera/config/khajecameraconf.h
 endif
 
+ifeq ($(CONFIG_TARGET_PROJECT_K7T), y)
+LINUXINCLUDE    += \
+		-include $(srctree)/techpack/camera/config/legacycameraconf.h
+endif
+
 ifdef CONFIG_SPECTRA_CAMERA_BENGAL
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \
