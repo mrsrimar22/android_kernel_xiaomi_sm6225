@@ -34,7 +34,6 @@
 #include <linux/bitops.h>
 #include <linux/math64.h>
 #include <asm/unaligned.h>
-#include <asm/neon.h>
 #include "sc8551_reg.h"
 
 typedef enum {
@@ -50,7 +49,7 @@ typedef enum {
 	ADC_MAX_NUM,
 } ADC_CH;
 
-static float sc8551_adc_lsb[] = {
+static const u32 sc8551_adc_lsb[ADC_MAX_NUM] = {
 	[ADC_IBUS]	= SC8551_IBUS_ADC_LSB,
 	[ADC_VBUS]	= SC8551_VBUS_ADC_LSB,
 	[ADC_VAC]	= SC8551_VAC_ADC_LSB,
@@ -999,6 +998,7 @@ static int __sc8551_get_adc_data(struct sc8551 *sc, int channel, int *result)
 	int ret;
 	u8 val_h, val_l;
 	u16 val;
+	u64 temp;
 
 	ret = sc8551_read_byte(sc, ADC_REG_BASE + (channel << 1), &val_h);
 	if (ret < 0)
@@ -1011,9 +1011,8 @@ static int __sc8551_get_adc_data(struct sc8551 *sc, int channel, int *result)
 	val = ((u16)val_h << 8) | val_l;
 
 	if (sc->chip_vendor == SC8551) {
-		kernel_neon_begin();
-		*result = (int)(val * sc8551_adc_lsb[channel]);
-		kernel_neon_end();
+		temp = (u64)val * sc8551_adc_lsb[channel];
+		*result = div_u64(temp, SC8551_ADC_SCALE);
 	} else {
 		*result = (int)val;
 	}
