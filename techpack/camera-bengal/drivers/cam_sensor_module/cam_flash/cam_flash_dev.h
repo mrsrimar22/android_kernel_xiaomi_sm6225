@@ -156,6 +156,14 @@ struct cam_flash_func_tbl {
 		enum cam_flash_flush_type type, uint64_t req_id);
 };
 
+/* Spes flashlight by muralivijay@github */
+#ifdef CONFIG_CAMERA_FLASH_SPES
+struct gpio_flash_led {
+	int flash_en;
+	int flash_now;
+};
+#endif
+
 /**
  *  struct cam_flash_ctrl
  * @device_name         : Device name
