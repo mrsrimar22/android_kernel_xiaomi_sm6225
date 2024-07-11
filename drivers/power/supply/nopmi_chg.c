@@ -795,16 +795,6 @@ static int nopmi_usb_set_prop_internal(struct power_supply *psy,
 	return rc;
 }
 
-#if CONFIG_TOUCHSCREEN_COMMON
-typedef struct touchscreen_usb_piugin_data {
-		bool valid;
-		bool usb_plugged_in;
-		void (*event_callback)(void);
-		} touchscreen_usb_piugin_data_t;
-touchscreen_usb_piugin_data_t g_touchscreen_usb_pulgin = {0};
-EXPORT_SYMBOL(g_touchscreen_usb_pulgin);
-#endif
-
 static int nopmi_usb_set_prop(struct power_supply *psy,
 		enum power_supply_property psp,
 		const union power_supply_propval *val)
@@ -824,12 +814,6 @@ static int nopmi_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		g_nopmi_chg->usb_online = val->intval;
 		ret = 0;
-#if CONFIG_TOUCHSCREEN_COMMON
-		g_touchscreen_usb_pulgin.usb_plugged_in = g_nopmi_chg->usb_online;
-		if (g_touchscreen_usb_pulgin.valid) {
-			g_touchscreen_usb_pulgin.event_callback();
-		}
-#endif
 		break;
 	case POWER_SUPPLY_PROP_MTBF_CUR:
 		pr_err("psp %d Set MTBF current, val: %d\n", psp, val->intval);
