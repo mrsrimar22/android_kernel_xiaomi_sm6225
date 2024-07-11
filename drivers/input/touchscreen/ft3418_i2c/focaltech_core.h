@@ -63,22 +63,6 @@
 #include <linux/dma-mapping.h>
 #include "focaltech_common.h"
 
-// include  longcheer header
-#include "../lct_tp_info.h"
-#include "../lct_tp_selftest.h"
-#if LCT_TP_WORK_EN
-#include "../lct_tp_work.h"
-#endif
-
-#if LCT_TP_GRIP_AREA_EN
-#include "../lct_tp_grip_area.h"
-#endif
-
-#if LCT_TP_PALM_EN
-#include "../lct_tp_palm.h"
-#endif
-
-#include "../lct_tp_gesture.h"
 #ifdef CONFIG_PM
 #include <linux/pm_runtime.h>
 #endif
@@ -242,27 +226,14 @@ struct fts_ts_data {
 #endif
 	struct notifier_block drm_notif;
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	u8 palm_sensor_switch;
-	bool palm_sensor_changed;
+	//u8 palm_sensor_switch;
+	//bool palm_sensor_changed;
 	bool gamemode_enabled;
 #endif
 	struct mutex reg_lock;
 	struct device *fts_touch_dev;
 	struct class *fts_tp_class;
-
-#if LCT_TP_PALM_EN
-	int palm_changed;
-#endif
 };
-
-#if LCT_TP_USB_PLUGIN
-typedef struct touchscreen_usb_plugin_data {
-	bool valid;
-	bool usb_plugged_in;
-	void (*event_callback)(void);
-} touchscreen_usb_plugin_data_t;
-#endif
-
 
 enum _FTS_BUS_TYPE {
 	BUS_TYPE_NONE,
@@ -297,23 +268,11 @@ int fts_gesture_resume(struct fts_ts_data *ts_data);
 #if FTS_TEST_EN
 int fts_test_init(struct fts_ts_data *ts_data);
 int fts_test_exit(struct fts_ts_data *ts_data);
-int lct_tp_selftest_all(void);
 #endif
 
 /* Apk and functions */
 int fts_create_apk_debug_channel(struct fts_ts_data *);
 void fts_release_apk_debug_channel(struct fts_ts_data *);
-
-
-/* Longcheer procfs */
-int lct_create_procfs(struct fts_ts_data *ts_data);
-int lct_remove_procfs(struct fts_ts_data *ts_data);
-
-/* Longcheer set gesture mode */
-int lct_fts_tp_gesture_callback(bool flag);
-
-/* Longcheer get firmware version */
-int lct_fts_get_tpfwver(const char *cmd);
 
 /* ADB functions */
 int fts_create_sysfs(struct fts_ts_data *ts_data);
@@ -360,5 +319,4 @@ int fts_ex_mode_recovery(struct fts_ts_data *ts_data);
 int fts_flash_read(u32 addr, u8 *buf, u32 len);
 void fts_irq_disable(void);
 void fts_irq_enable(void);
-int lct_fts_set_charger_mode(bool en);
 #endif /* __LINUX_FOCALTECH_CORE_H__ */
