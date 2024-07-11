@@ -161,12 +161,12 @@ static ssize_t fts_gesture_store(struct device *dev,
 	mutex_lock(&ts_data->input_dev->mutex);
 	if (FTS_SYSFS_ECHO_ON(buf)) {
 		FTS_DEBUG("enable gesture");
-		//ts_data->gesture_mode = ENABLE;
-		lct_fts_tp_gesture_callback(true);
+		ts_data->gesture_mode = ENABLE;
+		//lct_fts_tp_gesture_callback(true);
 	} else if (FTS_SYSFS_ECHO_OFF(buf)) {
 		FTS_DEBUG("disable gesture");
-		//ts_data->gesture_mode = DISABLE;
-		lct_fts_tp_gesture_callback(false);
+		ts_data->gesture_mode = DISABLE;
+		//lct_fts_tp_gesture_callback(false);
 	}
 	mutex_unlock(&ts_data->input_dev->mutex);
 
@@ -458,12 +458,16 @@ int fts_gesture_resume(struct fts_ts_data *ts_data)
 int fts_gesture_switch(struct input_dev *dev,
 		       unsigned int type, unsigned int code, int value)
 {
+	struct fts_ts_data *ts_data = fts_data;
+
 	FTS_INFO("Enter. type = %u, code = %u, value = %d", type, code, value);
 	if (type == EV_SYN && code == SYN_CONFIG) {
 		if (value == WAKEUP_OFF) {
-			lct_fts_tp_gesture_callback(false);
+			ts_data->gesture_mode = DISABLE;
+			//lct_fts_tp_gesture_callback(false);
 		} else if (value == WAKEUP_ON) {
-			lct_fts_tp_gesture_callback(true);
+			ts_data->gesture_mode = ENABLE;
+			//lct_fts_tp_gesture_callback(true);
 		}
 	}
 	FTS_INFO("Exit");
