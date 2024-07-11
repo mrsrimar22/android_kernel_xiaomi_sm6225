@@ -1350,14 +1350,6 @@ config TOUCHSCREEN_SYNAPTICS_TCM
 	  To compile this driver as a module, choose M here: the
 	  module will be called synaptics_tcm.
 
-config TOUCHSCREEN_COMMON
-	bool "touchscreen for xiaomi project"
-	depends on I2C
-	default n
-	help
-	  Say Y here if you have a xiaomi touchscreen and
-	  want to enable support for the built-in touchscreen.
-
 config TP_COMMON
 	bool "Common touchscreen interface to interact with userspace"
 	default y
