@@ -264,8 +264,8 @@ done:
 		case LSM_SESSION_CMD_GET_PARAMS_V2:
 		case LSM_SESSION_CMD_GET_PARAMS_V3:
 			if (token != client->session &&
-			    payload[0] !=
-				LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
+					payload != NULL &&
+					payload[0] !=LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
 				pr_err("%s: Invalid session %d receivced expected %d\n",
 					__func__, token, client->session);
 				spin_unlock_irqrestore(&lsm_session_lock, flags);
