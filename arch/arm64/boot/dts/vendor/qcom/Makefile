@@ -296,7 +296,10 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 		khajeg-idp-nopmi-overlay.dtbo \
 		khajeg-idp-usbc-overlay.dtbo \
 		khajeg-idp-pm8010-overlay.dtbo \
-		khajeg-idps-display-90hz-overlay.dtbo
+		khajeg-idps-display-90hz-overlay.dtbo \
+		spes-khaje-idp-nopmi-overlay.dtbo \
+		spes-sm5602-khaje-idp-nopmi-overlay.dtbo \
+		spesn-khaje-idp-nopmi-overlay.dtbo
 
 khaje-atp-overlay.dtbo-base := khaje.dtb
 khaje-idp-overlay.dtbo-base := khaje.dtb
@@ -308,6 +311,9 @@ khaje-qrd-overlay.dtbo-base := khaje.dtb
 khaje-qrd-hvdcp3p5-overlay.dtbo-base := khaje.dtb
 khaje-qrd-nopmi-overlay.dtbo-base := khaje.dtb
 khaje-qrd-nowcd9375-overlay.dtbo-base := khaje.dtb
+spes-khaje-idp-nopmi-overlay.dtbo-base := khaje.dtb
+spes-sm5602-khaje-idp-nopmi-overlay.dtbo-base := khaje.dtb
+spesn-khaje-idp-nopmi-overlay.dtbo-base := khaje.dtb
 khajep-atp-overlay.dtbo-base := khajep.dtb
 khajep-idps-display-90hz-overlay.dtbo-base := khajep.dtb
 khajep-idp-overlay.dtbo-base := khajep.dtb
