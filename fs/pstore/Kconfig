@@ -154,3 +154,13 @@ config PSTORE_RAM
 	  "ramoops.ko".
 
 	  For more information, see Documentation/admin-guide/ramoops.rst.
+
+config PSTORE_LAST_KMSG
+	bool "Export the last kernel console message as /proc/last_kmsg"
+	depends on PSTORE
+	default y
+	help
+	  When this option is enabled, pstore will export a proc filesystem
+	  interface /proc/last_kmsg containing the last kernel console
+	  message stored by the pstore backend (e.g. ramoops). This is
+	  useful for reading the kernel log after a panic or reboot.
