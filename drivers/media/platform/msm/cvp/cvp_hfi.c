@@ -830,7 +830,7 @@ static int __read_queue(struct cvp_iface_q_info *qinfo, u8 *packet,
 			queue->qhdr_rx_req = 0;
 		} else {
 			spin_unlock(&qinfo->hfi_lock);
-			dprintk(CVP_HFI,
+			dprintk(CVP_DBG,
 				"%s queue is empty, rx_req = %u, tx_req = %u, read_idx = %u\n",
 				receive_request ? "message" : "debug",
 				queue->qhdr_rx_req, queue->qhdr_tx_req,
