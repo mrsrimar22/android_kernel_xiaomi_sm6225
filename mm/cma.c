@@ -482,8 +482,6 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 	if (!count)
 		goto out;
 
-	trace_cma_alloc_start(count, align);
-
 	mask = cma_bitmap_aligned_mask(cma, align);
 	offset = cma_bitmap_aligned_offset(cma, align);
 	bitmap_maxno = cma_bitmap_maxno(cma);
@@ -491,6 +489,8 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 
 	if (bitmap_count > bitmap_maxno)
 		goto out;
+
+	trace_cma_alloc_start(count, align);
 
 	for (;;) {
 		spin_lock_irq(&cma->lock);
