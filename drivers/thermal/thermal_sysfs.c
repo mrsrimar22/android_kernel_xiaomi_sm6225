@@ -18,6 +18,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/jiffies.h>
+#include <linux/vmalloc.h>
+#include <linux/overflow.h>
 
 #include "thermal_core.h"
 
@@ -1056,18 +1058,18 @@ static void cooling_device_stats_setup(struct thermal_cooling_device *cdev)
 	const struct attribute_group *stats_attr_group = NULL;
 	struct cooling_dev_stats *stats;
 	unsigned long states;
-	int var;
+	size_t size;
 
 	if (cdev->ops->get_max_state(cdev, &states))
 		goto out;
 
 	states++; /* Total number of states is highest state + 1 */
 
-	var = sizeof(*stats);
-	var += sizeof(*stats->time_in_state) * states;
-	var += sizeof(*stats->trans_table) * states * states;
+	size = sizeof(*stats);
+	size = size_add(size, size_mul(sizeof(*stats->time_in_state), states));
+	size = size_add(size, array3_size(sizeof(*stats->trans_table), states, states));
 
-	stats = kzalloc(var, GFP_KERNEL);
+	stats = kvzalloc(size, GFP_KERNEL);
 	if (!stats)
 		goto out;
 
@@ -1083,13 +1085,13 @@ static void cooling_device_stats_setup(struct thermal_cooling_device *cdev)
 
 out:
 	/* Fill the empty slot left in cooling_device_attr_groups */
-	var = ARRAY_SIZE(cooling_device_attr_groups) - 2;
-	cooling_device_attr_groups[var] = stats_attr_group;
+	cooling_device_attr_groups[ARRAY_SIZE(cooling_device_attr_groups) - 2] =
+		stats_attr_group;
 }
 
 static void cooling_device_stats_destroy(struct thermal_cooling_device *cdev)
 {
-	kfree(cdev->stats);
+	kvfree(cdev->stats);
 	cdev->stats = NULL;
 }
 
