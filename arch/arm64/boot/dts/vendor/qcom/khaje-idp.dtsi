@@ -254,6 +254,7 @@
 
 	thermal_message: thermal-message {
 		board-sensor = "VIRTUAL-SENSOR";
+		panel = <&dsi_k7_38_0c_0a_video &dsi_k7_38_0c_0b_video>;
 	};
 };
 
