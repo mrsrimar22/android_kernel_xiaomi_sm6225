@@ -510,7 +510,7 @@ int bq2589x_set_chargevoltage(struct bq2589x *bq, int volt)
 {
 	u8 val;
 
-	val = (volt - BQ2589X_VREG_BASE)/BQ2589X_VREG_LSB;
+	val = (volt - BQ2589X_VREG_BASE) / BQ2589X_VREG_LSB;
 	return bq2589x_update_bits(bq, BQ2589X_REG_06, BQ2589X_VREG_MASK, val << BQ2589X_VREG_SHIFT);
 }
 EXPORT_SYMBOL_GPL(bq2589x_set_chargevoltage);
@@ -589,7 +589,7 @@ int bq2589x_set_vindpm_offset(struct bq2589x *bq, int offset)
 		}
 		return bq2589x_update_bits(bq, BQ2589X_REG_01, SC89890H_VINDPMOS_MASK, val << SC89890H_VINDPMOS_SHIFT);
 	} else {
-		val = (offset - BQ2589X_VINDPMOS_BASE)/BQ2589X_VINDPMOS_LSB;
+		val = (offset - BQ2589X_VINDPMOS_BASE) / BQ2589X_VINDPMOS_LSB;
 		return bq2589x_update_bits(bq, BQ2589X_REG_01, BQ2589X_VINDPMOS_MASK, val << BQ2589X_VINDPMOS_SHIFT);
 	}
 
@@ -642,7 +642,7 @@ u8 bq2589x_get_charging_status(struct bq2589x *bq)
 				if (ret < 0) {
 					pr_err("failed to set vindpm volt 4600mV\n");
 				} else {
-					pr_err("charge full, set vindpm volt to 4600mV\n");
+					pr_info("charge full, set vindpm volt to 4600mV\n");
 				}
 			}
 			return POWER_SUPPLY_STATUS_FULL;

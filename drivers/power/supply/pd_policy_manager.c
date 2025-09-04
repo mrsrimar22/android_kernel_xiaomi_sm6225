@@ -64,7 +64,6 @@ static const struct pdpm_config pm_config = {
 };
 
 static struct usbpd_pm *__pdpm;
-static struct platform_device *pdpm_pdev;
 
 static int fc2_taper_timer;
 static int ibus_lmt_change_timer;
@@ -794,7 +793,7 @@ static int usbpd_update_ibat_curr(struct usbpd_pm *pdpm)
 	ret = power_supply_get_property(pdpm->bms_psy,
 			POWER_SUPPLY_PROP_CURRENT_NOW, &val);
 	if (!ret)
-		pdpm->cp.ibat_curr_sw= (int)(val.intval / 1000);
+		pdpm->cp.ibat_curr_sw = (int)(val.intval / 1000);
 
 	ret = power_supply_get_property(pdpm->bms_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
@@ -998,8 +997,12 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	pr_info(">>>>>>%d %d %d sw %d hw %d all %d\n",
 			step_vbat, step_ibat, step_ibus, sw_ctrl_steps, hw_ctrl_steps, steps);
 	pdpm->request_voltage += steps * 20;
-	if (pdpm->request_voltage > pdpm->apdo_max_volt - 1000)
-		pdpm->request_voltage = pdpm->apdo_max_volt - 1000;
+
+	/* Fix -1V Cast for > 11V reach > 6A, leave < 11V untouched */
+	if (pdpm->request_voltage > (pdpm->apdo_max_volt >= 11000 ? pdpm->apdo_max_volt - 1000 : pdpm->apdo_max_volt))
+		pdpm->request_voltage = (pdpm->apdo_max_volt >= 11000 ? pdpm->apdo_max_volt - 1000 : pdpm->apdo_max_volt);
+	/*if (pdpm->request_voltage > pdpm->apdo_max_volt - 1000)
+		pdpm->request_voltage = pdpm->apdo_max_volt - 1000;*/
 
 	/*if (pdpm->adapter_voltage > 0
 			&& pdpm->request_voltage > pdpm->adapter_voltage + 500)
@@ -1020,9 +1023,7 @@ static const unsigned char *pm_str[] = {
 
 static void usbpd_pm_move_state(struct usbpd_pm *pdpm, enum pm_state state)
 {
-	pr_info("state change: %s -> %s\n",
-		pm_str[pdpm->state], pm_str[state]);
-
+	pr_info("state change: %s -> %s\n", pm_str[pdpm->state], pm_str[state]);
 	pdpm->state = state;
 }
 
@@ -1192,7 +1193,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			} else if (NOPMI_CHARGER_IC_SYV == nopmi_get_charger_ic_type()) {
 				//do nothing
 			} else {
-				usbpd_pps_enable_charging(pdpm,false,5000,3000);
+				usbpd_pps_enable_charging(pdpm, false, 5000, 3000);
 			}
 			rc = 1;
 		}
@@ -1321,10 +1322,13 @@ static int usbpd_psy_notifier_cb(struct notifier_block *nb,
 {
 	struct usbpd_pm *pdpm = container_of(nb, struct usbpd_pm, nb);
 	struct power_supply *psy = data;
+	union power_supply_propval pval_full = {0, };
+	union power_supply_propval pval_volt = {0, };
 	unsigned long flags;
+	int rc = 0;
 
 	pr_info("start\n");
-	pr_info("0x%x\n", (char *)psy);
+	pr_info("psy(0x%x) name(%s)\n", (char *)psy, psy->desc->name);
 
 	if (event != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
@@ -1333,6 +1337,21 @@ static int usbpd_psy_notifier_cb(struct notifier_block *nb,
 	if (pm_config.cp_sec_enable) {
 		usbpd_check_cp_sec_psy(pdpm);
 	}
+
+	// set charger volt 5V when charger done
+	if ((strcmp(psy->desc->name, "bbc") == 0) && pdpm->pd_active) {
+		rc = power_supply_get_property(psy, POWER_SUPPLY_PROP_STATUS, &pval_full);
+		rc |= power_supply_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &pval_volt);
+		if (rc < 0) {
+			pr_err("Failed to get bbc prop!\n");
+		} else {
+			if (pval_full.intval == POWER_SUPPLY_STATUS_FULL && pval_volt.intval > 6000) {
+				pr_info("battery charger full, select 5V charger\n");
+				usbpd_select_pdo(pdpm, 5000, 3000);
+			}
+		}
+	}
+
 	usbpd_check_charger_psy(pdpm);
 	if (NOPMI_CHARGER_IC_MAXIM == nopmi_get_charger_ic_type()) {
 		//do nothing
@@ -1472,10 +1491,16 @@ static int usbpd_pm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id usbpd_pm_dt_match[] = {
+	{.compatible = "qcom,cp_manager"},
+	{},
+};
+
 static struct platform_driver usbpd_pm_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "cp_manager",
+		.of_match_table = usbpd_pm_dt_match,
 	},
 	.probe = usbpd_pm_probe,
 	.remove = usbpd_pm_remove,
@@ -1483,29 +1508,13 @@ static struct platform_driver usbpd_pm_driver = {
 
 static int __init usbpd_pm_init(void)
 {
-	int ret;
-
-	ret = platform_driver_register(&usbpd_pm_driver);
-	if (ret) {
-		pr_err("driver register fail!\n");
-		return ret;
-	}
-
-	pdpm_pdev = platform_device_register_simple("cp_manager", -1, NULL, 0);
-	if (IS_ERR(pdpm_pdev)) {
-		platform_driver_unregister(&usbpd_pm_driver);
-		pr_err("device register fail!\n");
-		return PTR_ERR(pdpm_pdev);
-	}
-
-	pr_info("driver and device registered\n");
-	return 0;
+	pr_info("start init\n");
+	return platform_driver_register(&usbpd_pm_driver);
 }
 
 static void __exit usbpd_pm_exit(void)
 {
-	pr_info("entry.\n");
-	platform_device_unregister(pdpm_pdev);
+	pr_info("start exit\n");
 	platform_driver_unregister(&usbpd_pm_driver);
 }
 

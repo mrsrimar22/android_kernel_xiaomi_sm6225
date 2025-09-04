@@ -375,10 +375,10 @@
 		jeita_temp_below_t0_cv = <4450>;
 		temp_t4_thres = <60>;
 		temp_t4_thres_minus_x_degree = <58>;
-		temp_t3_thres = <0x30>;
+		temp_t3_thres = <48>;
 		temp_t3_thres_minus_x_degree = <46>;
 		temp_t2_thres = <15>;
-		temp_t2_thres_plus_x_degree = <0x11>;
+		temp_t2_thres_plus_x_degree = <17>;
 		temp_t1p5_thres = <10>;
 		temp_t1p5_thres_plus_x_degree = <11>;
 		temp_t1_thres = <5>;
@@ -389,7 +389,7 @@
 		temp_tn1_thres_plus_x_degree = <0xfffffff7>;
 		temp_neg_10_thres = <0xfffffff6>;
 		temp_t3_to_t4_fcc = <2350>;
-		temp_t2_to_t3_fcc = <0x173e>;
+		temp_t2_to_t3_fcc = <5950>;
 		temp_t1p5_to_t2_fcc = <3900>;
 		temp_t1_to_t1p5_fcc = <2400>;
 		temp_t0_to_t1_fcc = <950>;
@@ -407,14 +407,20 @@
 		pinctrl-names = "onewire_active", "onewire_sleep";
 		pinctrl-0 = <&onewire_gpio_active>;
 		pinctrl-1 = <&onewire_gpio_sleep>;
-		status = "ok";
+		status = "okay";
 	};
 
 	maxim_ds28e16: maxim_ds28e16 {
 		compatible = "maxim,ds28e16";
 		label = "max_ds28e16";
 		maxim,version = <1>;
-		status = "ok";
+		status = "okay";
+	};
+
+	cp_manager: cp_manager {
+		compatible = "qcom,cp_manager";
+		label = "cp_manager";
+		status = "okay";
 	};
 };
 

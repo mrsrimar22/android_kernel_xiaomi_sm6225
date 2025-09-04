@@ -276,7 +276,7 @@ struct sm_fg_chip {
 
 	/* Battery Data */
 	int battery_table[BATTERY_TABLE_MAX][FG_TABLE_LEN];
-	signed short battery_temp_table[FG_TEMP_TABLE_CNT_MAX]; /* -20~80 Degree */
+	int battery_temp_table[FG_TEMP_TABLE_CNT_MAX]; /* -20~80 Degree */
 	int alpha;
 	int beta;
 	int rs;
@@ -665,25 +665,24 @@ skip_avg:
 
 static int __calculate_battery_temp_ex(struct sm_fg_chip *sm, u16 uval)
 {
-	int i = 0, temp = 0;
-	signed short val = 0;
+	int i, val, temp = 0;
 
+	val = (signed short)uval;
 	if ((uval >= 0x8001) && (uval <= 0x823B)) {
 		pr_info("sp_range uval = 0x%x\n", uval);
-		uval = 0x0000;
+		val = 0;
 	}
 
-	val = uval;
 	if (val >= sm->battery_temp_table[0]) {
 		temp = EX_TEMP_MIN; //Min : -20
-	} else if (val <= sm->battery_temp_table[FG_TEMP_TABLE_CNT_MAX-1]) {
+	} else if (val <= sm->battery_temp_table[FG_TEMP_TABLE_CNT_MAX - 1]) {
 		temp = EX_TEMP_MAX; //Max : 80
 	} else {
 		for (i = 0; i < FG_TEMP_TABLE_CNT_MAX; i++) {
 			if (val >= sm->battery_temp_table[i]) {
 				temp = EX_TEMP_MIN + i; //[ex] ~-20 : -20(skip), -19.9~-19.0 : 19, -18.9~-18 : 18, .., 0.9~0 : 0
 				if ((temp >= 1) && (val != sm->battery_temp_table[i])) //+ range 0~79 degree. In same value case, no needed (temp-1)
-					temp = temp -1; //[ex] 0.1~0.9 : 0, 1.1~1.9 : 1, .., 79.1~79.9 : 79
+					temp = temp - 1; //[ex] 0.1~0.9 : 0, 1.1~1.9 : 1, .., 79.1~79.9 : 79
 				break;
 			}
 		}
@@ -3522,9 +3521,9 @@ static int fg_battery_parse_dt(struct sm_fg_chip *sm)
 	if (ret < 0)
 		pr_err("Can get prop %s (%d)\n", prop_name, ret);
 	for (i = 0; i < FG_TEMP_TABLE_CNT_MAX; i++) {
-		sm->battery_temp_table[i] = battery_temp_table[i];
+		sm->battery_temp_table[i] = (signed short)battery_temp_table[i];
 		/* pr_err("%s = <battery_temp_table[%d] 0x%x>\n",
-				prop_name, i,	battery_temp_table[i]); */
+				prop_name, i, battery_temp_table[i]); */
 	}
 
 	/* Battery Paramter */

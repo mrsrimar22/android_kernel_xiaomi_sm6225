@@ -8,7 +8,7 @@
 
 &soc {
 	xiaomi_touch {
-		status = "ok";
+		status = "okay";
 		compatible = "xiaomi-touch";
 		touch,name = "xiaomi-touch";
 	};
@@ -17,7 +17,7 @@
 &qupv3_se2_i2c {
 	status = "ok";
 	touchscreen {
-		status = "ok";
+		status = "okay";
 		compatible = "focaltech,fts";
 		reg = <0x38>;
 		vcc_i2c-supply = <&L9A>;
@@ -193,7 +193,7 @@
 	};
 
 	pwm_vibrator {
-		status = "ok";
+		status = "okay";
 		compatible = "qcom,lct-pwm-vibrator";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pwm_out_gpio8_default>;
@@ -219,7 +219,7 @@
 	};
 
 	fpc1020 {
-		status = "ok";
+		status = "okay";
 		compatible = "fpc,fpc1020";
 		interrupt-parent = <&tlmm>;
 		interrupts = <83 0>;

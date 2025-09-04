@@ -4217,7 +4217,7 @@ tpdm_turing_llm: tpdm@8861000 {
 	interrupt-parent = <&tlmm>;
 	interrupts = <25 IRQ_TYPE_EDGE_RISING>;
 
-	status = "disable";
+	status = "disabled";
 	reg = <0x88>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pm8008_active &pm8008_interrupt>;
