@@ -36,6 +36,7 @@
 #include <linux/regmap.h>
 #include <linux/random.h>
 #include <linux/ktime.h>
+#include <linux/types.h>
 #include "sm5602_fg.h"
 #include <linux/pmic-voter.h>//"pmic-voter.h"
 //#include "step-chg-jeita.h"
@@ -56,6 +57,8 @@
 #define ENABLE_TEMBASE_ZDSCON
 //#define ENABLE_MIX_NTC_BATTDET
 #define ENABLE_IOCV_ADJ
+#define ENABLE_NTC_COMPENSATION
+#define ENABLE_TEMP_AVG
 
 #ifdef ENABLE_TEMBASE_ZDSCON
 //#define ENABLE_TEM_RATE_CONTROL
@@ -189,6 +192,7 @@ struct batt_params {
 	//struct timespec	last_soc_change_time;
 };
 
+#ifdef ENABLE_TEMP_AVG
 #define BATT_TEMP_AVG_SAMPLES	8
 struct batt_temp_params {
 	bool	update_now;
@@ -200,6 +204,7 @@ struct batt_temp_params {
 	int		batt_temp_avg;
 	int		batt_temp_prev;
 };
+#endif
 
 struct sm_fg_chip;
 
@@ -276,7 +281,7 @@ struct sm_fg_chip {
 
 	/* Battery Data */
 	int battery_table[BATTERY_TABLE_MAX][FG_TABLE_LEN];
-	int battery_temp_table[FG_TEMP_TABLE_CNT_MAX]; /* -20~80 Degree */
+	signed short battery_temp_table[FG_TEMP_TABLE_CNT_MAX]; /* -20~80 Degree */
 	int alpha;
 	int beta;
 	int rs;
@@ -320,6 +325,9 @@ struct sm_fg_chip {
 	int low_temp_n_cal_fact;
 	u32 battery_param_version;
 	int fcm_offset;
+#ifdef ENABLE_NTC_COMPENSATION
+	int rtrace;
+#endif
 
 	struct delayed_work monitor_work;
 	unsigned long last_update;
@@ -347,7 +355,9 @@ struct sm_fg_chip {
 	struct power_supply_desc fg_psy_d;
 
 	struct batt_params param;
+#ifdef ENABLE_TEMP_AVG
 	struct batt_temp_params temp_param;
+#endif
 	//struct delayed_work soc_monitor_work;
 	struct delayed_work overtemp_delay_work; //20220108 : W/A for over 60degree
 	bool overtemp_delay_on; //20220108 : W/A for over 60degree
@@ -357,11 +367,147 @@ struct sm_fg_chip {
 	bool start_low_battery_check;
 };
 
+#ifdef ENABLE_NTC_COMPENSATION
+int tex_sim_uV[43] = {
+	0, 270, 480, 510, 910,
+	1180, 1330, 2120, 2220, 2400,
+	2660, 3290, 4000, 4790, 5910,
+	6650, 7440, 8000, 11670, 11940,
+	13260, 13350, 14370, 16040, 20930,
+	23760, 26370, 28720, 42490, 47060,
+	64860, 75410, 87080, 114290, 126320,
+	152320, 218180, 229150, 383190, 508830,
+	783080, 1024200, 1374360
+};
+
+short tex_sim_adc_code[43] = {
+	0x8001, 0x8D10, 0x8D1B, 0x8D1C, 0x8D30,
+	0x8D3E, 0x8D45, 0x8D6B, 0x8D70, 0x8D78,
+	0x8D86, 0x8DA5, 0x8DC8, 0x8DEE, 0x8E25,
+	0x8E4A, 0x8E70, 0x8E8B, 0x8F40, 0x8F4D,
+	0x8F8F, 0x8F93, 0x8FC4, 0x9018, 0x9106,
+	0x9192, 0x9213, 0x9288, 0x9530, 0x960B,
+	0x997E, 0x9B85, 0x9DD5, 0xA2FB, 0xA573,
+	0xAA5F, 0xB70C, 0xB9E2, 0xD720, 0xEFF9,
+	0x222B, 0x452A, 0x7FC0
+};
+
+int tex_meas_uV[249] = {
+	0, 5000, 10000, 15000, 20000,
+	25000, 30000, 35000, 40000, 45000,
+	50000, 55000, 60000, 65000, 70000,
+	75000, 80000, 85000, 90000, 95000,
+	100000, 105000, 110000, 115000, 120000,
+	125000, 130000, 135000, 140000, 145000,
+	150000, 155000, 160000, 165000, 170000,
+	175000, 180000, 185000, 190000, 195000,
+	200000, 205000, 210000, 215000, 220000,
+	225000, 230000, 235000, 240000, 245000,
+	250000, 255000, 260000, 265000, 270000,
+	275000, 280000, 285000, 290000, 295000,
+	300000, 305000, 310000, 315000, 320000,
+	325000, 330000, 335000, 340000, 345000,
+	350000, 355000, 360000, 365000, 370000,
+	375000, 380000, 385000, 390000, 395000,
+	400000, 405000, 410000, 415000, 420000,
+	425000, 430000, 435000, 440000, 445000,
+	450000, 455000, 460000, 465000, 470000,
+	475000, 480000, 485000, 490000, 495000,
+	500000, 505000, 510000, 515000, 520000,
+	525000, 530000, 535000, 540000, 545000,
+	550000, 555000, 560000, 565000, 570000,
+	575000, 580000, 585000, 590000, 595000,
+	600000, 605000, 610000, 615000, 620000,
+	625000, 630000, 635000, 640000, 645000,
+	650000, 655000, 660000, 665000, 670000,
+	675000, 680000, 685000, 690000, 695000,
+	700000, 705000, 710000, 715000, 720000,
+	725000, 730000, 735000, 740000, 745000,
+	750000, 755000, 760000, 765000, 770000,
+	775000, 780000, 785000, 790000, 795000,
+	800000, 805000, 810000, 815000, 820000,
+	825000, 830000, 835000, 840000, 845000,
+	850000, 855000, 860000, 865000, 870000,
+	875000, 880000, 885000, 890000, 895000,
+	900000, 905000, 910000, 915000, 920000,
+	925000, 930000, 935000, 940000, 945000,
+	950000, 955000, 960000, 965000, 970000,
+	975000, 980000, 985000, 990000, 995000,
+	1000000, 1005000, 1010000, 1015000, 1020000,
+	1025000, 1030000, 1035000, 1040000, 1045000,
+	1050000, 1055000, 1060000, 1065000, 1070000,
+	1075000, 1080000, 1085000, 1090000, 1095000,
+	1100000, 1105000, 1110000, 1115000, 1120000,
+	1125000, 1130000, 1135000, 1140000, 1145000,
+	1150000, 1155000, 1160000, 1165000, 1170000,
+	1175000, 1180000, 1185000, 1190000, 1195000,
+	1200000, 1205000, 1210000, 1215000, 1220000,
+	1225000, 1230000, 1235000, 1240000
+};
+
+short tex_meas_adc_code[249] = {
+	0x8D18, 0x8DEF, 0x8ED4, 0x8FB5, 0x909C,
+	0x917F, 0x9267, 0x9348, 0x9430, 0x9516,
+	0x95FC, 0x96DF, 0x97C2, 0x98AA, 0x998B,
+	0x9A70, 0x9B54, 0x9C3C, 0x9D1F, 0x9E02,
+	0x9EEC, 0x9FD1, 0xA0B2, 0xA198, 0xA27D,
+	0xA35E, 0xA448, 0xA529, 0xA610, 0xA6F0,
+	0xA7DF, 0xA8C0, 0xA9A7, 0xAA8B, 0xAB6D,
+	0xAC53, 0xAD39, 0xAE20, 0xAF04, 0xAFEA,
+	0xB0CB, 0xB1B3, 0xB298, 0xB37E, 0xB461,
+	0xB547, 0xB62C, 0xB712, 0xB7F5, 0xB8D9,
+	0xB9C1, 0xBAA5, 0xBB88, 0xBC6F, 0xBD51,
+	0xBE3B, 0xBF1E, 0xC003, 0xC0E8, 0xC1CE,
+	0xC2B1, 0xC397, 0xC47C, 0xC562, 0xC644,
+	0xC72C, 0xC811, 0xC8F3, 0xC9D6, 0xCABE,
+	0xCB9F, 0xCC88, 0xCD6B, 0xCE52, 0xCF36,
+	0xD01A, 0xD101, 0xD1E6, 0xD2CB, 0xD3AE,
+	0xD492, 0xD578, 0xD65A, 0xD745, 0xD826,
+	0xD90D, 0xD9F2, 0xDAD9, 0xDBBE, 0xDCA1,
+	0xDD85, 0xDE6B, 0xDF4E, 0xE036, 0xE118,
+	0xE1FB, 0xE2E4, 0xE3C5, 0xE4AB, 0xE591,
+	0xE678, 0xE75C, 0xE840, 0xE925, 0xEA0B,
+	0xEAEC, 0xEBD1, 0xECBA, 0xED9E, 0xEE85,
+	0xEF85, 0xF061, 0xF148, 0xF22F, 0xF30A,
+	0xF3F6, 0xF4D9, 0xF5B0, 0xF6A1, 0xF78B,
+	0x9F, 0x17D, 0x26A, 0x34C, 0x43B,
+	0x520, 0x5F5, 0x6E0, 0x7C5, 0x8B5,
+	0x997, 0xA76, 0xB5B, 0xC3D, 0xD23,
+	0xE08, 0xEF4, 0xFDA, 0x10C0, 0x11A2,
+	0x128F, 0x1371, 0x142A, 0x150C, 0x15F7,
+	0x16D4, 0x17BD, 0x189E, 0x1950, 0x1A6A,
+	0x1B4F, 0x1C31, 0x1D1B, 0x1DFB, 0x1EDB,
+	0x1FBF, 0x20AE, 0x2191, 0x2273, 0x235B,
+	0x2445, 0x2530, 0x261B, 0x26FA, 0x27E5,
+	0x28BB, 0x29A4, 0x2A9F, 0x2B6F, 0x2C5C,
+	0x2D38, 0x2E11, 0x2F2A, 0x2FE9, 0x30D7,
+	0x31B9, 0x3296, 0x3381, 0x3467, 0x3553,
+	0x3637, 0x3717, 0x3802, 0x38E4, 0x39CA,
+	0x3AAD, 0x3B91, 0x3C79, 0x3D5B, 0x3E47,
+	0x3F20, 0x400B, 0x40F0, 0x41DB, 0x42C5,
+	0x43A0, 0x447F, 0x4566, 0x4653, 0x472D,
+	0x4815, 0x48F0, 0x49E1, 0x4ACA, 0x4BA8,
+	0x4C8D, 0x4D76, 0x4E5E, 0x4F36, 0x5021,
+	0x5110, 0x51F2, 0x52D3, 0x53BB, 0x54AA,
+	0x558D, 0x5671, 0x5759, 0x583B, 0x5926,
+	0x5A0E, 0x5AEF, 0x5BD5, 0x5CBD, 0x5D9C,
+	0x5E7E, 0x5F67, 0x604B, 0x612D, 0x6210,
+	0x62FB, 0x63E2, 0x64CE, 0x65A5, 0x668E,
+	0x6775, 0x6858, 0x6935, 0x6A22, 0x6B05,
+	0x6BEF, 0x6CCB, 0x6DD5, 0x6E9E, 0x6F6F,
+	0x7050, 0x7127, 0x7208, 0x72E7
+};
+
+#define OVERHEAT_TH_DEG	50
+#define COLD_TH_DEG	0
+#endif
+
 static bool fg_init(struct i2c_client *client);
 static bool fg_reg_init(struct i2c_client *client);
 static int show_registers(struct seq_file *m, void *data);
 static int fg_set_fastcharge_mode(struct sm_fg_chip *sm, bool enable);
 static int calculate_delta_time(ktime_t time_stamp, int *delta_time_s);
+static int fg_read_current(struct sm_fg_chip *sm);
 static void fg_monitor_workfunc(struct work_struct *work);
 
 static int __fg_read_word(struct i2c_client *client, u8 reg, u16 *val)
@@ -622,6 +768,57 @@ static unsigned int fg_read_ocv(struct sm_fg_chip *sm)
 	return ocv; //mV
 }
 
+#ifdef ENABLE_NTC_COMPENSATION
+short interp_meas_to_adc(int len, int X, int *pX, short *pY)
+{
+	int i;
+	s64 slope, tmp;
+	short new_y;
+
+	if (X < pX[0])
+		return pY[0];
+	else if (X > pX[len - 1])
+		return pY[len - 1];
+
+	for (i = 0; i < len - 1; i++) {
+		if (X >= pX[i] && X <= pX[i + 1])
+			break;
+	}
+
+	slope = (s64)(pY[i + 1] - pY[i]) * 100000;
+	slope = div_s64(slope, (s64)(pX[i + 1] - pX[i]));
+	tmp = div_s64(slope * (X - pX[i]), 100000) + pY[i];
+	new_y = (short)tmp;
+
+	return new_y;
+}
+
+int interp_adc_to_meas(int len, short X, short *pX, int *pY)
+{
+	int i;
+	s64 slope, tmp;
+	int new_y;
+
+	if (X < pX[0])
+		return pY[0];
+	else if (X > pX[len - 1])
+		return pY[len - 1];
+
+	for (i = 0; i < len - 1; i++) {
+		if (X >= pX[i] && X <= pX[i + 1])
+			break;
+	}
+
+	slope = (s64)(pY[i + 1] - pY[i]) * 100000;
+	slope = div_s64(slope, (s64)(pX[i + 1] - pX[i]));
+	tmp = div_s64(slope * (X - pX[i]), 100000) + pY[i];
+	new_y = (int)tmp;
+
+	return new_y;
+}
+#endif
+
+#ifdef ENABLE_TEMP_AVG
 #define CHANGE_TEMP_TIME_LIMIT_1	1 //1sec
 #define CHANGE_TEMP_TIME_LIMIT_3	3 //3sec
 #define CHANGE_TEMP_TIME_LIMIT_5	5 //5sec
@@ -662,16 +859,36 @@ static void calculate_average_temperature(struct sm_fg_chip *sm)
 skip_avg:
 	return;
 }
+#endif
 
 static int __calculate_battery_temp_ex(struct sm_fg_chip *sm, u16 uval)
 {
-	int i, val, temp = 0;
+	int i = 0, temp = 0;
+	signed short val = 0;
+#ifdef ENABLE_NTC_COMPENSATION
+	int len_meas_data;
+	signed short code_adc = 0;
+	int code_meas, temp_mv = 0;
+	int rtrace, curr = 0;
+#endif
 
-	val = (signed short)uval;
 	if ((uval >= 0x8001) && (uval <= 0x823B)) {
 		pr_info("sp_range uval = 0x%x\n", uval);
-		val = 0;
+		uval = 0x0000;
 	}
+
+	val = uval;
+
+#ifdef ENABLE_NTC_COMPENSATION
+	len_meas_data = sizeof(tex_meas_uV) / sizeof(int);
+	curr = fg_read_current(sm); //fg_read_current(sm) must return mA
+	rtrace = sm->rtrace; //uohm: 7300uohm = 7.3mohm
+	code_meas = interp_adc_to_meas(len_meas_data, val, tex_meas_adc_code, tex_meas_uV);
+	//Charging: Vthem = Vntc-I*Rtrace, Discharging: Vthem = Vntc+I*Rtrace
+	temp_mv = (code_meas) - (curr * rtrace) / 1000;
+	code_adc = interp_meas_to_adc(len_meas_data, temp_mv, tex_meas_uV, tex_meas_adc_code);
+	val = code_adc;
+#endif
 
 	if (val >= sm->battery_temp_table[0]) {
 		temp = EX_TEMP_MIN; //Min : -20
@@ -680,7 +897,7 @@ static int __calculate_battery_temp_ex(struct sm_fg_chip *sm, u16 uval)
 	} else {
 		for (i = 0; i < FG_TEMP_TABLE_CNT_MAX; i++) {
 			if (val >= sm->battery_temp_table[i]) {
-				temp = EX_TEMP_MIN + i; //[ex] ~-20 : -20(skip), -19.9~-19.0 : 19, -18.9~-18 : 18, .., 0.9~0 : 0
+				temp = EX_TEMP_MIN + i; //[ex] ~-20 : -20(skip), -19.9~-19.0 : 19, -18.9~-18 : 18, .., -0.9~0 : 0
 				if ((temp >= 1) && (val != sm->battery_temp_table[i])) //+ range 0~79 degree. In same value case, no needed (temp-1)
 					temp = temp - 1; //[ex] 0.1~0.9 : 0, 1.1~1.9 : 1, .., 79.1~79.9 : 79
 				break;
@@ -721,8 +938,10 @@ static int fg_read_temperature(struct sm_fg_chip *sm, enum sm_fg_temperature_typ
 		}
 
 		temp = __calculate_battery_temp_ex(sm, data);
+#ifdef ENABLE_TEMP_AVG
 		sm->temp_param.batt_temp = temp;
 		calculate_average_temperature(sm);
+#endif
 		/* W/A >= 61°C */
 		if (temp >= 61) {
 			pr_info("temp >= 61 exceeded, schedule overtemp delay\n");
@@ -1267,10 +1486,17 @@ static int fg_get_batt_health(struct sm_fg_chip *sm)
 {
 	if (!sm->batt_present)
 		return POWER_SUPPLY_HEALTH_UNKNOWN;
+#ifdef ENABLE_NTC_COMPENSATION
+	else if (sm->batt_temp >= OVERHEAT_TH_DEG)
+		return POWER_SUPPLY_HEALTH_OVERHEAT;
+	else if (sm->batt_temp <= COLD_TH_DEG)
+		return POWER_SUPPLY_HEALTH_COLD;
+#else
 	else if (sm->batt_ot)
 		return POWER_SUPPLY_HEALTH_OVERHEAT;
 	else if (sm->batt_ut)
 		return POWER_SUPPLY_HEALTH_COLD;
+#endif
 	else
 		return POWER_SUPPLY_HEALTH_GOOD;
 }
@@ -1518,12 +1744,16 @@ static int fg_get_property(struct power_supply *psy, enum power_supply_property 
 		mutex_lock(&sm->data_lock);
 		if (ret > 0)
 			sm->batt_temp = ret;
+#ifdef ENABLE_TEMP_AVG
 		if (sm->temp_param.batt_temp >= EX_TEMP_MIN && sm->temp_param.batt_temp <= EX_TEMP_MAX)
 			val->intval = sm->temp_param.batt_temp_avg * 10; //1.0degree = 10
 		else if (sm->temp_param.batt_temp == -EINVAL)
 			val->intval = sm->batt_temp * 10; //1.0degree = 10
 		else
 			val->intval = 25 * 10;
+#else
+		val->intval = sm->batt_temp * 10; //1.0degree = 10
+#endif
 		mutex_unlock(&sm->data_lock);
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE_ID:
@@ -3264,6 +3494,13 @@ static int fg_common_parse_dt(struct sm_fg_chip *sm)
 	else
 		sm->shutdown_delay_enable = 0;
 
+#ifdef ENABLE_NTC_COMPENSATION
+	/* Rtrace */
+	rc = of_property_read_u32(np, "sm,rtrace", &sm->rtrace);
+	if (rc < 0)
+		sm->rtrace = 0;
+#endif
+
 	return 0;
 }
 
@@ -3521,7 +3758,7 @@ static int fg_battery_parse_dt(struct sm_fg_chip *sm)
 	if (ret < 0)
 		pr_err("Can get prop %s (%d)\n", prop_name, ret);
 	for (i = 0; i < FG_TEMP_TABLE_CNT_MAX; i++) {
-		sm->battery_temp_table[i] = (signed short)battery_temp_table[i];
+		sm->battery_temp_table[i] = battery_temp_table[i];
 		/* pr_err("%s = <battery_temp_table[%d] 0x%x>\n",
 				prop_name, i, battery_temp_table[i]); */
 	}
@@ -3725,9 +3962,11 @@ static int sm_fg_probe(struct i2c_client *client,
 	sm->param.batt_ma	= -EINVAL;
 	sm->param.batt_soc	= -EINVAL;
 	sm->param.batt_raw_soc	= -EINVAL;
+#ifdef ENABLE_TEMP_AVG
 	sm->temp_param.batt_temp = -EINVAL;
 	sm->temp_param.batt_temp_prev = -EINVAL;
 	sm->temp_param.batt_temp_avg = -EINVAL;
+#endif
 #ifdef CONFIG_BATT_VERIFY_BY_DS28E16
 	sm->max_verify_psy = power_supply_get_by_name("batt_verify");
 	if (!sm->max_verify_psy) {
