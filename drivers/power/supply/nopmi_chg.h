@@ -78,6 +78,7 @@ struct nopmi_chg {
 	int *thermal_mitigation;
 	int thermal_levels;
 	int system_temp_level;
+	bool is_awake;
 };
 
 #endif
