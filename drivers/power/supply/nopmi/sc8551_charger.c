@@ -38,7 +38,7 @@ typedef enum {
 	ADC_TBAT,
 	ADC_TDIE,
 	ADC_MAX_NUM,
-}ADC_CH;
+} ADC_CH;
 
 static int sc8551_adc_lsb[] = {
 	[ADC_IBUS]	= SC8551_IBUS_ADC_LSB,

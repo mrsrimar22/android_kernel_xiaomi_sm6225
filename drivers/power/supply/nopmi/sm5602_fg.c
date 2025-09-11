@@ -878,11 +878,17 @@ static int __calculate_battery_temp_ex(struct sm_fg_chip *sm, u16 uval)
 	}
 
 	val = uval;
-
 #ifdef ENABLE_NTC_COMPENSATION
-	len_meas_data = sizeof(tex_meas_uV) / sizeof(int);
 	curr = fg_read_current(sm); //fg_read_current(sm) must return mA
-	rtrace = sm->rtrace; //uohm: 7300uohm = 7.3mohm
+	if (curr <= 0)
+		rtrace = sm->rtrace;
+	else if (curr <= 5000)
+		rtrace = 6000;
+	else
+		rtrace = 7200;
+	//rtrace: uohm: 7300uohm = 7.3mohm
+
+	len_meas_data = sizeof(tex_meas_uV) / sizeof(int);
 	code_meas = interp_adc_to_meas(len_meas_data, val, tex_meas_adc_code, tex_meas_uV);
 	//Charging: Vthem = Vntc-I*Rtrace, Discharging: Vthem = Vntc+I*Rtrace
 	temp_mv = (code_meas) - (curr * rtrace) / 1000;
@@ -2316,6 +2322,7 @@ static int fg_check_full_status(struct sm_fg_chip *sm)
 		full_check = 0;
 		return interval;
 	}
+	sm->usb_present = prop.intval;
 
 	if (sm->fast_mode) {
 		interval = MONITOR_WORK_1S;
@@ -2324,10 +2331,21 @@ static int fg_check_full_status(struct sm_fg_chip *sm)
 	} else if (sm->batt_temp < SM5602_COLD_TEMP_TERM) {
 		interval = MONITOR_WORK_10S;
 	}
-
 	full_volt = get_effective_result(sm->fv_votable) / 1000 - 20;
-	if (sm->usb_present && sm->batt_soc == SM_RAW_SOC_FULL && sm->batt_volt > full_volt &&
-			sm->batt_curr < 0 && (sm->batt_curr > term_curr * (-1)) && !sm->batt_sw_fc) {
+
+	rc = power_supply_get_property(sm->usb_psy,
+			POWER_SUPPLY_PROP_TERM_CURRENT, &prop);
+	if (!prop.intval) {
+		return interval;
+	}
+	term_curr = prop.intval;
+
+	if ((sm->usb_present) &&
+			(sm->batt_soc == SM_RAW_SOC_FULL) &&
+			(sm->batt_volt > full_volt) &&
+			(sm->batt_curr > 0) &&
+			(sm->batt_curr < term_curr) &&
+			(!sm->batt_sw_fc)) {
 		full_check++;
 		pr_notice("full_check: %d\n", full_check);
 		if (full_check > BAT_FULL_CHECK_TIME) {
@@ -2340,22 +2358,8 @@ static int fg_check_full_status(struct sm_fg_chip *sm)
 		full_check = 0;
 	}
 
-	if (term_curr == last_term)
-		return interval;
-
-	if (!sm->bbc_psy)
-		sm->bbc_psy = power_supply_get_by_name("bbc");
-	if (sm->bbc_psy) {
-		prop.intval = term_curr;
-		pr_notice("sm dymanic set term curr: %d\n", term_curr);
-		rc = power_supply_set_property(sm->bbc_psy,
-				POWER_SUPPLY_PROP_TERMINATION_CURRENT, &prop);
-		if (rc < 0) {
-			pr_err("sm could not set termi current!\n");
-			return interval;
-		}
-	}
-	last_term = term_curr;
+	if (term_curr != last_term)
+		last_term = term_curr;
 
 	return interval;
 }
@@ -2396,9 +2400,9 @@ static int fg_check_recharge_status(struct sm_fg_chip *sm)
 			(sm->charge_status == POWER_SUPPLY_STATUS_FULL) &&
 			(sm->batt_temp < BAT_WARM_TEMP)) {
 		sm->batt_sw_fc = false;
-		prop.intval = true;
-		vote(sm->chg_dis_votable, BMS_FC_VOTER, true, 0);
-		msleep(200);
+		//prop.intval = true;
+		//vote(sm->chg_dis_votable, BMS_FC_VOTER, true, 0);
+		//msleep(200);
 		vote(sm->chg_dis_votable, BMS_FC_VOTER, false, 0);
 		pr_notice("force recharging!\n");
 		/*rc = power_supply_get_property(sm->batt_psy,
