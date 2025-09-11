@@ -58,7 +58,7 @@
 //#define ENABLE_MIX_NTC_BATTDET
 #define ENABLE_IOCV_ADJ
 #define ENABLE_NTC_COMPENSATION
-#define ENABLE_TEMP_AVG
+//#define ENABLE_TEMP_AVG
 
 #ifdef ENABLE_TEMBASE_ZDSCON
 //#define ENABLE_TEM_RATE_CONTROL
@@ -650,7 +650,7 @@ static int fg_read_status(struct sm_fg_chip *sm)
 #if (FG_REMOVE_IRQ == 0)
 static int fg_status_changed(struct sm_fg_chip *sm)
 {
-	cancel_delayed_work(&sm->monitor_work);
+	cancel_delayed_work_sync(&sm->monitor_work);
 	schedule_delayed_work(&sm->monitor_work, 0);
 	power_supply_changed(sm->fg_psy);
 
@@ -744,11 +744,11 @@ static int fg_get_soc_decimal_rate(struct sm_fg_chip *sm)
 
 	for (i = 0; i < sm->dec_rate_len; i += 2) {
 		if (soc < sm->dec_rate_seq[i]) {
-			return sm->dec_rate_seq[i-1];
+			return sm->dec_rate_seq[i - 1];
 		}
 	}
 
-	return sm->dec_rate_seq[sm->dec_rate_len-1];
+	return sm->dec_rate_seq[sm->dec_rate_len - 1];
 }
 
 static unsigned int fg_read_ocv(struct sm_fg_chip *sm)
@@ -942,9 +942,9 @@ static int fg_read_temperature(struct sm_fg_chip *sm, enum sm_fg_temperature_typ
 		sm->temp_param.batt_temp = temp;
 		calculate_average_temperature(sm);
 #endif
-		/* W/A >= 61°C */
-		if (temp >= 61) {
-			pr_info("temp >= 61 exceeded, schedule overtemp delay\n");
+		/* W/A > 61°C */
+		if (temp > 60) {
+			pr_info("temp > 60 exceeded, schedule overtemp delay\n");
 			if (!sm->overtemp_allow_restart) {
 				temp = 60;
 				if (!sm->overtemp_delay_on) {
@@ -971,7 +971,7 @@ static int fg_read_temperature(struct sm_fg_chip *sm, enum sm_fg_temperature_typ
 }
 
 /*
- *	Return : mV
+ * Return : mV
  */
 static int fg_read_volt(struct sm_fg_chip *sm)
 {
@@ -1011,7 +1011,7 @@ static int fg_get_cycle(struct sm_fg_chip *sm)
 		pr_err("read cycle reg fail, ret=%d\n", ret);
 		cycle = pre_cycle;
 	} else {
-		cycle = data & 0x01FF;
+		cycle = (data & 0x01FF);
 	}
 
 	pre_cycle = cycle;
@@ -1040,7 +1040,7 @@ static int fg_read_current(struct sm_fg_chip *sm)
 		}
 
 		//curr = (((float)(data & 0x7FFF) * 1000 / 4088) / ((float)rsns / 10));
-		temp = div_s64((data & 0x7FFF) * 1000 , 4088) * (10 / rsns);
+		temp = div_s64((data & 0x7FFF) * 1000, 4088) * (10 / rsns);
 		curr = temp;
 		if (data & 0x8000)
 			curr *= -1;
@@ -1109,7 +1109,7 @@ static int fg_read_rmc(struct sm_fg_chip *sm)
 
 static int get_battery_status(struct sm_fg_chip *sm)
 {
-	union power_supply_propval ret = {0,};
+	union power_supply_propval ret = {0, };
 	int rc;
 
 	if (!sm->batt_psy)
@@ -1117,7 +1117,7 @@ static int get_battery_status(struct sm_fg_chip *sm)
 	if (sm->batt_psy) {
 		/* if battery has been registered, use the status property */
 		rc = power_supply_get_property(sm->batt_psy,
-					POWER_SUPPLY_PROP_STATUS, &ret);
+				POWER_SUPPLY_PROP_STATUS, &ret);
 		if (rc) {
 			pr_err("battery does not export status: %d\n", rc);
 			return POWER_SUPPLY_STATUS_UNKNOWN;
@@ -1233,8 +1233,7 @@ static void fg_vbatocv_check(struct sm_fg_chip *sm)
 
 #if defined(ENABLE_VLCM_MODE)
 	if (((abs(sm->batt_curr) < 50) && (abs(sm->batt_curr) > 10)) ||
-			((sm->is_charging) && (sm->batt_curr < (top_off)) &&
-			(sm->batt_curr > (top_off / 3)) && (sm->batt_soc >= 900))) {
+			((sm->is_charging) && (sm->batt_curr < (top_off)) && (sm->batt_curr > (top_off / 3)) && (sm->batt_soc >= 900))) {
 		if (abs(sm->batt_ocv - sm->batt_volt) > 30) {
 			sm->iocv_error_count++;
 		}
@@ -1246,8 +1245,7 @@ static void fg_vbatocv_check(struct sm_fg_chip *sm)
 		sm->iocv_error_count = 0;
 	}
 #else
-	if ((sm->is_charging) && (sm->batt_curr < (top_off)) &&
-			(sm->batt_curr > (top_off / 3)) && (sm->batt_soc >= 900)) {
+	if ((sm->is_charging) && (sm->batt_curr < (top_off)) && (sm->batt_curr > (top_off / 3)) && (sm->batt_soc >= 900)) {
 		if (abs(sm->batt_ocv - sm->batt_volt) > 30) {
 			sm->iocv_error_count++;
 		}
@@ -1269,8 +1267,7 @@ static void fg_vbatocv_check(struct sm_fg_chip *sm)
 			pr_info("mode change to RS m mode ox%x\n", data);
 		}
 	} else {
-		if ((sm->p_batt_voltage < sm->n_tem_poff) &&
-				(sm->batt_volt < sm->n_tem_poff) && (!sm->is_charging)) {
+		if ((sm->p_batt_voltage < sm->n_tem_poff) && (sm->batt_volt < sm->n_tem_poff) && (!sm->is_charging)) {
 			if ((sm->p_batt_voltage < (sm->n_tem_poff - sm->n_tem_poff_offset)) &&
 					(sm->batt_volt < (sm->n_tem_poff - sm->n_tem_poff_offset))) {
 				fg_write_word(sm, FG_REG_RS_2, data >> 1);
@@ -1295,7 +1292,7 @@ static int fg_cal_carc(struct sm_fg_chip *sm)
 	int curr_cal = 0, p_curr_cal = 0, n_curr_cal = 0, p_delta_cal = 0, n_delta_cal = 0, p_fg_delta_cal = 0, n_fg_delta_cal = 0, temp_curr_offset = 0;
 	int temp_gap, fg_temp_gap = 0;
 	int ret = 0;
-	u16 data[8] = {0,};
+	u16 data[8] = {0, };
 #ifdef ENABLE_MIX_COMP
 	u16 temp_aging_ctrl = 0;
 #endif
@@ -1311,7 +1308,6 @@ static int fg_cal_carc(struct sm_fg_chip *sm)
 
 	//fg_temp_gap = (sm->batt_temp/10) - sm->temp_std;
 	fg_temp_gap = sm->batt_temp - sm->temp_std;
-
 	temp_curr_offset = sm->curr_offset;
 	if (sm->en_high_fg_temp_offset && (fg_temp_gap > 0)) {
 		if (temp_curr_offset & 0x0080) {
@@ -1352,6 +1348,7 @@ static int fg_cal_carc(struct sm_fg_chip *sm)
 		p_fg_delta_cal = (fg_temp_gap / sm->low_fg_temp_p_cal_denom) * sm->low_fg_temp_p_cal_fact;
 		n_fg_delta_cal = (fg_temp_gap / sm->low_fg_temp_n_cal_denom) * sm->low_fg_temp_n_cal_fact;
 	}
+
 	p_curr_cal = p_curr_cal + (p_fg_delta_cal);
 	n_curr_cal = n_curr_cal + (n_fg_delta_cal);
 
@@ -1433,7 +1430,7 @@ static int fg_cal_carc(struct sm_fg_chip *sm)
 		return ret;
 	} else {
 		pr_info("0x06=0x%x, 0x28=0x%x, 0x83=0x%x, 0x84=0x%x, 0x86=0x%x, 0x87=0x%x, 0x93=0x%x, 0x82=0x%x\n",
-				data[0],data[1], data[2],data[3], data[4],data[5], data[6], data[7]);
+				data[0], data[1], data[2],data[3], data[4],data[5], data[6], data[7]);
 	}
 
 	ret = fg_read_word(sm, 0x82, &data[0]);
@@ -1576,11 +1573,12 @@ static enum power_supply_property fg_props[] = {
 };
 
 #define SHUTDOWN_DELAY_VOL	3300
-static int fg_get_property(struct power_supply *psy, enum power_supply_property psp,
-					union power_supply_propval *val)
+static int fg_get_property(struct power_supply *psy,
+		enum power_supply_property psp,
+		union power_supply_propval *val)
 {
 	struct sm_fg_chip *sm = power_supply_get_drvdata(psy);
-	union power_supply_propval b_val = {0,};
+	union power_supply_propval b_val = {0, };
 	int ret;
 	int vbat_uv;
 	static bool last_shutdown_delay;
@@ -1700,6 +1698,7 @@ static int fg_get_property(struct power_supply *psy, enum power_supply_property 
 				} else {
 					/* When the vbat is greater than 3400mv, SOC still reported 1 to avoid high shutdown volt */
 					if (vbat_uv > 3400) {
+						sm->shutdown_delay = false;
 						val->intval = 1;
 					} else if (vbat_uv > 3300) {
 						if (!sm->is_charging) {
@@ -1887,7 +1886,7 @@ static void fg_external_power_changed(struct power_supply *psy)
 {
 	struct sm_fg_chip *sm = power_supply_get_drvdata(psy);
 
-	cancel_delayed_work(&sm->monitor_work);
+	cancel_delayed_work_sync(&sm->monitor_work);
 	schedule_delayed_work(&sm->monitor_work, 0);
 }
 
@@ -2188,8 +2187,8 @@ static void fg_refresh_status(struct sm_fg_chip *sm)
 	bool last_batt_ot;
 	bool last_batt_ut;
 	static int last_soc, last_temp;
-	union power_supply_propval b_val = {0,};
-	union power_supply_propval u_val = {0,};
+	union power_supply_propval b_val = {0, };
+	union power_supply_propval u_val = {0, };
 	int cp_vbat = 0, ret;
 
 	last_batt_inserted	= sm->batt_present;
@@ -2198,7 +2197,6 @@ static void fg_refresh_status(struct sm_fg_chip *sm)
 	last_batt_ut		= sm->batt_ut;
 
 	fg_read_status(sm);
-
 	if (!last_batt_inserted && sm->batt_present) {/* battery inserted */
 		pr_info("Battery inserted\n");
 	} else if (last_batt_inserted && !sm->batt_present) {/* battery removed */
@@ -2255,26 +2253,29 @@ static void fg_refresh_status(struct sm_fg_chip *sm)
 		if (!sm->usb_psy)
 			sm->usb_psy = power_supply_get_by_name("usb");
 		if (sm->usb_psy) {
-			ret = power_supply_get_property(sm->usb_psy, POWER_SUPPLY_PROP_ONLINE, &u_val);
+			ret = power_supply_get_property(sm->usb_psy,
+					POWER_SUPPLY_PROP_ONLINE, &u_val);
 			if (ret < 0) {
 				pr_err("sm could not get prop online!\n");
+				u_val.intval = 0; // fallback
 			}
 		}
+
 		if (!u_val.intval) {
 			/*check vbat when reach power-off threshold*/
-			if (!sm->low_battery_power) {
-				if ((sm->batt_soc < 10 && sm->batt_volt < 3400) &&
-						(!sm->start_low_battery_check)) {
-					sm->start_low_battery_check =true;
+			if ((sm->batt_soc < 10 && sm->batt_volt < 3400) && !sm->low_battery_power) {
+				if (!sm->start_low_battery_check) {
+					sm->start_low_battery_check = true;
 					schedule_delayed_work(&sm->LowBatteryCheckWork, 0);
 				}
-			} else {
-				sm->param.batt_raw_soc = 0;
-				sm->batt_soc = 0;
-				cancel_delayed_work(&sm->LowBatteryCheckWork);
+			} else if ((sm->batt_soc >= 10 && sm->batt_volt >= 3400) &&
+					(sm->low_battery_power || sm->start_low_battery_check)) {
+				cancel_delayed_work_sync(&sm->LowBatteryCheckWork);
+				sm->low_battery_power = false;
+				sm->start_low_battery_check = false;
 			}
-		} else {
-			cancel_delayed_work(&sm->LowBatteryCheckWork);
+		} else if (u_val.intval && (sm->low_battery_power || sm->start_low_battery_check)) {
+			cancel_delayed_work_sync(&sm->LowBatteryCheckWork);
 			sm->start_low_battery_check =false;
 			sm->low_battery_power = false;
 		}
@@ -2291,7 +2292,6 @@ static void fg_refresh_status(struct sm_fg_chip *sm)
 #define SM5602_FFC_FULL_FV				8940
 #define SM5602_NOR_FULL_FV				8880
 #define BAT_FULL_CHECK_TIME				1
-
 static int fg_check_full_status(struct sm_fg_chip *sm)
 {
 	union power_supply_propval prop = {0, };
@@ -2326,7 +2326,6 @@ static int fg_check_full_status(struct sm_fg_chip *sm)
 	}
 
 	full_volt = get_effective_result(sm->fv_votable) / 1000 - 20;
-
 	if (sm->usb_present && sm->batt_soc == SM_RAW_SOC_FULL && sm->batt_volt > full_volt &&
 			sm->batt_curr < 0 && (sm->batt_curr > term_curr * (-1)) && !sm->batt_sw_fc) {
 		full_check++;
@@ -2349,12 +2348,12 @@ static int fg_check_full_status(struct sm_fg_chip *sm)
 	if (sm->bbc_psy) {
 		prop.intval = term_curr;
 		pr_notice("sm dymanic set term curr: %d\n", term_curr);
-		/*rc = power_supply_get_property(sm->bbc_psy,
+		rc = power_supply_set_property(sm->bbc_psy,
 				POWER_SUPPLY_PROP_TERMINATION_CURRENT, &prop);
 		if (rc < 0) {
 			pr_err("sm could not set termi current!\n");
 			return interval;
-		}*/
+		}
 	}
 	last_term = term_curr;
 
@@ -2362,7 +2361,6 @@ static int fg_check_full_status(struct sm_fg_chip *sm)
 }
 
 #define BAT_WARM_TEMP	48
-
 static int fg_check_recharge_status(struct sm_fg_chip *sm)
 {
 	int rc;
@@ -2448,7 +2446,7 @@ void stop_fg_monitor_work(struct power_supply *psy)
 	struct sm_fg_chip *sm = power_supply_get_drvdata(psy);
 
 	pr_info("entry\n");
-	cancel_delayed_work(&sm->monitor_work);
+	cancel_delayed_work_sync(&sm->monitor_work);
 }
 EXPORT_SYMBOL(stop_fg_monitor_work);
 
@@ -2494,10 +2492,10 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 {
 	bool only_lb = false, sign_i_offset = 0; //valid_cb=false,
 	int roop_start = 0, roop_max = 0, i = 0, cb_last_index = 0, cb_pre_last_index = 0;
-	int lb_v_buffer[FG_INIT_B_LEN+1] = {0, 0, 0, 0, 0, 0, 0, 0};
-	int lb_i_buffer[FG_INIT_B_LEN+1] = {0, 0, 0, 0, 0, 0, 0, 0};
-	int cb_v_buffer[FG_INIT_B_LEN+1] = {0, 0, 0, 0, 0, 0, 0, 0};
-	int cb_i_buffer[FG_INIT_B_LEN+1] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int lb_v_buffer[FG_INIT_B_LEN + 1] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int lb_i_buffer[FG_INIT_B_LEN + 1] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int cb_v_buffer[FG_INIT_B_LEN + 1] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int cb_i_buffer[FG_INIT_B_LEN + 1] = {0, 0, 0, 0, 0, 0, 0, 0};
 	int i_offset_margin = 0x14, i_vset_margin = 0x67;
 	int v_max = 0, v_min = 0, v_sum = 0, lb_v_avg = 0, cb_v_avg = 0, lb_v_set = 0, lb_i_set = 0, i_offset = 0;
 	int i_max = 0, i_min = 0, i_sum = 0, lb_i_avg = 0, cb_i_avg = 0, cb_v_set = 0, cb_i_set = 0;
@@ -2508,8 +2506,8 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 
 	ret = fg_read_word(sm, FG_REG_END_V_IDX, &data);
 	if (ret < 0) {
-			pr_err("Failed to read FG_REG_END_V_IDX, ret=%d\n", ret);
-			return ret;
+		pr_err("Failed to read FG_REG_END_V_IDX, ret=%d\n", ret);
+		return ret;
 	} else {
 		pr_info("iocv_status_read = addr: 0x%x, data: 0x%x\n", FG_REG_END_V_IDX, data);
 	}
@@ -2563,8 +2561,8 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 			i_ret = -(i_ret & 0x3FFF);
 		}
 
-		lb_v_buffer[i-roop_start] = v_ret;
-		lb_i_buffer[i-roop_start] = i_ret;
+		lb_v_buffer[i - roop_start] = v_ret;
+		lb_i_buffer[i - roop_start] = i_ret;
 
 		if (i == roop_start) {
 			v_max = v_ret;
@@ -2611,14 +2609,14 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 	lb_v_avg = v_sum / (roop_max - 2);
 	lb_i_avg = i_sum / (roop_max - 2);
 
-	if (abs(lb_i_buffer[roop_max-1]) < i_vset_margin) {
-		if (abs(lb_i_buffer[roop_max-2]) < i_vset_margin) {
-			lb_v_set = MAXVAL(lb_v_buffer[roop_max-2], lb_v_buffer[roop_max-1]);
-			if (abs(lb_i_buffer[roop_max-3]) < i_vset_margin) {
-				lb_v_set = MAXVAL(lb_v_buffer[roop_max-3], lb_v_set);
+	if (abs(lb_i_buffer[roop_max - 1]) < i_vset_margin) {
+		if (abs(lb_i_buffer[roop_max - 2]) < i_vset_margin) {
+			lb_v_set = MAXVAL(lb_v_buffer[roop_max - 2], lb_v_buffer[roop_max - 1]);
+			if (abs(lb_i_buffer[roop_max - 3]) < i_vset_margin) {
+				lb_v_set = MAXVAL(lb_v_buffer[roop_max - 3], lb_v_set);
 			}
 		} else {
-			lb_v_set = lb_v_buffer[roop_max-1];
+			lb_v_set = lb_v_buffer[roop_max - 1];
 		}
 	} else {
 		lb_v_set = lb_v_avg;
@@ -2632,10 +2630,10 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 		lb_i_set = (lb_i_buffer[2] + lb_i_buffer[3]) / 2;
 	}
 
-	if ((abs(lb_i_buffer[roop_max-1]) < i_offset_margin) && (abs(lb_i_set) < i_offset_margin)) {
-		lb_i_set = MAXVAL(lb_i_buffer[roop_max-1], lb_i_set);
-	} else if (abs(lb_i_buffer[roop_max-1]) < i_offset_margin) {
-		lb_i_set = lb_i_buffer[roop_max-1];
+	if ((abs(lb_i_buffer[roop_max - 1]) < i_offset_margin) && (abs(lb_i_set) < i_offset_margin)) {
+		lb_i_set = MAXVAL(lb_i_buffer[roop_max - 1], lb_i_set);
+	} else if (abs(lb_i_buffer[roop_max - 1]) < i_offset_margin) {
+		lb_i_set = lb_i_buffer[roop_max - 1];
 	} else if (abs(lb_i_set) < i_offset_margin) {
 		//lb_i_set = lb_i_set;
 	} else {
@@ -2703,8 +2701,8 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 				i_ret = -(i_ret & 0x3FFF);
 			}
 
-			cb_v_buffer[i-roop_start] = v_ret;
-			cb_i_buffer[i-roop_start] = i_ret;
+			cb_v_buffer[i - roop_start] = v_ret;
+			cb_i_buffer[i - roop_start] = i_ret;
 
 			if (i == roop_start) {
 				v_max = v_ret;
@@ -2837,8 +2835,8 @@ static int fg_calculate_iocv(struct sm_fg_chip *sm)
 	}
 #endif
 
-	if (ret > sm->battery_table[BATTERY_TABLE0][FG_TABLE_LEN-1]) {
-		ret = sm->battery_table[BATTERY_TABLE0][FG_TABLE_LEN-1];
+	if (ret > sm->battery_table[BATTERY_TABLE0][FG_TABLE_LEN - 1]) {
+		ret = sm->battery_table[BATTERY_TABLE0][FG_TABLE_LEN - 1];
 	} else if (ret < sm->battery_table[BATTERY_TABLE0][0]) {
 		ret = sm->battery_table[BATTERY_TABLE0][0] + 0x10;
 	}
@@ -2978,7 +2976,7 @@ static bool fg_reg_init(struct i2c_client *client)
 	}
 
 	do {
-		ret = fg_write_word(sm, sm->regs[SM_FG_REG_PARAM_CTRL], (FG_PARAM_UNLOCK_CODE | ((sm->battery_table_num & 0x0003) << 6) | (FG_TABLE_LEN-1)));
+		ret = fg_write_word(sm, sm->regs[SM_FG_REG_PARAM_CTRL], (FG_PARAM_UNLOCK_CODE | ((sm->battery_table_num & 0x0003) << 6) | (FG_TABLE_LEN - 1)));
 		if (ret < 0) {
 			pr_err("Failed to write param_ctrl unlock, ret=%d\n", ret);
 			return ret;
@@ -3275,7 +3273,7 @@ static bool fg_reg_init(struct i2c_client *client)
 	}
 
 	msleep(20);
-	ret = fg_write_word(sm, sm->regs[SM_FG_REG_PARAM_CTRL], ((FG_PARAM_LOCK_CODE | (sm->battery_table_num & 0x0003) << 6) | (FG_TABLE_LEN-1)));
+	ret = fg_write_word(sm, sm->regs[SM_FG_REG_PARAM_CTRL], ((FG_PARAM_LOCK_CODE | (sm->battery_table_num & 0x0003) << 6) | (FG_TABLE_LEN - 1)));
 	if (ret < 0) {
 		pr_err("Failed to write param_ctrl lock, ret=%d\n", ret);
 		return ret;
@@ -3407,7 +3405,7 @@ static int fg_common_parse_dt(struct sm_fg_chip *sm)
 	len = 0;
 	p = of_get_property(np, "sm,soc_decimal_rate", &len);
 	if (p) {
-		sm->dec_rate_seq = kzalloc(len,GFP_KERNEL);
+		sm->dec_rate_seq = kzalloc(len, GFP_KERNEL);
 		sm->dec_rate_len = len / sizeof(*sm->dec_rate_seq);
 
 		rc = of_property_read_u32_array(np, "sm,soc_decimal_rate", sm->dec_rate_seq, sm->dec_rate_len);
@@ -3837,11 +3835,11 @@ static void LowBatteryCheckFunc(struct work_struct *work)
 	int i, low_soc_count = 0;
 
 	for (i = 0; i < 3; i++) {
-		if (sm->batt_soc < 10 && sm->batt_volt < 3400)
-			low_soc_count++;
-
 		sm->batt_volt = fg_read_volt(sm);
 		sm->batt_soc = fg_read_soc(sm);
+
+		if (sm->batt_soc < 10 && sm->batt_volt < 3400)
+			low_soc_count++;
 
 		if (i < 2)
 			msleep(1000);

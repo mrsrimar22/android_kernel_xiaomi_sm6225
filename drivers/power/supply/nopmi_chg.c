@@ -635,7 +635,7 @@ static int nopmi_usb_get_prop(struct power_supply *psy,
 		union power_supply_propval *val)
 {
 	int ret = 0;
-	struct nopmi_chg *nopmi_chg = power_supply_get_drvdata(psy);
+	//struct nopmi_chg *nopmi_chg = power_supply_get_drvdata(psy);
 
 	if (NOPMI_CHARGER_IC_MAXIM == nopmi_get_charger_ic_type()) {
 		ret = max77729_usb_get_property(psy, psp, val);
@@ -757,8 +757,9 @@ static int nopmi_usb_set_prop(struct power_supply *psy,
 		enum power_supply_property psp,
 		const union power_supply_propval *val)
 {
+	struct nopmi_chg *nopmi_chg = power_supply_get_drvdata(psy);
 	int rc, ret = 0;
-	union power_supply_propval value;
+	union power_supply_propval value = {0, };
 
 	if (NOPMI_CHARGER_IC_MAXIM == nopmi_get_charger_ic_type()) {
 		ret = max77729_usb_set_property(psy, psp, val);
