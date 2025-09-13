@@ -328,6 +328,7 @@ struct sm_fg_chip {
 #ifdef ENABLE_NTC_COMPENSATION
 	int rtrace;
 #endif
+	int battery_id;
 
 	struct delayed_work monitor_work;
 	unsigned long last_update;
@@ -729,7 +730,7 @@ static int fg_get_soc_decimal(struct sm_fg_chip *sm)
 
 	raw_soc = fg_read_soc(sm);
 
-	return raw_soc % 10 * 10;
+	return raw_soc % 100;
 }
 
 static int fg_get_soc_decimal_rate(struct sm_fg_chip *sm)
@@ -880,12 +881,15 @@ static int __calculate_battery_temp_ex(struct sm_fg_chip *sm, u16 uval)
 	val = uval;
 #ifdef ENABLE_NTC_COMPENSATION
 	curr = fg_read_current(sm); //fg_read_current(sm) must return mA
-	if (curr <= 0)
+	if (curr <= 1500) {
 		rtrace = sm->rtrace;
-	else if (curr <= 5000)
-		rtrace = 6000;
-	else
+	} else if (curr <= 3000) {
+		rtrace = sm->rtrace * 2;
+	} else if (curr <= 4500) {
+		rtrace = sm->rtrace * 3;
+	} else {
 		rtrace = 7200;
+	}
 	//rtrace: uohm: 7300uohm = 7.3mohm
 
 	len_meas_data = sizeof(tex_meas_uV) / sizeof(int);
@@ -1506,7 +1510,7 @@ static int fg_get_batt_health(struct sm_fg_chip *sm)
 
 static int get_battery_id(struct sm_fg_chip *sm)
 {
-	static int battery_id = 0;
+	int battery_id = BATTERY_VENDOR_UNKNOWN;
 	union power_supply_propval pval = {0, };
 	u8 page0_buf[16];
 	int rc;
@@ -1533,17 +1537,21 @@ static int get_battery_id(struct sm_fg_chip *sm)
 		} else {
 			memcpy(page0_buf, pval.arrayval, 16);
 			pr_debug("PAGE0 raw: %*ph\n", 16, page0_buf);
-			if (page0_buf[0] == 'N') {
+			if (page0_buf[0] == 0xFF || page0_buf[0] == 'N') {
 				battery_id = BATTERY_VENDOR_NVT;
 			} else if (page0_buf[0] == 'C' || page0_buf[0] == 'V') {
 				battery_id = BATTERY_VENDOR_GY;
 			} else if (page0_buf[0] == 'L' || page0_buf[0] == 'X' || page0_buf[0] == 'S') {
 				battery_id = BATTERY_VENDOR_XWD;
+			} else {
+				pr_warn("Unknown PAGE0 signature: 0x%02x\n", page0_buf[0]);
+				battery_id = BATTERY_VENDOR_UNKNOWN;
 			}
 		}
 	}
 
 	pr_info("battery_id = %d\n", battery_id);
+	sm->battery_id = battery_id;
 	return battery_id;
 }
 
@@ -1762,7 +1770,10 @@ static int fg_get_property(struct power_supply *psy,
 		mutex_unlock(&sm->data_lock);
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE_ID:
-		val->intval = get_battery_id(sm);
+		if (sm->battery_id == BATTERY_VENDOR_UNKNOWN) {
+			sm->battery_id = get_battery_id(sm);
+		}
+		val->intval = sm->battery_id;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = fg_read_fcc(sm);
@@ -2460,34 +2471,59 @@ EXPORT_SYMBOL(stop_fg_monitor_work);
 static bool fg_check_reg_init_need(struct i2c_client *client)
 {
 	struct sm_fg_chip *sm = i2c_get_clientdata(client);
-	int ret = 0;
+	int i, ret;
 	u16 data = 0;
 	u16 param_ver = 0;
 
 	ret = fg_read_word(sm, sm->regs[SM_FG_REG_FG_OP_STATUS], &data);
 	if (ret < 0) {
 		pr_err("Failed to read param_ctrl unlock, ret=%d\n", ret);
-		return ret;
-	} else {
-		pr_info("FG_OP_STATUS = 0x%x\n", data);
-		ret = fg_read_word(sm, FG_PARAM_VERION, &param_ver);
-		if (ret < 0) {
-				pr_err("Failed to read FG_PARAM_VERION, ret=%d\n", ret);
-				return ret;
-		}
+		return false;
+	}
 
-		pr_info("param_ver = 0x%x, common_param_version = 0x%x, battery_param_version = 0x%x\n",
-				param_ver, sm->common_param_version, sm->battery_param_version);
-		if (((data & INIT_CHECK_MASK) == DISABLE_RE_INIT) &&
-				(((param_ver & COMMON_PARAM_MASK) >> COMMON_PARAM_SHIFT) >= sm->common_param_version) &&
-				((param_ver & BATTERY_PARAM_MASK) >= sm->battery_param_version)) {
+	pr_info("FG_OP_STATUS = 0x%x\n", data);
+
+	ret = fg_read_word(sm, FG_PARAM_VERION, &param_ver);
+	if (ret < 0) {
+		pr_err("Failed to read FG_PARAM_VERION, ret=%d\n", ret);
+		return false;
+	}
+
+	pr_info("param_ver = 0x%x, common_param_version = 0x%x, battery_param_version = 0x%x\n",
+			param_ver, sm->common_param_version, sm->battery_param_version);
+
+	if ((((param_ver & COMMON_PARAM_MASK) >> COMMON_PARAM_SHIFT) >= sm->common_param_version) &&
+			((param_ver & BATTERY_PARAM_MASK) >= sm->battery_param_version)) {
+		if ((data & INIT_CHECK_MASK) == DISABLE_RE_INIT) {
 			pr_info("SM_FG_REG_FG_OP_STATUS: 0x%x, return FALSE NO init need\n", data);
-			return 0;
+			return false;
 		} else {
 			pr_info("SM_FG_REG_FG_OP_STATUS: 0x%x, return TRUE init need!!!!\n", data);
-			return 1;
+			return true;
 		}
 	}
+
+	if ((data & INIT_CHECK_MASK) == DISABLE_RE_INIT) {
+		// Step1. Turn off charger
+		// Step2. FG Reset
+		for (i = 0; i < 3; i++) {
+			ret = fg_reset(sm);
+			if (ret == 0)
+				break;
+			pr_err("fail to do reset(%d), retry %d\n", ret, i+1);
+		}
+
+		if (ret < 0) {
+			pr_err("reset fail 3 times!!!, return FALSE!!!\n");
+			return false;
+		}
+
+		pr_info("SM_FG_REG_FG_OP_STATUS: 0x%x, return TRUE init need because diff_ver SW reset!!!\n", data);
+		return true;
+	}
+
+	pr_info("SM_FG_REG_FG_OP_STATUS: 0x%x, return TRUE init need!!!\n", data);
+	return true;
 }
 
 #define MINVAL(a, b) ((a <= b) ? a : b)
@@ -3325,7 +3361,7 @@ static bool fg_check_device_id(struct i2c_client *client)
 static bool fg_init(struct i2c_client *client)
 {
 	int ret;
-	struct sm_fg_chip *sm = i2c_get_clientdata(client);
+	//struct sm_fg_chip *sm = i2c_get_clientdata(client);
 
 	/*sm5602 i2c read check*/
 	ret = fg_get_device_id(client);
@@ -3335,12 +3371,15 @@ static bool fg_init(struct i2c_client *client)
 	}
 
 	if (fg_check_reg_init_need(client)) {
-		ret = fg_reset(sm);
+		/*ret = fg_reset(sm);
 		if (ret < 0) {
 			pr_err("fail to do reset(%d)\n", ret);
 			return false;
-		}
+		}*/
+		pr_info("performing fg_reg_init\n");
 		fg_reg_init(client);
+	} else {
+		pr_info("skip fg_reg_init (no init needed)\n");
 	}
 
 	//sm->is_charging = (sm->batt_current > 9) ? true : false;
@@ -3511,7 +3550,7 @@ static int fg_battery_parse_dt(struct sm_fg_chip *sm)
 	struct device *dev = &sm->client->dev;
 	struct device_node *np = dev->of_node;
 	char prop_name[PROPERTY_NAME_SIZE];
-	int battery_id = -1;
+	int battery_id = BATTERY_VENDOR_UNKNOWN;
 	int battery_temp_table[FG_TEMP_TABLE_CNT_MAX];
 	int table[FG_TABLE_LEN];
 	int rs_value[4];
@@ -3537,7 +3576,7 @@ static int fg_battery_parse_dt(struct sm_fg_chip *sm)
 	/* battery_id*/
 	if (of_property_read_u32(np, "battery,id", &battery_id) < 0)
 		pr_info("not battery, id property\n");
-	if (battery_id == -1)
+	if (battery_id == BATTERY_VENDOR_UNKNOWN)
 		battery_id = get_battery_id(sm);
 	pr_info("battery id = %d\n", battery_id);
 

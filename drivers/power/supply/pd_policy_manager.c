@@ -312,7 +312,7 @@ static int pca_pps_tcp_notifier_call(struct notifier_block *nb,
 			__pdpm->is_pps_en_unlock = false;
 			break;
 		case PD_CONNECT_PE_READY_SNK_APDO:
-			if (__pdpm->hrst_cnt <= 5) {
+			if (__pdpm->hrst_cnt < 5) {
 				pr_err("en unlock\n");
 				__pdpm->is_pps_en_unlock = true;
 			}
