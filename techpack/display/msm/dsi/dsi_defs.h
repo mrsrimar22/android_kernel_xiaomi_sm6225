@@ -307,14 +307,6 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_POST_TIMING_SWITCH,
 	DSI_CMD_SET_QSYNC_ON,
 	DSI_CMD_SET_QSYNC_OFF,
-	DSI_CMD_SET_DISP_HBM_ON,
-	DSI_CMD_SET_DISP_HBM_OFF,
-	DSI_CMD_SET_HBM1_ON,
-	DSI_CMD_SET_HBM2_ON,
-	DSI_CMD_SET_DOZE_HBM,
-	DSI_CMD_SET_DOZE_LBM,
-	DSI_CMD_SET_DISP_BC_90HZ,
-	DSI_CMD_SET_DISP_BC_60HZ,
 	DSI_CMD_SET_MAX
 };
 
@@ -523,7 +515,6 @@ struct dsi_host_common_cfg {
 	enum dsi_phy_type phy_type;
 	struct dsi_split_link_config split_link;
 	u32 byte_intf_clk_div;
-	u32 clk_strength;
 };
 
 /**
