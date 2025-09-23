@@ -1,0 +1,5 @@
+[submodule "KernelSU"]
+	path = KernelSU
+	url = https://github.com/backslashxx/KernelSU.git
+	branch = 12124+155
+	ignore = all
