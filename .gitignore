@@ -143,3 +143,6 @@ Android.bp
 # Ignore shell scripts on root dir
 /*.sh
 
+# Ignore KSU
+/KernelSU/
+
