@@ -1645,8 +1645,8 @@ static inline int msm_vidc_power_save_mode_enable(struct msm_vidc_inst *inst,
 			(void *)inst->session, prop_id, pdata,
 			sizeof(hfi_perf_mode));
 	if (rc) {
-		s_vpr_e(inst->sid, "%s: Failed to set power save mode\n",
-			__func__, inst);
+		s_vpr_e(inst->sid, "%s: Failed to set power save mode, rc=%d\n",
+			__func__, rc);
 		return rc;
 	}
 	inst->flags = enable ?
