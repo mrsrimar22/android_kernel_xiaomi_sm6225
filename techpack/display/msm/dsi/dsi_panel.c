@@ -371,6 +371,8 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 		}
 	}
 
+	usleep_range(10000, 10100);
+
 	if (r_config->count) {
 		rc = gpio_direction_output(r_config->reset_gpio,
 			r_config->sequence[0].level);
@@ -497,12 +499,14 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
 
-	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
-		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
-
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
+
+	usleep_range(11000, 11010);
+
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
+		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -3289,11 +3293,59 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 	struct drm_panel_esd_config *esd_config;
 	struct dsi_parser_utils *utils = &panel->utils;
 	u8 *esd_mode = NULL;
+	unsigned long raw_flags = 0;
+	unsigned long irqflags = 0;
+	int gpio;
 
 	esd_config = &panel->esd_config;
 	esd_config->status_mode = ESD_MODE_MAX;
 	esd_config->esd_enabled = utils->read_bool(utils->data,
 		"qcom,esd-check-enabled");
+
+	gpio = of_get_named_gpio_flags(panel->panel_of_node,
+				"qcom,esd-err-irq-gpio", 0,
+				(enum of_gpio_flags *)&raw_flags);
+	if (!gpio_is_valid(gpio)) {
+		pr_err("qcom,esd-err-irq-gpio missing/invalid (%d)\n", gpio);
+		esd_config->esd_err_irq_gpio = -EINVAL;
+		esd_config->esd_err_irq = 0;
+		esd_config->esd_err_irq_flags = 0;
+	} else {
+		if (raw_flags & IRQF_ONESHOT) {
+			irqflags = raw_flags;
+		} else {
+			irqflags = IRQF_ONESHOT;
+			if (raw_flags & OF_GPIO_ACTIVE_LOW)
+				irqflags |= IRQF_TRIGGER_FALLING;
+			else
+				irqflags |= IRQF_TRIGGER_RISING;
+		}
+
+		esd_config->esd_err_irq_flags = (int)irqflags;
+
+		rc = devm_gpio_request_one(panel->parent, gpio, GPIOF_IN, "esd_err_int_gpio");
+		if (rc) {
+			pr_err("gpio_request(%d) failed, rc=%d\n", gpio, rc);
+			esd_config->esd_err_irq_gpio = -EINVAL;
+			esd_config->esd_err_irq = 0;
+			esd_config->esd_err_irq_flags = 0;
+		} else {
+			rc = gpio_to_irq(gpio);
+			if (rc < 0) {
+				pr_err("gpio_to_irq(%d) failed, rc=%d\n", gpio, rc);
+				esd_config->esd_err_irq_gpio = -EINVAL;
+				esd_config->esd_err_irq = 0;
+				esd_config->esd_err_irq_flags = 0;
+			} else {
+				esd_config->esd_err_irq_gpio = gpio;
+				esd_config->esd_err_irq = rc;
+				pr_info("parser saved esd gpio=%d irq=%d irqflags=0x%lx\n",
+						esd_config->esd_err_irq_gpio,
+						esd_config->esd_err_irq,
+						(unsigned long)esd_config->esd_err_irq_flags);
+			}
+		}
+	}
 
 	if (!esd_config->esd_enabled)
 		return 0;
