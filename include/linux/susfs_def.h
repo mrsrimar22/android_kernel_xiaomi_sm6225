@@ -34,9 +34,9 @@
 #define TRY_UMOUNT_DEFAULT 0 /* used by susfs_try_umount() */
 #define TRY_UMOUNT_DETACH 1 /* used by susfs_try_umount() */
 
-#define DEFAULT_KSU_MNT_ID 300000 /* used by mount->mnt_id */
+#define DEFAULT_KSU_MNT_ID 500000 /* used by mount->mnt_id */
 #define DEFAULT_KSU_MNT_ID_FOR_KSU_PROC_UNSHARE 1000000 /* used by vfsmount->susfs_mnt_id_backup */
-#define DEFAULT_KSU_MNT_GROUP_ID 3000 /* used by mount->mnt_group_id */
+#define DEFAULT_KSU_MNT_GROUP_ID 5000 /* used by mount->mnt_group_id */
 
 /*
  * inode->i_state => storing flag 'INODE_STATE_'
