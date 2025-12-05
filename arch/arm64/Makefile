@@ -49,6 +49,9 @@ $(warning Detected assembler with broken .inst; disassembly will be unreliable)
   endif
 endif
 
+ifeq ($(CONFIG_TARGET_PROJECT_K7T),y)
+KBUILD_CFLAGS	+= -march=armv8-a+crypto -mtune=cortex-a73.cortex-a53
+endif
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 KBUILD_CFLAGS	+= $(lseinstr) $(brokengasinst) $(compat_vdso)
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
