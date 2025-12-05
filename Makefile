@@ -373,7 +373,7 @@ HOSTCC	= gcc
 HOSTCXX	= g++
 endif
 KBUILD_HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 \
-		-fomit-frame-pointer -std=gnu89 $(HOST_LFS_CFLAGS) \
+		-fomit-frame-pointer -std=gnu17 $(HOST_LFS_CFLAGS) \
 		$(HOSTCFLAGS)
 KBUILD_HOSTCXXFLAGS := -Wall -O2 $(HOST_LFS_CFLAGS) $(HOSTCXXFLAGS)
 KBUILD_HOSTLDFLAGS  := $(HOST_LFS_LDFLAGS) $(HOSTLDFLAGS)
@@ -446,7 +446,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common -fshort-wchar \
 		   -Werror-implicit-function-declaration \
 		   -Werror=return-type -Wno-format-security \
-		   -std=gnu89
+		   -std=gnu17
 KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -508,6 +508,12 @@ endif
 
 ifeq ($(cc-name),clang)
 include $(srctree)/scripts/Makefile.clang
+else ifeq ($(cc-name),gcc)
+KBUILD_CFLAGS	+= -Wno-error=address
+KBUILD_CFLAGS	+= -Wno-error=format
+KBUILD_CFLAGS	+= -Wno-error=maybe-uninitialized
+KBUILD_CFLAGS	+= -Wno-error=enum-int-mismatch
+KBUILD_CFLAGS	+= -Wno-error=array-parameter
 endif
 
 KBUILD_CFLAGS	+= $(call cc-option,-fno-PIE)
@@ -770,6 +776,9 @@ ifdef CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO_ENABLER
 KBUILD_CFLAGS	+= -enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang
 endif
 endif
+
+# Explicitly clear padding bits during variable initialization
+KBUILD_CFLAGS += $(call cc-option,-fzero-init-padding-bits=all)
 
 KBUILD_CFLAGS   += $(call cc-option, -fno-var-tracking-assignments)
 
