@@ -514,6 +514,8 @@ KBUILD_CFLAGS	+= -Wno-error=format
 KBUILD_CFLAGS	+= -Wno-error=maybe-uninitialized
 KBUILD_CFLAGS	+= -Wno-error=enum-int-mismatch
 KBUILD_CFLAGS	+= -Wno-error=array-parameter
+# KSU have many misleading indent
+KBUILD_CFLAGS	+= -Wno-error=misleading-indentation
 endif
 
 KBUILD_CFLAGS	+= $(call cc-option,-fno-PIE)
