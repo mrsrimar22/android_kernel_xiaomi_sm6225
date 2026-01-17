@@ -46,6 +46,8 @@ static const struct of_device_id dsi_display_dt_match[] = {
 	{}
 };
 
+static atomic_t is_display_enabled = ATOMIC_INIT(0);
+
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
 {
@@ -198,7 +200,7 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	struct dsi_panel *panel;
 	u32 bl_scale, bl_scale_sv;
 	u64 bl_temp;
-	int rc = 0;
+	int snapshot, rc = 0;
 
 	if (dsi_display == NULL || dsi_display->panel == NULL)
 		return -EINVAL;
@@ -233,6 +235,9 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
 	if (rc)
 		DSI_ERR("unable to set backlight\n");
+	else
+		DSI_INFO("set backlight successfully at: bl_scale = %u, bl_scale_sv = %u, bl_lvl = %u\n",
+		       bl_scale, bl_scale_sv, (u32)bl_temp);
 
 	rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
@@ -240,6 +245,18 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		DSI_ERR("[%s] failed to disable DSI core clocks, rc=%d\n",
 		       dsi_display->name, rc);
 		goto error;
+	}
+
+	snapshot = atomic_read(&is_display_enabled);
+	if (snapshot && bl_lvl != 0) {
+		atomic_set(&is_display_enabled, 0);
+		msleep(1);
+		rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
+		if (rc)
+			DSI_ERR("unable to set backlight second time\n");
+		else
+			DSI_INFO("set backlight second time successfully at: bl_scale = %u, bl_scale_sv = %u, bl_lvl = %u\n",
+			       bl_scale, bl_scale_sv, (u32)bl_temp);
 	}
 
 error:
@@ -7700,6 +7717,7 @@ int dsi_display_enable(struct dsi_display *display)
 		goto error_disable_panel;
 	}
 
+	atomic_xchg_relaxed(&is_display_enabled, 1);
 	goto error;
 
 error_disable_panel:
