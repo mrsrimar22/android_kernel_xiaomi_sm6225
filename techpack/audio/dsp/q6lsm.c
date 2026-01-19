@@ -269,8 +269,8 @@ done:
 		case LSM_SESSION_CMD_GET_PARAMS_V2:
 		case LSM_SESSION_CMD_GET_PARAMS_V3:
 			if (token != client->session &&
-			    payload[0] !=
-				LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
+					payload != NULL &&
+					payload[0] !=LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
 				pr_err("%s: Invalid session %d receivced expected %d\n",
 					__func__, token, client->session);
 				spin_unlock_irqrestore(&lsm_session_lock, flags);
@@ -2044,6 +2044,22 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
 	The opcode for 4 bytes is 0x12A80
 	The opcode for 8 bytes is 0x110E8.
 	 
+	*/
+
+	if (data->payload_size < (2 * sizeof(uint16_t))) {
+		pr_err("%s: payload has invalid size[%d]\n", __func__,
+			data->payload_size);
+		return -EINVAL;
+	}
+
+	/*
+	The payload_size can be either 4 or 8 bytes.
+	It has to be verified whether the payload_size is
+	atleast 4 bytes. If it is less, returns errorcode.
+
+	The opcode for 4 bytes is 0x12A80
+	The opcode for 8 bytes is 0x110E8.
+
 	*/
 
 	if (data->payload_size < (2 * sizeof(uint16_t))) {
