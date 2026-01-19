@@ -3488,10 +3488,15 @@ void adm_copp_mfc_cfg(int port_id, int copp_idx, int dst_sample_rate)
 		pr_err("%s: unable to get channal map\n", __func__);
 		goto fail_cmd;
 	}
-
-	for (i = 0; i < mfc_cfg.num_channels; i++)
-		mfc_cfg.channel_type[i] =
+	if (mfc_cfg.num_channels <= AUDPROC_MFC_OUT_CHANNELS_MAX) {
+		for (i = 0; i < mfc_cfg.num_channels; i++)
+			mfc_cfg.channel_type[i] =
 			(uint16_t) open.dev_channel_mapping[i];
+	} else {
+		pr_err("%s: num_channels (%d) exceeds maximum allowed (%d)\n",
+			__func__, mfc_cfg.num_channels, AUDPROC_MFC_OUT_CHANNELS_MAX);
+		goto fail_cmd;
+	}
 
 	atomic_set(&this_adm.copp.stat[port_idx][copp_idx], -1);
 
