@@ -2412,6 +2412,7 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		DSI_DEBUG("[%s] bl-ctrl-dcs-subtype, defautling to zero\n",
 			panel->name);
 		panel->bl_config.bl_dcs_subtype = 0;
+		rc = 0;
 	} else {
 		panel->bl_config.bl_dcs_subtype = val;
 	}
