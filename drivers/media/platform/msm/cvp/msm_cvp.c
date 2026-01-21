@@ -60,16 +60,25 @@ static int msm_cvp_get_session_info(struct msm_cvp_inst *inst,
 {
 	int rc = 0;
 	struct msm_cvp_inst *s;
+	struct msm_cvp_core *core = NULL;
 
-	if (!inst || !inst->core || !session) {
+	if (!inst || !session) {
 		dprintk(CVP_ERR, "%s: invalid params\n", __func__);
 		return -EINVAL;
 	}
 
-	s = cvp_get_inst_validate(inst->core, inst);
-	if (!s)
-		return -ECONNRESET;
+	core = list_first_entry(&cvp_driver->cores, struct msm_cvp_core, list);
+	if (!core) {
+		dprintk(CVP_ERR, "%s: core is NULL", __func__);
+		return -EINVAL;
+	}
 
+	s = cvp_get_inst_validate(core, inst);
+	if (!s) {
+		dprintk(CVP_ERR, "%s: Session is not valid\n",
+						__func__);
+		return -ECONNRESET;
+	}
 	s->cur_cmd_type = CVP_KMD_GET_SESSION_INFO;
 	session->session_id = hash32_ptr(inst->session);
 	dprintk(CVP_DBG, "%s: id 0x%x\n", __func__, session->session_id);
@@ -642,6 +651,7 @@ static int msm_cvp_session_receive_hfi(struct msm_cvp_inst *inst,
 	struct cvp_session_queue *sq;
 	struct cvp_kmd_session_control *sc;
 	struct msm_cvp_inst *s;
+	struct msm_cvp_core *core = NULL;
 	int rc = 0;
 	u32 version;
 
@@ -650,9 +660,18 @@ static int msm_cvp_session_receive_hfi(struct msm_cvp_inst *inst,
 		return -EINVAL;
 	}
 
-	s = cvp_get_inst_validate(inst->core, inst);
-	if (!s)
+	core = list_first_entry(&cvp_driver->cores, struct msm_cvp_core, list);
+	if (!core) {
+		dprintk(CVP_ERR, "%s: core is NULL", __func__);
+		return -EINVAL;
+	}
+
+	s = cvp_get_inst_validate(core, inst);
+	if (!s) {
+		dprintk(CVP_ERR, "%s: Session is not valid\n",
+						__func__);
 		return -ECONNRESET;
+	}
 
 	s->cur_cmd_type = CVP_KMD_RECEIVE_MSG_PKT;
 	sq = &inst->session_queue;
@@ -903,23 +922,34 @@ static int msm_cvp_session_process_hfi(
 	struct cvp_hfi_device *hdev;
 	unsigned int offset, buf_num, signal;
 	struct cvp_session_queue *sq;
-	struct msm_cvp_inst *s;
+	struct msm_cvp_core *core = NULL;
+	struct msm_cvp_inst *s = NULL;
 	unsigned int max_buf_num;
 	uint32_t *fd_arr = NULL;
 	struct cvp_hfi_cmd_session_hdr *cmd_hdr = NULL;
 	struct cvp_buf_type *buf = NULL;
 
-	if (!inst || !inst->core || !in_pkt) {
+	if (!inst || !in_pkt) {
 		dprintk(CVP_ERR, "%s: invalid params\n", __func__);
 		return -EINVAL;
 	}
 
-	s = cvp_get_inst_validate(inst->core, inst);
-	if (!s)
+	core = list_first_entry(&cvp_driver->cores, struct msm_cvp_core, list);
+	if (!core) {
+		dprintk(CVP_ERR, "%s: core is NULL", __func__);
+		return -EINVAL;
+	}
+
+	s = cvp_get_inst_validate(core, inst);
+	if (!s) {
+		dprintk(CVP_ERR, "%s: Session is not valid\n",
+						__func__);
 		return -ECONNRESET;
+	}
+
 
 	inst->cur_cmd_type = CVP_KMD_SEND_CMD_PKT;
-	hdev = inst->core->device;
+	hdev = core->device;
 
 	pkt_idx = get_pkt_index((struct cvp_hal_session_cmd_pkt *)in_pkt);
 	if (pkt_idx < 0) {
@@ -1829,20 +1859,28 @@ static int msm_cvp_request_power(struct msm_cvp_inst *inst,
 static int msm_cvp_update_power(struct msm_cvp_inst *inst)
 
 {	int rc = 0;
-	struct msm_cvp_core *core;
-	struct msm_cvp_inst *s;
+	struct msm_cvp_core *core = NULL;
+	struct msm_cvp_inst *s = NULL;
 
 	if (!inst) {
 		dprintk(CVP_ERR, "%s: invalid params\n", __func__);
 		return -EINVAL;
 	}
 
-	s = cvp_get_inst_validate(inst->core, inst);
-	if (!s)
+	core = list_first_entry(&cvp_driver->cores, struct msm_cvp_core, list);
+	if (!core) {
+		dprintk(CVP_ERR, "%s: core is NULL", __func__);
+		return -EINVAL;
+	}
+	s = cvp_get_inst_validate(core, inst);
+	if (!s) {
+		dprintk(CVP_ERR, "%s: Session is not valid\n",
+						__func__);
 		return -ECONNRESET;
+	}
+
 
 	inst->cur_cmd_type = CVP_KMD_UPDATE_POWER;
-	core = inst->core;
 
 	mutex_lock(&core->power_lock);
 	mutex_lock(&core->lock);
@@ -1861,9 +1899,10 @@ static int msm_cvp_register_buffer(struct msm_cvp_inst *inst,
 	struct cvp_hfi_device *hdev;
 	struct cvp_hal_session *session;
 	struct msm_cvp_inst *s;
+	struct msm_cvp_core *core = NULL;
 	int rc = 0;
 
-	if (!inst || !inst->core || !buf) {
+	if (!inst || !buf) {
 		dprintk(CVP_ERR, "%s: invalid params\n", __func__);
 		return -EINVAL;
 	}
@@ -1871,9 +1910,18 @@ static int msm_cvp_register_buffer(struct msm_cvp_inst *inst,
 	if (!buf->index)
 		return 0;
 
-	s = cvp_get_inst_validate(inst->core, inst);
-	if (!s)
+	core = list_first_entry(&cvp_driver->cores, struct msm_cvp_core, list);
+	if (!core) {
+		dprintk(CVP_ERR, "%s: core is NULL", __func__);
+		return -EINVAL;
+	}
+
+	s = cvp_get_inst_validate(core, inst);
+	if (!s) {
+		dprintk(CVP_ERR, "%s: Session is not valid\n",
+						__func__);
 		return -ECONNRESET;
+	}
 
 	inst->cur_cmd_type = CVP_KMD_REGISTER_BUFFER;
 	session = (struct cvp_hal_session *)inst->session;
@@ -1882,7 +1930,7 @@ static int msm_cvp_register_buffer(struct msm_cvp_inst *inst,
 		rc = -EINVAL;
 		goto exit;
 	}
-	hdev = inst->core->device;
+	hdev = core->device;
 	print_client_buffer(CVP_DBG, "register", inst, buf);
 
 	rc = msm_cvp_map_buf_dsp(inst, buf);
@@ -1895,10 +1943,11 @@ exit:
 static int msm_cvp_unregister_buffer(struct msm_cvp_inst *inst,
 		struct cvp_kmd_buffer *buf)
 {
-	struct msm_cvp_inst *s;
+	struct msm_cvp_inst *s = NULL;
+	struct msm_cvp_core *core = NULL;
 	int rc = 0;
 
-	if (!inst || !inst->core || !buf) {
+	if (!inst || !buf) {
 		dprintk(CVP_ERR, "%s: invalid params\n", __func__);
 		return -EINVAL;
 	}
@@ -1907,9 +1956,18 @@ static int msm_cvp_unregister_buffer(struct msm_cvp_inst *inst,
 		return 0;
 	}
 
-	s = cvp_get_inst_validate(inst->core, inst);
-	if (!s)
+	core =  list_first_entry(&cvp_driver->cores, struct msm_cvp_core, list);
+	if (!core) {
+		dprintk(CVP_ERR, "%s: core is NULL", __func__);
+		return -EINVAL;
+	}
+
+	s = cvp_get_inst_validate(core, inst);
+	if (!s) {
+		dprintk(CVP_ERR, "%s: Session is not valid\n",
+						__func__);
 		return -ECONNRESET;
+	}
 
 	inst->cur_cmd_type = CVP_KMD_UNREGISTER_BUFFER;
 	print_client_buffer(CVP_DBG, "unregister", inst, buf);
