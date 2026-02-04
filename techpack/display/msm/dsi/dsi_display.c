@@ -228,6 +228,12 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
+	if (bl_lvl != 0 && atomic_cmpxchg(&dsi_display->display_enabled, 1, 0) == 1) {
+		usleep_range(1000, 1500);
+		DSI_INFO("set backlight after display enabled, bl_scale = %u, bl_scale_sv = %u, bl_lvl = %u\n",
+			       bl_scale, bl_scale_sv, (u32)bl_temp);
+	}
+
 	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
 	if (rc)
 		DSI_ERR("unable to set backlight\n");
@@ -1044,6 +1050,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
 	struct dsi_display *display = disp;
+	struct drm_panel *drm_panel;
+	struct drm_panel_notifier notify_data;
 	int rc = 0;
 
 	if (!display || !display->panel) {
@@ -1051,17 +1059,48 @@ int dsi_display_set_power(struct drm_connector *connector,
 		return -EINVAL;
 	}
 
+	drm_panel = dsi_display_get_drm_panel(display);
+	if (drm_panel) {
+		notify_data.is_primary = display->is_prim_display;
+		notify_data.data = &power_mode;
+	}
+
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
+		if (drm_panel)
+			drm_panel_notifier_call_chain(drm_panel,
+						      DRM_PANEL_EARLY_EVENT_BLANK,
+						      &notify_data);
 		rc = dsi_panel_set_lp1(display->panel);
+		if (!rc && drm_panel)
+			drm_panel_notifier_call_chain(drm_panel,
+						      DRM_PANEL_EVENT_BLANK,
+						      &notify_data);
 		break;
 	case SDE_MODE_DPMS_LP2:
+		if (drm_panel)
+			drm_panel_notifier_call_chain(drm_panel,
+						      DRM_PANEL_EARLY_EVENT_BLANK,
+						      &notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
+		if (!rc && drm_panel)
+			drm_panel_notifier_call_chain(drm_panel,
+						      DRM_PANEL_EVENT_BLANK,
+						      &notify_data);
 		break;
 	case SDE_MODE_DPMS_ON:
 		if ((display->panel->power_mode == SDE_MODE_DPMS_LP1) ||
-			(display->panel->power_mode == SDE_MODE_DPMS_LP2))
+			(display->panel->power_mode == SDE_MODE_DPMS_LP2)) {
+			if (drm_panel)
+				drm_panel_notifier_call_chain(drm_panel,
+							      DRM_PANEL_EARLY_EVENT_BLANK,
+							      &notify_data);
 			rc = dsi_panel_set_nolp(display->panel);
+			if (!rc && drm_panel)
+				drm_panel_notifier_call_chain(drm_panel,
+							      DRM_PANEL_EVENT_BLANK,
+							      &notify_data);
+		}
 		break;
 	case SDE_MODE_DPMS_OFF:
 	default:
@@ -5416,6 +5455,8 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 	display->panel_node = panel_node;
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
+	display->is_prim_display = (index == DSI_PRIMARY);
+	atomic_set(&display->display_enabled, 0);
 
 	dsi_display_parse_cmdline_topology(display, index);
 
@@ -5891,10 +5932,8 @@ static struct mipi_dsi_host_ops dsi_host_ext_ops = {
 
 struct drm_panel *dsi_display_get_drm_panel(struct dsi_display *display)
 {
-	if (!display || !display->panel) {
-		pr_err("invalid param(s)\n");
+	if (!display || !display->panel)
 		return NULL;
-	}
 
 	return &display->panel->drm_panel;
 }
@@ -6776,9 +6815,9 @@ int dsi_display_set_mode(struct dsi_display *display,
 		goto error;
 	}
 
-	DSI_INFO("mdp_transfer_time_us=%d us\n",
+	DSI_INFO("mdp_transfer_time_us=%dus\n",
 			adj_mode.priv_info->mdp_transfer_time_us);
-	DSI_INFO("hactive= %d,vactive= %d,fps=%d\n",
+	DSI_INFO("hactive=%d, vactive=%d, fps=%d\n",
 			timing.h_active, timing.v_active,
 			timing.refresh_rate);
 
@@ -7665,6 +7704,7 @@ int dsi_display_enable(struct dsi_display *display)
 		goto error_disable_panel;
 	}
 
+	atomic_set(&display->display_enabled, 1);
 	goto error;
 
 error_disable_panel:
