@@ -1045,24 +1045,52 @@ int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
 	struct dsi_display *display = disp;
+	struct drm_panel_notifier notify_data;
 	int rc = 0;
+	const char *sde_power_mode_str[] = {
+		[SDE_MODE_DPMS_ON] = "SDE_MODE_DPMS_ON",
+		[SDE_MODE_DPMS_LP1] = "SDE_MODE_DPMS_LP1",
+		[SDE_MODE_DPMS_LP2] = "SDE_MODE_DPMS_LP2",
+		[SDE_MODE_DPMS_STANDBY] = "SDE_MODE_DPMS_STANDBY",
+		[SDE_MODE_DPMS_SUSPEND] = "SDE_MODE_DPMS_SUSPEND",
+		[SDE_MODE_DPMS_OFF] = "SDE_MODE_DPMS_OFF",
+	};
 
 	if (!display || !display->panel) {
 		DSI_ERR("invalid display/panel\n");
 		return -EINVAL;
 	}
 
+	DSI_INFO("power_mode = %s, power_mode_map = %d\n",
+			sde_power_mode_str[power_mode], power_mode);
+
+	notify_data.is_primary = display->is_prim_display;
+	notify_data.data = &power_mode;
+
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
+		drm_panel_notifier_call_chain(&display->panel->drm_panel,
+				DRM_PANEL_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp1(display->panel);
+		drm_panel_notifier_call_chain(&display->panel->drm_panel,
+				DRM_PANEL_EVENT_BLANK, &notify_data);
 		break;
 	case SDE_MODE_DPMS_LP2:
+		drm_panel_notifier_call_chain(&display->panel->drm_panel,
+				DRM_PANEL_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
+		drm_panel_notifier_call_chain(&display->panel->drm_panel,
+				DRM_PANEL_EVENT_BLANK, &notify_data);
 		break;
 	case SDE_MODE_DPMS_ON:
 		if ((display->panel->power_mode == SDE_MODE_DPMS_LP1) ||
-			(display->panel->power_mode == SDE_MODE_DPMS_LP2))
+			(display->panel->power_mode == SDE_MODE_DPMS_LP2)) {
+			drm_panel_notifier_call_chain(&display->panel->drm_panel,
+					DRM_PANEL_EARLY_EVENT_BLANK, &notify_data);
 			rc = dsi_panel_set_nolp(display->panel);
+			drm_panel_notifier_call_chain(&display->panel->drm_panel,
+					DRM_PANEL_EVENT_BLANK, &notify_data);
+		}
 		break;
 	case SDE_MODE_DPMS_OFF:
 	default:
@@ -5416,6 +5444,7 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 	display->panel_node = panel_node;
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
+	display->is_prim_display = true;
 
 	dsi_display_parse_cmdline_topology(display, index);
 
@@ -6780,9 +6809,9 @@ int dsi_display_set_mode(struct dsi_display *display,
 		goto error;
 	}
 
-	DSI_INFO("mdp_transfer_time_us=%d us\n",
+	DSI_INFO("mdp_transfer_time_us=%dus\n",
 			adj_mode.priv_info->mdp_transfer_time_us);
-	DSI_INFO("hactive= %d,vactive= %d,fps=%d\n",
+	DSI_INFO("hactive=%d, vactive=%d, fps=%d\n",
 			timing.h_active, timing.v_active,
 			timing.refresh_rate);
 
