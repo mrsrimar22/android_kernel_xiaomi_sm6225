@@ -198,6 +198,7 @@ struct dsi_display {
 	const char *name;
 	const char *display_type;
 	struct list_head list;
+	bool is_prim_display;
 	bool is_cont_splash_enabled;
 	bool sw_te_using_wd;
 	struct mutex display_lock;
@@ -274,6 +275,8 @@ struct dsi_display {
 	u32 clk_gating_config;
 	bool queue_cmd_waits;
 	struct workqueue_struct *dma_cmd_workq;
+
+	atomic_t display_enabled;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);

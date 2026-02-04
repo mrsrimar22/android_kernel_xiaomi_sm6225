@@ -73,7 +73,7 @@ static char dsi_dsc_rc_range_min_qp_1_1_scr1[][15] = {
  */
 static char dsi_dsc_rc_range_max_qp_1_1[][15] = {
 	{4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 11, 12, 13, 13, 15},
-	{4, 8, 9, 10, 11, 11, 11, 12, 13, 14, 15, 16, 17, 17, 19},
+	{8, 8, 9, 10, 11, 11, 11, 12, 13, 14, 15, 16, 17, 17, 19},
 	{12, 12, 13, 14, 15, 15, 15, 16, 17, 18, 19, 20, 21, 21, 23},
 	{7, 8, 9, 10, 11, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16},
 	};
@@ -459,16 +459,25 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto exit;
 	}
 
+	udelay(150);
+
 	rc = dsi_panel_set_pinctrl_state(panel, true);
 	if (rc) {
 		DSI_ERR("[%s] failed to set pinctrl, rc=%d\n", panel->name, rc);
 		goto error_disable_vregs;
 	}
 
-	rc = dsi_panel_reset(panel);
-	if (rc) {
-		DSI_ERR("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
-		goto error_disable_gpio;
+	/*
+	 * If lp11_init is set, reset sequence is deferred to
+	 * dsi_panel_prepare()
+	 */
+	if (!panel->lp11_init) {
+		rc = dsi_panel_reset(panel);
+		if (rc) {
+			DSI_ERR("[%s] failed to reset panel, rc=%d\n",
+				panel->name, rc);
+			goto error_disable_gpio;
+		}
 	}
 
 	goto exit;
@@ -509,6 +518,8 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 			DSI_WARN("set dir for panel test gpio failed rc=%d\n",
 				 rc);
 	}
+
+	udelay(200);
 
 	rc = dsi_panel_set_pinctrl_state(panel, false);
 	if (rc) {
@@ -2406,6 +2417,17 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.brightness_max_level = val;
 	}
 
+	rc = utils->read_u32(utils->data, "qcom,mdss-brightness-init-level",
+		&val);
+	if (rc) {
+		DSI_DEBUG("[%s] brigheness-init-level unspecified, defaulting to 25 percent max level\n",
+			 panel->name);
+		panel->bl_config.brightness_init_level =
+			panel->bl_config.brightness_max_level >> 2;
+	} else {
+		panel->bl_config.brightness_init_level = val;
+	}
+
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-ctrl-dcs-subtype",
 		&val);
 	if (rc) {
@@ -4004,10 +4026,11 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
-	/* If LP11_INIT is set, panel will be powered up during prepare() */
-	if (panel->lp11_init)
-		goto error;
-
+	/*
+	 * Previously skipped when lp11_init was set. Now power_on is always
+	 * called here; when lp11_init is set, reset is simply deferred inside
+	 * power_on and will be done in dsi_panel_prepare().
+	 */
 	rc = dsi_panel_power_on(panel);
 	if (rc) {
 		DSI_ERR("[%s] panel power on failed, rc=%d\n", panel->name, rc);
@@ -4150,16 +4173,20 @@ int dsi_panel_prepare(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
-	mutex_lock(&panel->panel_lock);
-
+	/*
+	 * When lp11_init is set, reset was skipped in power_on
+	 * Do panel_reset here
+	 */
 	if (panel->lp11_init) {
-		rc = dsi_panel_power_on(panel);
+		rc = dsi_panel_reset(panel);
 		if (rc) {
-			DSI_ERR("[%s] panel power on failed, rc=%d\n",
+			DSI_ERR("[%s] panel reset failed, rc=%d\n",
 			       panel->name, rc);
-			goto error;
+			goto error_panel_reset;
 		}
 	}
+
+	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_ON);
 	if (rc) {
@@ -4170,6 +4197,17 @@ int dsi_panel_prepare(struct dsi_panel *panel)
 
 error:
 	mutex_unlock(&panel->panel_lock);
+	return rc;
+
+error_panel_reset:
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
+		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+
+	if (gpio_is_valid(panel->bl_config.en_gpio))
+		gpio_set_value(panel->bl_config.en_gpio, 0);
+
+	(void)dsi_panel_set_pinctrl_state(panel, false);
+	(void)dsi_pwr_enable_regulator(&panel->power_info, false);
 	return rc;
 }
 
