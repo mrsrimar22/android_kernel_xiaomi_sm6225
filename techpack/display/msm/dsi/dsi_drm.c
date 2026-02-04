@@ -162,16 +162,16 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct drm_panel *drm_panel;
+	struct drm_panel_notifier notify_data;
+	int power_mode = DRM_PANEL_BLANK_UNBLANK;
 
-	if (!bridge) {
+	if (!bridge || !c_bridge || !c_bridge->display || !c_bridge->display->panel) {
 		DSI_ERR("Invalid params\n");
 		return;
 	}
 
-	if (!c_bridge || !c_bridge->display || !c_bridge->display->panel) {
-		DSI_ERR("Incorrect bridge details\n");
-		return;
-	}
+	drm_panel = dsi_display_get_drm_panel(c_bridge->display);
 
 	if (bridge->encoder->crtc->state->active_changed)
 		atomic_set(&c_bridge->display->panel->esd_recovery_pending, 0);
@@ -183,6 +183,14 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 		DSI_ERR("[%d] failed to perform a mode set, rc=%d\n",
 		       c_bridge->id, rc);
 		return;
+	}
+
+	if (drm_panel) {
+		notify_data.is_primary = c_bridge->display->is_prim_display;
+		notify_data.data = &power_mode;
+		drm_panel_notifier_call_chain(drm_panel,
+					      DRM_PANEL_EARLY_EVENT_BLANK,
+					      &notify_data);
 	}
 
 	if (c_bridge->dsi_mode.dsi_mode_flags &
@@ -208,8 +216,15 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 		DSI_ERR("[%d] DSI display enable failed, rc=%d\n",
 				c_bridge->id, rc);
 		(void)dsi_display_unprepare(c_bridge->display);
+		SDE_ATRACE_END("dsi_display_enable");
+		return;
 	}
 	SDE_ATRACE_END("dsi_display_enable");
+
+	if (drm_panel)
+		drm_panel_notifier_call_chain(drm_panel,
+					      DRM_PANEL_EVENT_BLANK,
+					      &notify_data);
 
 	rc = dsi_display_splash_res_cleanup(c_bridge->display);
 	if (rc)
@@ -253,18 +268,30 @@ static void dsi_bridge_disable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	int private_flags;
-	struct dsi_display *display;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct dsi_display *display = c_bridge ? c_bridge->display : NULL;
+	struct drm_panel *drm_panel;
+	struct drm_panel_notifier notify_data;
+	int power_mode = DRM_PANEL_BLANK_POWERDOWN;
 
-	if (!bridge) {
+	if (!bridge || !c_bridge || !display) {
 		DSI_ERR("Invalid params\n");
 		return;
 	}
-	display = c_bridge->display;
+
+	drm_panel = dsi_display_get_drm_panel(display);
 	private_flags =
 		bridge->encoder->crtc->state->adjusted_mode.private_flags;
 
-	if (display && display->drm_conn) {
+	if (drm_panel) {
+		notify_data.is_primary = display->is_prim_display;
+		notify_data.data = &power_mode;
+		drm_panel_notifier_call_chain(drm_panel,
+					      DRM_PANEL_R_EARLY_EVENT_BLANK,
+					      &notify_data);
+	}
+
+	if (display->drm_conn) {
 		display->poms_pending =
 			private_flags & MSM_MODE_FLAG_SEAMLESS_POMS;
 
@@ -282,10 +309,23 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct drm_panel *drm_panel;
+	struct drm_panel_notifier notify_data;
+	int power_mode = DRM_PANEL_BLANK_POWERDOWN;
 
-	if (!bridge) {
+	if (!bridge || !c_bridge || !c_bridge->display) {
 		DSI_ERR("Invalid params\n");
 		return;
+	}
+
+	drm_panel = dsi_display_get_drm_panel(c_bridge->display);
+
+	if (drm_panel) {
+		notify_data.is_primary = c_bridge->display->is_prim_display;
+		notify_data.data = &power_mode;
+		drm_panel_notifier_call_chain(drm_panel,
+					      DRM_PANEL_EARLY_EVENT_BLANK,
+					      &notify_data);
 	}
 
 	SDE_ATRACE_BEGIN("dsi_bridge_post_disable");
@@ -295,6 +335,7 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 		DSI_ERR("[%d] DSI display disable failed, rc=%d\n",
 		       c_bridge->id, rc);
 		SDE_ATRACE_END("dsi_display_disable");
+		SDE_ATRACE_END("dsi_bridge_post_disable");
 		return;
 	}
 	SDE_ATRACE_END("dsi_display_disable");
@@ -307,6 +348,11 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 		return;
 	}
 	SDE_ATRACE_END("dsi_bridge_post_disable");
+
+	if (drm_panel)
+		drm_panel_notifier_call_chain(drm_panel,
+					      DRM_PANEL_EVENT_BLANK,
+					      &notify_data);
 }
 
 static void dsi_bridge_mode_set(struct drm_bridge *bridge,
