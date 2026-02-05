@@ -6947,6 +6947,10 @@ int dsi_display_set_mode(struct dsi_display *display,
 		goto error;
 	}
 
+	if (dsi_panel_initialized(display->panel) &&
+			adj_mode.timing.refresh_rate == 60)
+		dsi_panel_set_backlight_control(display->panel, &adj_mode);
+
 	DSI_INFO("mdp_transfer_time_us=%dus\n",
 			adj_mode.priv_info->mdp_transfer_time_us);
 	DSI_INFO("hactive=%d, vactive=%d, fps=%d\n",
@@ -7880,6 +7884,8 @@ int dsi_display_post_enable(struct dsi_display *display)
 	if (display->config.panel_mode == DSI_OP_CMD_MODE)
 		dsi_display_clk_ctrl(display->dsi_clk_handle,
 			DSI_ALL_CLKS, DSI_CLK_OFF);
+
+	dsi_panel_set_backlight_control(display->panel, display->panel->cur_mode);
 
 	mutex_unlock(&display->display_lock);
 	return rc;

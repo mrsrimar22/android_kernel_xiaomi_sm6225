@@ -358,4 +358,6 @@ void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 
 int dsi_panel_apply_hbm_mode(struct dsi_panel *panel);
 
+void dsi_panel_set_backlight_control(struct dsi_panel *panel, struct dsi_display_mode *adj_mode);
+
 #endif /* _DSI_PANEL_H_ */
