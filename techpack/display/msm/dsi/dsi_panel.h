@@ -369,4 +369,7 @@ void dsi_panel_esd_err_irq_unregister(struct dsi_panel *panel);
 
 int dsi_panel_apply_hbm_mode(struct dsi_panel *panel);
 
+void dsi_panel_set_backlight_control(struct dsi_panel *panel,
+				     struct dsi_display_mode *adj_mode);
+
 #endif /* _DSI_PANEL_H_ */
