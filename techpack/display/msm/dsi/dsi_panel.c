@@ -3294,6 +3294,8 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 	struct drm_panel_esd_config *esd_config;
 	struct dsi_parser_utils *utils = &panel->utils;
 	u8 *esd_mode = NULL;
+	unsigned long irqflags;
+	int gpio;
 
 	esd_config = &panel->esd_config;
 	esd_config->status_mode = ESD_MODE_MAX;
@@ -3302,6 +3304,32 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 
 	if (!esd_config->esd_enabled)
 		return 0;
+
+	gpio = of_get_named_gpio_flags(panel->panel_of_node,
+			"qcom,esd-err-irq-gpio", 0,
+			(enum of_gpio_flags *)&irqflags);
+	if (!gpio_is_valid(gpio)) {
+		DSI_ERR("qcom,esd-err-irq-gpio missing/invalid (%d)\n", gpio);
+	} else {
+		esd_config->esd_err_irq_flags = irqflags;
+
+		rc = devm_gpio_request_one(panel->parent, gpio, GPIOF_IN, "esd_err_int_gpio");
+		if (rc) {
+			DSI_ERR("gpio_request(%d) failed, rc=%d\n", gpio, rc);
+		} else {
+			rc = gpio_to_irq(gpio);
+			if (rc < 0) {
+				DSI_ERR("gpio_to_irq(%d) failed, rc=%d\n", gpio, rc);
+			} else {
+				esd_config->esd_err_irq_gpio = gpio;
+				esd_config->esd_err_irq = rc;
+				DSI_INFO("parser saved esd gpio=%d irq=%d irqflags=0x%lx\n",
+						esd_config->esd_err_irq_gpio,
+						esd_config->esd_err_irq,
+						esd_config->esd_err_irq_flags);
+			}
+		}
+	}
 
 	rc = utils->read_string(utils->data,
 			"qcom,mdss-dsi-panel-status-check-mode", &string);
