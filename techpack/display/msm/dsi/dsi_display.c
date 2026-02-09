@@ -241,6 +241,19 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
+	if (bl_lvl != 0 && atomic_cmpxchg(&dsi_display->display_enabled, 1, 0) == 1) {
+		mutex_unlock(&panel->panel_lock);
+		usleep_range(1000, 1100);
+		mutex_lock(&panel->panel_lock);
+
+		rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
+		if (rc)
+			DSI_ERR("unable to set backlight after display enabled\n");
+		else
+			DSI_INFO("set backlight after display enabled, bl_scale = %u, bl_scale_sv = %u, bl_lvl = %u\n",
+				       bl_scale, bl_scale_sv, (u32)bl_temp);
+	}
+
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -5445,6 +5458,7 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
 	display->is_prim_display = true;
+	atomic_set(&display->display_enabled, 0);
 
 	dsi_display_parse_cmdline_topology(display, index);
 
@@ -7698,6 +7712,7 @@ int dsi_display_enable(struct dsi_display *display)
 		goto error_disable_panel;
 	}
 
+	atomic_set(&display->display_enabled, 1);
 	goto error;
 
 error_disable_panel:
