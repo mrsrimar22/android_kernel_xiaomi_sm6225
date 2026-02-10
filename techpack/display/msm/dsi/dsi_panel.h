@@ -256,6 +256,11 @@ static inline bool dsi_panel_is_type_oled(struct dsi_panel *panel)
 	return (panel->panel_type == DSI_DISPLAY_PANEL_TYPE_OLED);
 }
 
+static inline u32 dsi_panel_get_bl_level(struct dsi_panel *panel)
+{
+	return panel->bl_config.bl_level;
+}
+
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
