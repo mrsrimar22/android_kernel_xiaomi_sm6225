@@ -345,6 +345,17 @@ struct drm_bridge_funcs {
 	 * This callback is optional.
 	 */
 	int (*get_panel_info)(struct drm_bridge *bridge, char *buf, size_t size);
+
+	/**
+	 * @get_dynamic_fps:
+	 *
+	 * Get the current refresh rate of the panel attached to this bridge.
+	 * Returns the number of bytes written to the buffer, or a negative
+	 * error code if the refresh rate is not available.
+	 *
+	 * This callback is optional.
+	 */
+	int (*get_dynamic_fps)(struct drm_bridge *bridge, char *buf, size_t size);
 };
 
 /**
@@ -431,6 +442,7 @@ void drm_bridge_mode_set(struct drm_bridge *bridge,
 void drm_bridge_pre_enable(struct drm_bridge *bridge);
 void drm_bridge_enable(struct drm_bridge *bridge);
 int drm_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size);
+int drm_bridge_get_dynamic_fps(struct drm_bridge *bridge, char *buf, size_t size);
 
 void drm_atomic_bridge_disable(struct drm_bridge *bridge,
 			       struct drm_atomic_state *state);

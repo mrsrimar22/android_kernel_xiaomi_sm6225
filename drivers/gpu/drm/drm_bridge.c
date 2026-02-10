@@ -347,6 +347,26 @@ int drm_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size)
 EXPORT_SYMBOL(drm_bridge_get_panel_info);
 
 /**
+ * drm_bridge_get_dynamic_fps - get the current refresh rate behind a bridge
+ * @bridge: bridge to query
+ * @buf: destination buffer
+ * @size: size of @buf
+ *
+ * Returns the number of bytes written to @buf, or a negative error code.
+ */
+int drm_bridge_get_dynamic_fps(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->get_dynamic_fps)
+		return bridge->funcs->get_dynamic_fps(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_get_dynamic_fps);
+
+/**
  * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  *

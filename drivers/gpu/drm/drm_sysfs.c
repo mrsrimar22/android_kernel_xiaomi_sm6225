@@ -250,11 +250,30 @@ static ssize_t panel_info_show(struct device *device,
 	return scnprintf(buf, PAGE_SIZE, "panel_name=%s\n", pname);
 }
 
+static ssize_t dynamic_fps_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(dev);
+	int ret;
+
+	if (!connector->encoder || !connector->encoder->bridge)
+		return -ENODEV;
+
+	ret = drm_bridge_get_dynamic_fps(connector->encoder->bridge, buf,
+					 PAGE_SIZE);
+	if (ret <= 0)
+		return ret < 0 ? ret : -ENODATA;
+
+	return ret;
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
 static DEVICE_ATTR_RO(modes);
 static DEVICE_ATTR_RO(panel_info);
+static DEVICE_ATTR_RO(dynamic_fps);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
@@ -262,6 +281,7 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_dpms.attr,
 	&dev_attr_modes.attr,
 	&dev_attr_panel_info.attr,
+	&dev_attr_dynamic_fps.attr,
 	NULL
 };
 

@@ -593,6 +593,31 @@ static int dsi_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_
 	return scnprintf(buf, size, "%.32s_display", name);
 }
 
+static int dsi_bridge_get_dynamic_fps(struct drm_bridge *bridge, char *buf,
+				      size_t size)
+{
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct dsi_display *display;
+	int ret;
+
+	if (!c_bridge || !c_bridge->display || !buf || !size)
+		return -EINVAL;
+
+	display = c_bridge->display;
+	if (!display->panel)
+		return -ENODATA;
+
+	mutex_lock(&display->display_lock);
+	if (display->panel->cur_mode)
+		ret = scnprintf(buf, size, "%d\n",
+				display->panel->cur_mode->timing.refresh_rate);
+	else
+		ret = -ENODATA;
+	mutex_unlock(&display->display_lock);
+
+	return ret;
+}
+
 static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.attach       = dsi_bridge_attach,
 	.mode_fixup   = dsi_bridge_mode_fixup,
@@ -602,6 +627,7 @@ static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.post_disable = dsi_bridge_post_disable,
 	.mode_set     = dsi_bridge_mode_set,
 	.get_panel_info = dsi_bridge_get_panel_info,
+	.get_dynamic_fps = dsi_bridge_get_dynamic_fps,
 };
 
 int dsi_conn_set_info_blob(struct drm_connector *connector,
