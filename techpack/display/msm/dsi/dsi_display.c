@@ -22,6 +22,7 @@
 #include "dsi_parser.h"
 
 #define to_dsi_display(x) container_of(x, struct dsi_display, host)
+#define to_dsi_bridge(x) container_of((x), struct dsi_bridge, base)
 #define INT_BASE_10 10
 
 #define MISR_BUFF_SIZE	256
@@ -6874,6 +6875,11 @@ int dsi_display_set_mode(struct dsi_display *display,
 			timing.h_active, timing.v_active,
 			timing.refresh_rate);
 
+	if (display->panel->cur_mode->timing.refresh_rate != timing.refresh_rate) {
+		if (display->drm_conn && display->drm_conn->kdev)
+			sysfs_notify(&display->drm_conn->kdev->kobj, NULL, "dynamic_fps");
+	}
+
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
 error:
 	mutex_unlock(&display->display_lock);
@@ -7799,6 +7805,36 @@ int dsi_display_post_enable(struct dsi_display *display)
 
 	mutex_unlock(&display->display_lock);
 	return rc;
+}
+
+ssize_t dsi_display_dynamic_fps_read(struct drm_connector *connector, char *buf)
+{
+	struct dsi_display *display = NULL;
+	struct dsi_bridge *c_bridge = NULL;
+	struct dsi_display_mode *cur_mode = NULL;
+	ssize_t ret = 0;
+
+	if (!connector || !connector->encoder || !connector->encoder->bridge) {
+		DSI_ERR("Invalid invalid connector/encoder/bridge ptr\n");
+		return -EINVAL;
+	}
+
+	c_bridge = to_dsi_bridge(connector->encoder->bridge);
+	display = c_bridge->display;
+	if (!display || !display->panel) {
+		DSI_ERR("Invalid display/panel ptr\n");
+		return -EINVAL;
+	}
+
+	mutex_lock(&display->display_lock);
+	cur_mode = display->panel->cur_mode;
+	if (cur_mode)
+		ret = snprintf(buf, PAGE_SIZE, "%d\n", cur_mode->timing.refresh_rate);
+	else
+		ret = snprintf(buf, PAGE_SIZE, "%s\n", "null");
+	mutex_unlock(&display->display_lock);
+
+	return ret;
 }
 
 int dsi_display_pre_disable(struct dsi_display *display)
