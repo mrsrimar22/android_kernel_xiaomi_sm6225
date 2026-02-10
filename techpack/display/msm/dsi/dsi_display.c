@@ -6865,6 +6865,12 @@ int dsi_display_set_mode(struct dsi_display *display,
 			timing.h_active, timing.v_active,
 			timing.refresh_rate);
 
+	if (display->panel && display->panel->cur_mode &&
+	    display->panel->cur_mode->timing.refresh_rate != timing.refresh_rate) {
+		if (display->drm_conn && display->drm_conn->kdev)
+			sysfs_notify(&display->drm_conn->kdev->kobj, NULL, "dynamic_fps");
+	}
+
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
 error:
 	mutex_unlock(&display->display_lock);
@@ -7790,6 +7796,33 @@ int dsi_display_post_enable(struct dsi_display *display)
 
 	mutex_unlock(&display->display_lock);
 	return rc;
+}
+
+ssize_t dsi_display_dynamic_fps_read(struct drm_connector *connector, char *buf)
+{
+	struct dsi_display *display = NULL;
+	struct dsi_bridge *c_bridge = NULL;
+	struct dsi_display_mode *cur_mode = NULL;
+	ssize_t ret = 0;
+
+	if (!connector || connector->connector_type != DRM_MODE_CONNECTOR_DSI ||
+	    !connector->encoder || !connector->encoder->bridge)
+		return scnprintf(buf, PAGE_SIZE, "null\n");
+
+	c_bridge = to_dsi_bridge(connector->encoder->bridge);
+	display = c_bridge->display;
+	if (!display || !display->panel)
+		return scnprintf(buf, PAGE_SIZE, "null\n");
+
+	mutex_lock(&display->display_lock);
+	cur_mode = display->panel->cur_mode;
+	if (cur_mode)
+		ret = scnprintf(buf, PAGE_SIZE, "%d\n", cur_mode->timing.refresh_rate);
+	else
+		ret = scnprintf(buf, PAGE_SIZE, "null\n");
+	mutex_unlock(&display->display_lock);
+
+	return ret;
 }
 
 int dsi_display_pre_disable(struct dsi_display *display)
