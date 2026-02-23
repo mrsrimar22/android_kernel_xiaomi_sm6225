@@ -477,6 +477,7 @@ static int cam_tfe_bus_acquire_rdi_wm(
 	case CAM_FORMAT_MIPI_RAW_8:
 	case CAM_FORMAT_PLAIN8:
 		rsrc_data->pack_fmt = 0xA;
+		rsrc_data->mode = CAM_ISP_TFE_WM_FRAME_BASED_MODE;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
 				ALIGNUP(rsrc_data->width * 8, 64) / 64;
@@ -493,6 +494,7 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		break;
 	case CAM_FORMAT_MIPI_RAW_10:
 		rsrc_data->pack_fmt = 0xA;
+		rsrc_data->mode = CAM_ISP_TFE_WM_FRAME_BASED_MODE;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
 				ALIGNUP(rsrc_data->width * 10, 64) / 64;
