@@ -8,9 +8,22 @@
 #include "cam_sensor_util.h"
 #include "cam_mem_mgr.h"
 #include "cam_res_mgr_api.h"
+/* hzk add for camera power up begin */
+#include "wl2866d.h"
+/* hzk add for camera power up end */
 
 #define CAM_SENSOR_PINCTRL_STATE_SLEEP "cam_suspend"
 #define CAM_SENSOR_PINCTRL_STATE_DEFAULT "cam_default"
+
+/* hzk add for camera power up begin */
+#define WL2866D_DELAY_MAX_US 65420
+#define WL2866D_DELAY_US_PER_MS 1000
+/* hzk add for camera power up end */
+
+/* hzk add for distinguish front i&&ii begin */
+#define CAM_SENSOR_FRONT_MIN_VOLTAGE 1050000
+#define CAM_SENSOR_FRONT_MAX_VOLTAGE 1200000
+/* hzk add for distinguish front i&&ii end */
 
 #define VALIDATE_VOLTAGE(min, max, config_val) ((config_val) && \
 	(config_val >= min) && (config_val <= max))
@@ -934,6 +947,16 @@ int32_t msm_camera_fill_vreg_params(
 						soc_info->rgltr_max_volt[j] =
 						power_setting[i].config_val;
 					}
+/* hzk add for modify dvdd voltage range begin */
+					else if (VALIDATE_VOLTAGE(
+						CAM_SENSOR_FRONT_MIN_VOLTAGE,
+						CAM_SENSOR_FRONT_MAX_VOLTAGE,
+						power_setting[i].config_val)) {
+						soc_info->rgltr_min_volt[j] =
+						soc_info->rgltr_max_volt[j] =
+						power_setting[i].config_val;
+					}
+/* hzk add for modify dvdd voltage range end */
 					break;
 				}
 			}
@@ -1843,6 +1866,10 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 	int32_t vreg_idx = -1;
 	struct cam_sensor_power_setting *power_setting = NULL;
 	struct msm_camera_gpio_num_info *gpio_num_info = NULL;
+/* hzk add for camera power up begin */
+	u32 wl2866d_time_delay = 0;
+	int wl2866d_iotype = -1;
+/* hzk add for camera power up end */
 
 	CAM_DBG(CAM_SENSOR, "Enter");
 	if (!ctrl) {
@@ -2063,6 +2090,27 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 				goto power_up_failed;
 			}
 			break;
+/* hzk add for camera power up begin */
+		case SENSOR_WL2866D_DVDD1:
+		case SENSOR_WL2866D_DVDD2:
+		case SENSOR_WL2866D_AVDD1:
+		case SENSOR_WL2866D_AVDD2:
+			wl2866d_iotype = (int)power_setting->seq_type - SENSOR_WL2866D_DVDD1;
+			rc = wl2866d_power_control(wl2866d_iotype, power_setting->config_val);
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR,
+					"wl2866d power up failed: seq_type=%d config_val=%d rc=%d",
+					power_setting->seq_type,
+					power_setting->config_val, rc);
+				goto power_up_failed;
+			}
+
+			wl2866d_time_delay = WL2866D_DELAY_US_PER_MS * (u32)power_setting->delay;
+			wl2866d_time_delay = min(wl2866d_time_delay, (u32)WL2866D_DELAY_MAX_US);
+			if (wl2866d_time_delay)
+				usleep_range(wl2866d_time_delay, wl2866d_time_delay + 100);
+			break;
+/* hzk add for camera power up end */
 		default:
 			CAM_ERR(CAM_SENSOR, "error power seq type %d",
 				power_setting->seq_type);
@@ -2221,6 +2269,10 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 	struct cam_sensor_power_setting *pd = NULL;
 	struct cam_sensor_power_setting *ps = NULL;
 	struct msm_camera_gpio_num_info *gpio_num_info = NULL;
+/* hzk add for camera power down begin */
+	u32 wl2866d_time_delay = 0;
+	int wl2866d_iotype = -1;
+/* hzk add for camera power down end */
 
 	CAM_DBG(CAM_SENSOR, "Enter");
 	if (!ctrl || !soc_info) {
@@ -2341,6 +2393,24 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 				CAM_ERR(CAM_SENSOR,
 					"Error disabling VREG GPIO");
 			break;
+/* hzk add for camera power down begin */
+		case SENSOR_WL2866D_DVDD1:
+		case SENSOR_WL2866D_DVDD2:
+		case SENSOR_WL2866D_AVDD1:
+		case SENSOR_WL2866D_AVDD2:
+			wl2866d_iotype = (int)pd->seq_type - SENSOR_WL2866D_DVDD1;
+			ret = wl2866d_power_control(wl2866d_iotype, 0);
+			if (ret < 0)
+				CAM_ERR(CAM_SENSOR,
+					"wl2866d power down failed: seq_type=%d ret=%d",
+					pd->seq_type, ret);
+
+			wl2866d_time_delay = WL2866D_DELAY_US_PER_MS * (u32)pd->delay;
+			wl2866d_time_delay = min(wl2866d_time_delay, (u32)WL2866D_DELAY_MAX_US);
+			if (wl2866d_time_delay)
+				usleep_range(wl2866d_time_delay, wl2866d_time_delay + 100);
+			break;
+/* hzk add for camera power down end */
 		default:
 			CAM_ERR(CAM_SENSOR, "error power seq type %d",
 				pd->seq_type);
