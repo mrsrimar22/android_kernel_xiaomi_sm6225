@@ -97,6 +97,8 @@ int cam_ope_process_cmd(void *device_priv, uint32_t cmd_type,
 	void *cmd_args, uint32_t arg_size);
 int ope_validate_buff_offset(size_t buf_len,
 		struct ope_cmd_buf_info *cmd_buf);
+int cam_ope_validate_kmd_space(size_t total_buf_size,
+		uint32_t current_offset, size_t bytes_to_write);
 irqreturn_t cam_ope_irq(int irq_num, void *data);
 
 #endif /* CAM_OPE_CORE_H */

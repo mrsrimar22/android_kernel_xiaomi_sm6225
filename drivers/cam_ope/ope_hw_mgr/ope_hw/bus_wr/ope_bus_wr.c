@@ -329,6 +329,10 @@ static uint32_t *cam_ope_bus_wr_update(struct ope_hw *ope_hw_info,
 				prepare->kmd_buf_offset;
 			io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 			io_port_cdm->num_s_cmd_bufs[l]++;
+			write_len = (count + header_size) * sizeof(uint32_t);
+			if (cam_ope_validate_kmd_space(ope_request->ope_kmd_buf.size,
+						prepare->kmd_buf_offset, write_len))
+				return NULL;
 
 			avaliable_size = ope_request->ope_kmd_buf.size -
 				((uintptr_t)kmd_buf - (uintptr_t)ope_request->ope_kmd_buf.cpu_addr);

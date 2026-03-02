@@ -306,6 +306,12 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 				prepare->kmd_buf_offset;
 			io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 			io_port_cdm->num_s_cmd_bufs[l]++;
+			write_len = (count + header_size) * sizeof(uint32_t);
+			if (cam_ope_validate_kmd_space(ope_request->ope_kmd_buf.size,
+						prepare->kmd_buf_offset, write_len)){
+				CAM_ERR(CAM_OPE, "KMD buffer validation failed");
+				return NULL;
+			}
 
 			avaliable_size = ope_request->ope_kmd_buf.size -
 				((uintptr_t)kmd_buf - (uintptr_t)ope_request->ope_kmd_buf.cpu_addr);
@@ -410,17 +416,16 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 			prepare->kmd_buf_offset;
 		io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 		io_port_cdm->num_s_cmd_bufs[l]++;
-
-		avaliable_size = ope_request->ope_kmd_buf.size -
-			((uintptr_t)kmd_buf - (uintptr_t)ope_request->ope_kmd_buf.cpu_addr);
-		size = cdm_ops->cdm_required_size_reg_random(count / 2);
-		if ((size * 4) > avaliable_size) {
-			CAM_ERR(CAM_OPE, "buf size:%zu is not sufficient, expected: %u",
-				avaliable_size, size * 4);
-			return NULL;
-		}
-		kmd_buf = cdm_ops->cdm_write_regrandom(
-			kmd_buf, count/2, temp_reg);
+	avaliable_size = ope_request->ope_kmd_buf.size -
+		((uintptr_t)kmd_buf - (uintptr_t)ope_request->ope_kmd_buf.cpu_addr);
+	size = cdm_ops->cdm_required_size_reg_random(count / 2);
+	if ((size * 4) > avaliable_size) {
+		CAM_ERR(CAM_OPE, "buf size:%zu is not sufficient, expected: %u",
+			avaliable_size, size * 4);
+		return NULL;
+	}
+	kmd_buf = cdm_ops->cdm_write_regrandom(
+		kmd_buf, count/2, temp_reg);
 		prepare->kmd_buf_offset += ((count + header_size) *
 			sizeof(temp));
 
