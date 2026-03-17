@@ -483,6 +483,7 @@ gen_headers_out_arm = [
     "linux/qnxtypes.h",
     "linux/qrng.h",
     "linux/qrtr.h",
+    "linux/qrtr_wakeup_info.h",
     "linux/qseecom.h",
     "linux/quota.h",
     "linux/radeonfb.h",
