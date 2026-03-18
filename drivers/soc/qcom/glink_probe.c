@@ -36,6 +36,8 @@ do {									       \
 #define GLINK_SSR_PRIORITY	1
 #define GLINK_SSR_REPLY_TIMEOUT	HZ
 
+extern const struct dev_pm_ops glink_native_pm_ops;
+
 struct do_cleanup_msg {
 	__le32 version;
 	__le32 command;
@@ -447,6 +449,7 @@ static struct platform_driver glink_probe_driver = {
 	.driver = {
 		.name = "msm_glink",
 		.of_match_table = glink_match_table,
+		.pm = &glink_native_pm_ops,
 	},
 };
 
