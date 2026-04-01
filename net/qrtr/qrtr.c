@@ -48,6 +48,23 @@
 
 #define AID_VENDOR_QRTR	KGIDT_INIT(2906)
 
+const char *qrtr_packet_type_name[] = {
+	"Unknown",
+	"QRTR_TYPE_DATA",
+	"QRTR_TYPE_HELLO",
+	"QRTR_TYPE_BYE",
+	"QRTR_TYPE_NEW_SERVER",
+	"QRTR_TYPE_DEL_SERVER",
+	"QRTR_TYPE_DEL_CLIENT",
+	"QRTR_TYPE_RESUME_TX",
+	"QRTR_TYPE_EXIT",
+	"QRTR_TYPE_PING",
+	"QRTR_TYPE_NEW_LOOKUP",
+	"QRTR_TYPE_DEL_LOOKUP",
+	"Reserved",
+	"QRTR_TYPE_DEL_PROC"
+};
+
 /**
  * struct qrtr_hdr_v1 - (I|R)PCrouter packet header version 1
  * @version: protocol version
@@ -319,13 +336,15 @@ static void qrtr_log_rx_msg(struct qrtr_node *node, struct sk_buff *skb)
 void qrtr_print_wakeup_reason(const void *data)
 {
 	struct service_info *sinfo = NULL;
+	const struct qrtr_ctrl_pkt *pkt;
+	struct qrtr_sock *ipc = NULL;
 	char client_info[64] = {0,};
+	char log_info[150] = {0,};
 	struct qrtr_cb cb;
-	struct qrtr_sock *ipc;
 	unsigned int size;
+	u64 preview = 0;
 	int service_id;
 	size_t hdrlen;
-	u64 preview = 0;
 	int rc = 0;
 
 	rc = qrtr_parse_header(&cb, &hdrlen, &size, data);
@@ -344,23 +363,68 @@ void qrtr_print_wakeup_reason(const void *data)
 	size = (sizeof(preview) > size) ? size : sizeof(preview);
 	memcpy(&preview, data + hdrlen, size);
 
-	ipc = qrtr_port_lookup(cb->dst_port);
+	if (cb.type != QRTR_TYPE_DATA)
+		pkt = (struct qrtr_ctrl_pkt *)(data + hdrlen);
 
-	if (cb.dst_node == qrtr_local_nid)
-		snprintf(client_info, sizeof(client_info), "rx_client[pid:%d, comm:%s]",
-			 ipc ? ipc->pid : -1, ipc ? ipc->comm : "NULL");
+	switch (cb.type) {
+	case QRTR_TYPE_NEW_SERVER:
+	case QRTR_TYPE_DEL_SERVER:
+		snprintf(log_info, sizeof(log_info),
+			 "CTRL cmd:0x%x %s SVC[0x%x:0x%x] addr[0x%x:0x%x]",
+			 cb.type, qrtr_packet_type_name[cb.type],
+			 le32_to_cpu(pkt->server.service),
+			 le32_to_cpu(pkt->server.instance),
+			 le32_to_cpu(pkt->server.node),
+			 le32_to_cpu(pkt->server.port));
+		break;
+	case QRTR_TYPE_DEL_CLIENT:
+	case QRTR_TYPE_RESUME_TX:
+		snprintf(log_info, sizeof(log_info), "CTRL cmd:0x%x %s addr[0x%x:0x%x]",
+			 cb.type, qrtr_packet_type_name[cb.type],
+			 le32_to_cpu(pkt->client.node),
+			 le32_to_cpu(pkt->client.port));
+		break;
 
-	pr_info("%s: src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] service[0x%x] %s\n",
-		__func__,
-		cb.src_node, cb.src_port,
-		cb.dst_node, cb.dst_port,
-		(unsigned int)preview, (unsigned int)(preview >> 32),
-		service_id,
-		(cb.dst_node == qrtr_local_nid) ?
-		client_info : "destination is GVM");
+	case QRTR_TYPE_HELLO:
+	case QRTR_TYPE_BYE:
+		snprintf(log_info, sizeof(log_info), "CTRL cmd:0x%x %s node[0x%x]",
+			 cb.type, qrtr_packet_type_name[cb.type],
+			 cb.src_node);
+		break;
 
-	if (ipc)
-		qrtr_port_put(ipc);
+	case QRTR_TYPE_DEL_PROC:
+		snprintf(log_info, sizeof(log_info),
+			 "CTRL cmd:0x%x %s node[0x%x]", cb.type, qrtr_packet_type_name[cb.type],
+			 pkt->proc.node);
+		break;
+
+	case QRTR_TYPE_DATA:
+		ipc = qrtr_port_lookup(cb.dst_port);
+
+		if (cb.dst_node == qrtr_local_nid)
+			snprintf(client_info, sizeof(client_info), "rx_client[pid:%d, comm:%s]",
+				 ipc ? ipc->pid : -1, ipc ? ipc->comm : "NULL");
+		else
+			snprintf(client_info, sizeof(client_info), "forward to node:0x%x",
+				 cb.dst_node);
+
+		snprintf(log_info, sizeof(log_info),
+			 "src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] service[%d] %s",
+			 cb.src_node, cb.src_port,
+			 cb.dst_node, cb.dst_port,
+			 (unsigned int)preview, (unsigned int)(preview >> 32),
+			 service_id,
+			 client_info);
+		if (ipc)
+			qrtr_port_put(ipc);
+		break;
+
+	default:
+		snprintf(log_info, sizeof(log_info), "Invalid packet received");
+		break;
+	}
+
+	pr_info("%s: %s\n", __func__, log_info);
 }
 EXPORT_SYMBOL(qrtr_print_wakeup_reason);
 
@@ -376,6 +440,7 @@ static int qrtr_parse_header(struct qrtr_cb *cb, size_t *hdrlen, unsigned int *s
 	case QRTR_PROTO_VER_1:
 		v1 = (struct qrtr_hdr_v1 *)data;
 		*hdrlen = sizeof(*v1);
+		cb->type = le32_to_cpu(v1->type);
 		cb->src_node = le32_to_cpu(v1->src_node_id);
 		cb->src_port = le32_to_cpu(v1->src_port_id);
 		cb->dst_node = le32_to_cpu(v1->dst_node_id);
@@ -386,6 +451,7 @@ static int qrtr_parse_header(struct qrtr_cb *cb, size_t *hdrlen, unsigned int *s
 	case QRTR_PROTO_VER_2:
 		v2 = (struct qrtr_hdr_v2 *)data;
 		*hdrlen = sizeof(*v2) + v2->optlen;
+		cb->type = v2->type;
 		cb->src_node = le16_to_cpu(v2->src_node_id);
 		cb->src_port = le16_to_cpu(v2->src_port_id);
 		cb->dst_node = le16_to_cpu(v2->dst_node_id);
