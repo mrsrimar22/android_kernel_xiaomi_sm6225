@@ -34,4 +34,6 @@ void qrtr_endpoint_unregister(struct qrtr_endpoint *ep);
 int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len);
 
 int qrtr_peek_pkt_size(const void *data);
+
+void qrtr_print_wakeup_reason(const void *data);
 #endif
