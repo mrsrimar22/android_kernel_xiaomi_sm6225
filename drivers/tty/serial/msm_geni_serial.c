@@ -3309,6 +3309,24 @@ static void msm_geni_serial_cons_pm(struct uart_port *uport,
 		se_geni_resources_off(&msm_port->serial_rsc);
 }
 
+static void msm_geni_serial_hs_pm(struct uart_port *uport,
+		unsigned int new_state, unsigned int old_state)
+{
+	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+
+	if (unlikely(uart_console(uport)))
+		return;
+
+	if (new_state == UART_PM_STATE_ON && old_state == UART_PM_STATE_OFF) {
+		IPC_LOG_MSG(port->ipc_log_pwr, "%s: ON\n", __func__);
+		pm_runtime_get_sync(uport->dev);
+	} else if (new_state == UART_PM_STATE_OFF &&
+			old_state == UART_PM_STATE_ON) {
+		IPC_LOG_MSG(port->ipc_log_pwr, "%s: OFF\n", __func__);
+		pm_runtime_put_sync(uport->dev);
+	}
+}
+
 static const struct uart_ops msm_geni_console_pops = {
 	.tx_empty = msm_geni_serial_tx_empty,
 	.stop_tx = msm_geni_serial_stop_tx,
@@ -3343,6 +3361,7 @@ static const struct uart_ops msm_geni_serial_pops = {
 	.break_ctl = msm_geni_serial_break_ctl,
 	.flush_buffer = NULL,
 	.ioctl = msm_geni_serial_ioctl,
+	.pm = msm_geni_serial_hs_pm,
 };
 
 static const struct of_device_id msm_geni_device_tbl[] = {
@@ -3851,36 +3870,18 @@ exit_runtime_resume:
 	return ret;
 }
 
-static int msm_geni_serial_sys_suspend_noirq(struct device *dev)
+static int msm_geni_serial_sys_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct msm_geni_serial_port *port = platform_get_drvdata(pdev);
 	struct uart_port *uport = &port->uport;
 
-	if (uart_console(uport)) {
-		uart_suspend_port((struct uart_driver *)uport->private_data,
+	IPC_LOG_MSG(port->ipc_log_pwr, "%s\n", __func__);
+	return uart_suspend_port((struct uart_driver *)uport->private_data,
 					uport);
-	} else {
-		struct uart_state *state = uport->state;
-		struct tty_port *tty_port = &state->port;
-
-		mutex_lock(&tty_port->mutex);
-		if (!pm_runtime_status_suspended(dev)) {
-			dev_err(dev, "%s:Active userspace vote; ioctl_cnt %d\n",
-					__func__, port->ioctl_count);
-			IPC_LOG_MSG(port->ipc_log_pwr,
-				"%s:Active userspace vote; ioctl_cnt %d\n",
-					__func__, port->ioctl_count);
-			mutex_unlock(&tty_port->mutex);
-			return -EBUSY;
-		}
-		IPC_LOG_MSG(port->ipc_log_pwr, "%s\n", __func__);
-		mutex_unlock(&tty_port->mutex);
-	}
-	return 0;
 }
 
-static int msm_geni_serial_sys_resume_noirq(struct device *dev)
+static int msm_geni_serial_sys_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct msm_geni_serial_port *port = platform_get_drvdata(pdev);
@@ -3889,7 +3890,10 @@ static int msm_geni_serial_sys_resume_noirq(struct device *dev)
 	if (uart_console(uport) &&
 	    console_suspend_enabled && uport->suspended) {
 		uart_resume_port((struct uart_driver *)uport->private_data,
-									uport);
+								uport);
+	} else if (!uart_console(uport) && uport->suspended) {
+		uart_resume_port((struct uart_driver *)uport->private_data,
+								uport);
 	}
 	return 0;
 }
@@ -3904,12 +3908,12 @@ static int msm_geni_serial_runtime_resume(struct device *dev)
 	return 0;
 }
 
-static int msm_geni_serial_sys_suspend_noirq(struct device *dev)
+static int msm_geni_serial_sys_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int msm_geni_serial_sys_resume_noirq(struct device *dev)
+static int msm_geni_serial_sys_resume(struct device *dev)
 {
 	return 0;
 }
@@ -3918,8 +3922,8 @@ static int msm_geni_serial_sys_resume_noirq(struct device *dev)
 static const struct dev_pm_ops msm_geni_serial_pm_ops = {
 	.runtime_suspend = msm_geni_serial_runtime_suspend,
 	.runtime_resume = msm_geni_serial_runtime_resume,
-	.suspend_noirq = msm_geni_serial_sys_suspend_noirq,
-	.resume_noirq = msm_geni_serial_sys_resume_noirq,
+	.suspend = msm_geni_serial_sys_suspend,
+	.resume = msm_geni_serial_sys_resume,
 };
 
 static struct platform_driver msm_geni_serial_platform_driver = {
