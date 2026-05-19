@@ -116,6 +116,8 @@ struct qrtr_sock {
 	struct sockaddr_qrtr peer;
 
 	int state;
+	char comm[TASK_COMM_LEN];
+	int pid;
 };
 
 static inline struct qrtr_sock *qrtr_sk(struct sock *sk)
@@ -317,7 +319,9 @@ static void qrtr_log_rx_msg(struct qrtr_node *node, struct sk_buff *skb)
 void qrtr_print_wakeup_reason(const void *data)
 {
 	struct service_info *sinfo = NULL;
+	char client_info[64] = {0,};
 	struct qrtr_cb cb;
+	struct qrtr_sock *ipc;
 	unsigned int size;
 	int service_id;
 	size_t hdrlen;
@@ -340,12 +344,23 @@ void qrtr_print_wakeup_reason(const void *data)
 	size = (sizeof(preview) > size) ? size : sizeof(preview);
 	memcpy(&preview, data + hdrlen, size);
 
-	pr_info("%s: src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] service[0x%x]\n",
+	ipc = qrtr_port_lookup(cb->dst_port);
+
+	if (cb.dst_node == qrtr_local_nid)
+		snprintf(client_info, sizeof(client_info), "rx_client[pid:%d, comm:%s]",
+			 ipc ? ipc->pid : -1, ipc ? ipc->comm : "NULL");
+
+	pr_info("%s: src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] service[0x%x] %s\n",
 		__func__,
 		cb.src_node, cb.src_port,
 		cb.dst_node, cb.dst_port,
 		(unsigned int)preview, (unsigned int)(preview >> 32),
-		service_id);
+		service_id,
+		(cb.dst_node == qrtr_local_nid) ?
+		client_info : "destination is GVM");
+
+	if (ipc)
+		qrtr_port_put(ipc);
 }
 EXPORT_SYMBOL(qrtr_print_wakeup_reason);
 
@@ -2202,6 +2217,9 @@ static int qrtr_create(struct net *net, struct socket *sock,
 	ipc->us.sq_node = qrtr_local_nid;
 	ipc->us.sq_port = 0;
 	ipc->state = QRTR_STATE_INIT;
+	ipc->pid = current->pid;
+
+	snprintf(ipc->comm, sizeof(ipc->comm), "%s", current->comm);
 
 	return 0;
 }
