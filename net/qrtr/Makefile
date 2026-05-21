@@ -12,3 +12,6 @@ qrtr-usb-y      := usb.o
 
 obj-$(CONFIG_QRTR_FIFO) += qrtr-fifo.o
 qrtr-fifo-y	:= fifo.o
+
+obj-$(CONFIG_QRTR_WAKEUP_INFO) += qrtr-wakeup-info.o
+qrtr-wakeup-info-y	:= qrtr_wakeup_info.o
