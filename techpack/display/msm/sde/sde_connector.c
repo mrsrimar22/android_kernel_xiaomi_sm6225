@@ -953,6 +953,13 @@ void sde_connector_destroy(struct drm_connector *connector)
 	/* cancel if any pending esd work */
 	sde_connector_schedule_status_work(connector, false);
 
+	if (connector->connector_type == DRM_MODE_CONNECTOR_DSI) {
+		struct dsi_display *dsi_dpy = (struct dsi_display *)c_conn->display;
+
+		if (dsi_dpy && dsi_dpy->panel)
+			dsi_panel_esd_err_irq_unregister(dsi_dpy->panel);
+	}
+
 	if (c_conn->ops.pre_destroy)
 		c_conn->ops.pre_destroy(connector, c_conn->display);
 
@@ -2173,6 +2180,12 @@ static void _sde_connector_report_panel_dead(struct sde_connector *conn,
 			conn->base.base.id, conn->encoder->base.id);
 }
 
+static void sde_connector_esd_panel_dead(void *ctx, bool skip_pre_kickoff)
+{
+	_sde_connector_report_panel_dead((struct sde_connector *)ctx,
+					 skip_pre_kickoff);
+}
+
 int sde_connector_esd_status(struct drm_connector *conn)
 {
 	struct sde_connector *sde_conn = NULL;
@@ -2681,6 +2694,17 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 		}
 	}
 
+	if (connector_type == DRM_MODE_CONNECTOR_DSI) {
+		struct dsi_display *dsi_dpy;
+		struct dsi_panel_esd_cb esd_cb;
+
+		dsi_dpy = (struct dsi_display *)display;
+		esd_cb.panel_dead = sde_connector_esd_panel_dead;
+		esd_cb.ctx = c_conn;
+		if (dsi_dpy && dsi_dpy->panel)
+			dsi_panel_esd_err_irq_register(dsi_dpy->panel, &esd_cb);
+	}
+
 	rc = sde_connector_get_info(&c_conn->base, &display_info);
 	if (!rc && (connector_type == DRM_MODE_CONNECTOR_DSI) &&
 			(display_info.capabilities & MSM_DISPLAY_CAP_VID_MODE))
@@ -2692,7 +2716,7 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 	rc = _sde_connector_install_properties(dev, sde_kms, c_conn,
 		connector_type, display, &display_info);
 	if (rc)
-		goto error_cleanup_fence;
+		goto error_unregister_esd;
 
 	rc = msm_property_install_get_status(&c_conn->property_info);
 	if (rc) {
@@ -2724,6 +2748,13 @@ error_destroy_property:
 		drm_property_blob_put(c_conn->blob_ext_hdr);
 
 	msm_property_destroy(&c_conn->property_info);
+error_unregister_esd:
+	if (connector_type == DRM_MODE_CONNECTOR_DSI) {
+		struct dsi_display *dsi_dpy = (struct dsi_display *)display;
+
+		if (dsi_dpy && dsi_dpy->panel)
+			dsi_panel_esd_err_irq_unregister(dsi_dpy->panel);
+	}
 error_cleanup_fence:
 	mutex_destroy(&c_conn->lock);
 	sde_fence_deinit(c_conn->retire_fence);
