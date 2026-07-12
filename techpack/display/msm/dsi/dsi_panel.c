@@ -8,6 +8,7 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/interrupt.h>
 #include <linux/pwm.h>
 #include <video/mipi_display.h>
 
@@ -3298,6 +3299,101 @@ error:
 	return rc;
 }
 
+static irqreturn_t dsi_panel_esd_err_irq_thread(int irq, void *data)
+{
+	struct dsi_panel *panel = data;
+	int gpio_val = 1;
+
+	if (!panel)
+		return IRQ_HANDLED;
+
+	if (gpio_is_valid(panel->esd_config.esd_err_gpio))
+		gpio_val = gpio_get_value(panel->esd_config.esd_err_gpio);
+
+	DSI_INFO("esd err irq fired: val=%d panel_on=%d\n", gpio_val,
+		 panel->panel_initialized);
+
+	if (panel->panel_initialized && gpio_val == 0) {
+		if (atomic_cmpxchg(&panel->esd_recovery_pending, 0, 1))
+			return IRQ_HANDLED;
+
+		if (panel->esd_cb.panel_dead) {
+			panel->esd_cb.panel_dead(panel->esd_cb.ctx, false);
+		} else {
+			/* No callback registered, clear to avoid stuck state */
+			atomic_set(&panel->esd_recovery_pending, 0);
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+
+int dsi_panel_esd_err_irq_register(struct dsi_panel *panel,
+				   const struct dsi_panel_esd_cb *cb)
+{
+	int gpio, irq, rc;
+
+	if (!panel || !cb || !cb->panel_dead)
+		return -EINVAL;
+
+	if (panel->esd_cb.panel_dead)
+		return 0;
+
+	gpio = panel->esd_config.esd_err_gpio;
+	if (!gpio_is_valid(gpio))
+		return -ENODEV;
+
+	rc = gpio_request_one(gpio, GPIOF_IN, "esd_err_irq");
+	if (rc) {
+		DSI_ERR("gpio_request_one(%d) failed, rc=%d\n",
+			gpio, rc);
+		return rc;
+	}
+
+	irq = gpio_to_irq(gpio);
+	if (irq < 0) {
+		DSI_ERR("gpio_to_irq(%d) failed, rc=%d\n", gpio, irq);
+		gpio_free(gpio);
+		return irq;
+	}
+
+	rc = request_threaded_irq(irq, NULL, dsi_panel_esd_err_irq_thread,
+				  panel->esd_config.esd_err_irq_flags,
+				  "esd_err_irq", panel);
+	if (rc < 0) {
+		DSI_ERR("request_threaded_irq(%d) failed rc=%d\n",
+			irq, rc);
+		gpio_free(gpio);
+		return rc;
+	}
+
+	panel->esd_config.esd_err_irq = irq;
+	panel->esd_cb = *cb;
+
+	DSI_INFO("registered esd err irq %d (flags=0x%lx)\n",
+		 irq, panel->esd_config.esd_err_irq_flags);
+	return 0;
+}
+
+void dsi_panel_esd_err_irq_unregister(struct dsi_panel *panel)
+{
+	if (!panel || !panel->esd_cb.panel_dead)
+		return;
+
+	if (panel->esd_config.esd_err_irq > 0) {
+		free_irq(panel->esd_config.esd_err_irq, panel);
+		DSI_INFO("unregistered esd err irq %d\n",
+			 panel->esd_config.esd_err_irq);
+		panel->esd_config.esd_err_irq = -EINVAL;
+	}
+
+	if (gpio_is_valid(panel->esd_config.esd_err_gpio))
+		gpio_free(panel->esd_config.esd_err_gpio);
+
+	memset(&panel->esd_cb, 0, sizeof(panel->esd_cb));
+	atomic_set(&panel->esd_recovery_pending, 0);
+}
+
 static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 {
 	int rc = 0;
@@ -3305,14 +3401,33 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 	struct drm_panel_esd_config *esd_config;
 	struct dsi_parser_utils *utils = &panel->utils;
 	u8 *esd_mode = NULL;
+	int esd_err_gpio;
+	enum of_gpio_flags gpio_flags;
 
 	esd_config = &panel->esd_config;
 	esd_config->status_mode = ESD_MODE_MAX;
 	esd_config->esd_enabled = utils->read_bool(utils->data,
 		"qcom,esd-check-enabled");
+	esd_config->esd_err_gpio = -EINVAL;
+	esd_config->esd_err_irq = -EINVAL;
+	esd_config->esd_err_irq_flags = 0;
 
 	if (!esd_config->esd_enabled)
 		return 0;
+
+	esd_err_gpio = of_get_named_gpio_flags(panel->panel_of_node,
+					       "qcom,esd-err-irq-gpio",
+					       0, &gpio_flags);
+	if (gpio_is_valid(esd_err_gpio)) {
+		esd_config->esd_err_gpio = esd_err_gpio;
+		esd_config->esd_err_irq_flags = gpio_flags;
+		DSI_INFO("esd gpio=%d flags=0x%lx\n",
+			 esd_config->esd_err_gpio,
+			 esd_config->esd_err_irq_flags);
+	} else {
+		DSI_DEBUG("qcom,esd-err-irq-gpio not configured (%d)\n",
+			  esd_err_gpio);
+	}
 
 	rc = utils->read_string(utils->data,
 			"qcom,mdss-dsi-panel-status-check-mode", &string);
