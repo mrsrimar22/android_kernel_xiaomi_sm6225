@@ -171,6 +171,15 @@ struct drm_panel_esd_config {
 	u8 *return_buf;
 	u8 *status_buf;
 	u32 groups;
+
+	int esd_err_gpio;
+	int esd_err_irq;
+	unsigned long esd_err_irq_flags;
+};
+
+struct dsi_panel_esd_cb {
+	void (*panel_dead)(void *ctx, bool skip_pre_kickoff);
+	void *ctx;
 };
 
 struct dsi_panel {
@@ -204,6 +213,7 @@ struct dsi_panel {
 	struct dsi_pinctrl_info pinctrl;
 	struct drm_panel_hdr_properties hdr_props;
 	struct drm_panel_esd_config esd_config;
+	struct dsi_panel_esd_cb esd_cb;
 
 	struct dsi_parser_utils utils;
 
@@ -345,5 +355,9 @@ void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 
 void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 		struct dsi_display_mode *mode, u32 frame_threshold_us);
+
+int dsi_panel_esd_err_irq_register(struct dsi_panel *panel,
+				   const struct dsi_panel_esd_cb *cb);
+void dsi_panel_esd_err_irq_unregister(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_H_ */
