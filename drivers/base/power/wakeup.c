@@ -18,6 +18,7 @@
 #include <linux/irq.h>
 #include <linux/irqdesc.h>
 #include <linux/wakeup_reason.h>
+#include <linux/string.h>
 #include <trace/events/power.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
@@ -38,6 +39,9 @@ bool events_check_enabled __read_mostly;
 
 /* First wakeup IRQ seen by the kernel in the last cycle. */
 unsigned int pm_wakeup_irq __read_mostly;
+static DEFINE_RAW_SPINLOCK(pm_wakeup_irq_lock);
+static unsigned int pm_wakeup_irq_number;
+static char pm_wakeup_irq_name[MAX_WAKEUP_REASON_IRQ_NAME_LEN];
 
 /* If greater than 0 and the system is suspending, terminate the suspend. */
 static atomic_t pm_abort_suspend __read_mostly;
@@ -926,16 +930,53 @@ void pm_system_cancel_wakeup(void)
 
 void pm_wakeup_clear(bool reset)
 {
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&pm_wakeup_irq_lock, flags);
 	pm_wakeup_irq = 0;
+	pm_wakeup_irq_number = 0;
+	pm_wakeup_irq_name[0] = '\0';
+	raw_spin_unlock_irqrestore(&pm_wakeup_irq_lock, flags);
+
 	if (reset)
 		atomic_set(&pm_abort_suspend, 0);
 }
 
+void pm_print_wakeup_irq(void)
+{
+	unsigned long flags;
+	unsigned int irq;
+	char name[MAX_WAKEUP_REASON_IRQ_NAME_LEN];
+
+	if (!READ_ONCE(pm_wakeup_irq_number))
+		return;
+
+	raw_spin_lock_irqsave(&pm_wakeup_irq_lock, flags);
+	irq = pm_wakeup_irq_number;
+	if (irq) {
+		strscpy(name, pm_wakeup_irq_name, sizeof(name));
+		pm_wakeup_irq_number = 0;
+		pm_wakeup_irq_name[0] = '\0';
+	}
+	raw_spin_unlock_irqrestore(&pm_wakeup_irq_lock, flags);
+
+	if (irq) {
+		pm_pr_dbg("Triggering wakeup from IRQ %u\n", irq);
+		pr_warn("pm_system_irq_wakeup: %u triggered %s\n", irq, name);
+	}
+}
+
 void pm_system_irq_wakeup(unsigned int irq_number)
 {
+	unsigned long flags;
+	struct irq_desc *desc;
+	const char *name = "(unnamed)";
+	bool log = false;
+
+	raw_spin_lock_irqsave(&pm_wakeup_irq_lock, flags);
 	if (pm_wakeup_irq == 0) {
-		struct irq_desc *desc;
-		const char *name = "null";
+		pm_wakeup_irq = irq_number;
+		pm_wakeup_irq_number = irq_number;
 
 		desc = irq_to_desc(irq_number);
 		if (desc == NULL)
@@ -943,10 +984,13 @@ void pm_system_irq_wakeup(unsigned int irq_number)
 		else if (desc->action && desc->action->name)
 			name = desc->action->name;
 
-		log_irq_wakeup_reason(irq_number);
-		pr_warn("%s: %d triggered %s\n", __func__, irq_number, name);
+		strscpy(pm_wakeup_irq_name, name, sizeof(pm_wakeup_irq_name));
+		log = true;
+	}
+	raw_spin_unlock_irqrestore(&pm_wakeup_irq_lock, flags);
 
-		pm_wakeup_irq = irq_number;
+	if (log) {
+		log_irq_wakeup_reason(irq_number);
 		pm_system_wakeup();
 	}
 }
