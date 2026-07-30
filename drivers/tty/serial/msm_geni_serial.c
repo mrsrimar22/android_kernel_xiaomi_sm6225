@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitmap.h>
@@ -3875,10 +3875,22 @@ static int msm_geni_serial_sys_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct msm_geni_serial_port *port = platform_get_drvdata(pdev);
 	struct uart_port *uport = &port->uport;
+	int ret;
 
 	IPC_LOG_MSG(port->ipc_log_pwr, "%s\n", __func__);
-	return uart_suspend_port((struct uart_driver *)uport->private_data,
+	ret = uart_suspend_port((struct uart_driver *)uport->private_data,
 					uport);
+	if (ret)
+		return ret;
+
+	/*
+	 * When no_console_suspend is set the console must remain active
+	 * across system sleep, so skip the force suspend path.
+	 */
+	if (!console_suspend_enabled && uart_console(uport))
+		return 0;
+
+	return pm_runtime_force_suspend(dev);
 }
 
 static int msm_geni_serial_sys_resume(struct device *dev)
@@ -3886,6 +3898,11 @@ static int msm_geni_serial_sys_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct msm_geni_serial_port *port = platform_get_drvdata(pdev);
 	struct uart_port *uport = &port->uport;
+	int ret;
+
+	ret = pm_runtime_force_resume(dev);
+	if (ret)
+		return ret;
 
 	if (uart_console(uport) &&
 	    console_suspend_enabled && uport->suspended) {
