@@ -4895,7 +4895,7 @@ static struct iris_hfi_device *__add_device(u32 device_id,
 
 	hdevice->res = res;
 	hdevice->device_id = device_id;
-	hdevice->callback = callback;
+	hdevice->callback = (msm_cvp_callback)callback;
 
 	__init_cvp_ops(hdevice);
 

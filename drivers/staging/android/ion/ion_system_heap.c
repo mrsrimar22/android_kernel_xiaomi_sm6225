@@ -766,7 +766,7 @@ destroy_uncached_pools:
 	ion_system_heap_destroy_pools(heap->uncached_pools);
 destroy_secure_pools:
 	for (i = 0; i < VMID_LAST; i++) {
-		if (heap->secure_pools[i])
+		if (is_secure_vmid_valid(i))
 			ion_system_heap_destroy_pools(heap->secure_pools[i]);
 	}
 	kfree(heap);

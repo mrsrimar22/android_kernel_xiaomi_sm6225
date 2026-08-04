@@ -407,7 +407,7 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 				chip->jeita_fcc_scaling = true;
 		}
 
-		pr_debug("jeita-fcc-scaling: enabled = %d, jeita-fcc-scaling-temp-threshold = [%d, %d], jeita-scaling-min-fcc-ua = %ld, jeita-scaling-max_fcc_ua = %ld,jeita-fcc-step-size = %ld\n",
+		pr_debug("jeita-fcc-scaling: enabled = %d, jeita-fcc-scaling-temp-threshold = [%d, %d], jeita-scaling-min-fcc-ua = %u, jeita-scaling-max_fcc_ua = %ld,jeita-fcc-step-size = %ld\n",
 			chip->jeita_fcc_scaling,
 			chip->jeita_fcc_scaling_temp_threshold[0],
 			chip->jeita_fcc_scaling_temp_threshold[1],

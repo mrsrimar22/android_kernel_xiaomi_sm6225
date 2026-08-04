@@ -123,14 +123,12 @@ void lim_handle_param_update(struct mac_context *mac, eUpdateIEsType cfgId)
 
 	switch (cfgId) {
 	case eUPDATE_IE_PROBE_BCN:
-	{
 		msg.type = SIR_LIM_UPDATE_BEACON;
 		status = lim_post_msg_api(mac, &msg);
 
 		if (status != QDF_STATUS_SUCCESS)
 			pe_err("Failed lim_post_msg_api %u", status);
-			break;
-	}
+		break;
 	default:
 		break;
 	}
