@@ -368,7 +368,7 @@ static int reg_dmav1_get_dspp_blk(struct sde_hw_cp_cfg *hw_cfg,
 		return -EINVAL;
 	}
 
-	if (hw_cfg->dspp == NULL) {
+	if (!hw_cfg->dspp[0]) {
 		DRM_ERROR("Invalid sde_hw_dspp structure provided in hw_cfg\n");
 		return -EINVAL;
 	}
@@ -1125,7 +1125,7 @@ int reg_dmav1_setup_rc_datav1(struct sde_hw_dspp *ctx, void *cfg)
 
 	rc = reg_dma_dspp_check(ctx, cfg, RC_DATA);
 	if (rc) {
-		DRM_ERROR("invalid dma dspp check rc = %d\n");
+		DRM_ERROR("invalid dma dspp check rc = %d\n", rc);
 		return -EINVAL;
 	}
 
@@ -1161,7 +1161,7 @@ int reg_dmav1_setup_rc_datav1(struct sde_hw_dspp *ctx, void *cfg)
 	cfg_param_07 = rc_mask_cfg->cfg_param_07;
 	for (i = 0; i < rc_mask_cfg->cfg_param_08; i++) {
 		cfg_param_09 =  rc_mask_cfg->cfg_param_09[i];
-		DRM_DEBUG_DRIVER("cfg_param_09[%d] = 0x%016lX at %u\n", i,
+		DRM_DEBUG_DRIVER("cfg_param_09[%d] = 0x%016llX at %u\n", i,
 				 cfg_param_09,
 				 i + cfg_param_07);
 		data[i * 2] = (i == 0) ? (BIT(30) | (cfg_param_07 << 18)) : 0;

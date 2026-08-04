@@ -280,26 +280,29 @@ static int wcd938x_slave_bind(struct device *dev,
 	int ret = 0;
 	uint8_t devnum = 0;
 	struct swr_device *pdev = to_swr_device(dev);
-	int retry = SWR_MAX_RETRY;
+	int retry;
 
 	if (!pdev) {
 		pr_err("%s: invalid swr device handle\n", __func__);
 		return -EINVAL;
 	}
 
-	do {
-		/* Add delay for soundwire enumeration */
-		usleep_range(100, 110);
+	for (retry = 0; retry < SWR_MAX_RETRY; retry++) {
 		ret = swr_get_logical_dev_num(pdev, pdev->addr, &devnum);
-	} while (ret && --retry);
+		if (!ret)
+			break;
+
+		if (retry < SWR_MAX_RETRY - 1)
+			usleep_range(100, 110);
+	}
 
 	if (ret) {
 		dev_dbg(&pdev->dev,
 			"%s get devnum %d for dev addr %llx failed\n",
 			__func__, devnum, pdev->addr);
 		ret = -EPROBE_DEFER;
-		return ret;
 	}
+
 	pdev->dev_num = devnum;
 
 	return ret;

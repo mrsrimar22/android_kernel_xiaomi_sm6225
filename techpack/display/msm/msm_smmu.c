@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -204,6 +205,10 @@ static void msm_smmu_destroy(struct msm_mmu *mmu)
 {
 	struct msm_smmu *smmu = to_msm_smmu(mmu);
 	struct platform_device *pdev = to_platform_device(smmu->client_dev);
+	struct iommu_domain *domain = iommu_get_domain_for_dev(smmu->client_dev);
+
+	if (domain)
+		iommu_set_fault_handler(domain, NULL, NULL);
 
 	if (smmu->client_dev)
 		platform_device_unregister(pdev);

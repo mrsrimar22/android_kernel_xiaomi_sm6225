@@ -1655,7 +1655,7 @@ static int wcd937x_get_logical_addr(struct swr_device *swr_dev)
 		ret = swr_get_logical_dev_num(swr_dev, swr_dev->addr, &devnum);
 		if (ret) {
 			dev_err(&swr_dev->dev,
-				"%s get devnum %d for dev addr %lx failed\n",
+				"%s get devnum %d for dev addr %llx failed\n",
 				__func__, devnum, swr_dev->addr);
 			/* retry after 1ms */
 			usleep_range(1000, 1010);
@@ -2054,7 +2054,7 @@ static const char * const wcd937x_tx_ch_pwr_level_text[] = {
 static const char * const wcd937x_ear_pa_gain_text[] = {
 	"G_6_DB", "G_4P5_DB", "G_3_DB", "G_1P5_DB", "G_0_DB",
 	"G_M1P5_DB", "G_M3_DB", "G_M4P5_DB",
-	"G_M6_DB", "G_7P5_DB", "G_M9_DB",
+	"G_M6_DB", "G_M7P5_DB", "G_M9_DB",
 	"G_M10P5_DB", "G_M12_DB", "G_M13P5_DB",
 	"G_M15_DB", "G_M16P5_DB", "G_M18_DB",
 };

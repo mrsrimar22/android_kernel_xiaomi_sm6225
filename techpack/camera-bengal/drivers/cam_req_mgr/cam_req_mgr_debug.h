@@ -8,6 +8,7 @@
 
 #include <linux/debugfs.h>
 #include "cam_req_mgr_core.h"
+#include "cam_debug_util.h"
 
 int cam_req_mgr_debug_register(struct cam_req_mgr_core_device *core_dev);
 

@@ -1980,17 +1980,24 @@ static int wcd938x_get_logical_addr(struct swr_device *swr_dev)
 {
 	int ret = 0;
 	uint8_t devnum = 0;
-	int num_retry = NUM_ATTEMPTS;
+	int i;
 
-	do {
-		/* retry after 1ms */
-		usleep_range(1000, 1010);
+	for (i = 0; i < NUM_ATTEMPTS; i++) {
 		ret = swr_get_logical_dev_num(swr_dev, swr_dev->addr, &devnum);
-	} while (ret && --num_retry);
-	if (ret)
+		if (!ret)
+			break;
+
+		if (i < NUM_ATTEMPTS - 1)
+			usleep_range(1000, 1010);
+	}
+
+	if (ret) {
 		dev_err(&swr_dev->dev,
 			"%s get devnum %d for dev addr %llx failed\n",
 			__func__, devnum, swr_dev->addr);
+		return ret;
+	}
+
 	swr_dev->dev_num = devnum;
 	return 0;
 }

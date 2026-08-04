@@ -19,6 +19,7 @@
 #ifndef WMA_INTERNAL_H
 #define WMA_INTERNAL_H
 #include <cdp_txrx_handle.h>
+#include <wlan_vdev_mgr_tgt_if_tx_defs.h>
 #if !defined(REMOVE_PKT_LOG)
 #include "pktlog_ac.h"
 #endif
@@ -906,7 +907,7 @@ void wma_set_vdev_intrabss_fwd(tp_wma_handle wma_handle,
  */
 void wma_delete_bss_ho_fail(tp_wma_handle wma, uint8_t vdev_id);
 
-uint32_t wma_get_bcn_rate_code(uint16_t rate);
+enum mlme_bcn_tx_rate_code wma_get_bcn_rate_code(uint16_t rate);
 
 /*
  * wma_mgmt.c functions declarations

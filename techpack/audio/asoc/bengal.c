@@ -5986,7 +5986,7 @@ static const struct of_device_id bengal_asoc_machine_of_match[]  = {
 
 static int msm_snd_card_bengal_late_probe(struct snd_soc_card *card)
 {
-	struct snd_soc_component *component;
+	struct snd_soc_component *component = NULL;
 	struct platform_device *pdev = NULL;
 	char *data = NULL;
 	int ret = 0, i = 0;
@@ -6029,7 +6029,7 @@ static int msm_snd_card_bengal_late_probe(struct snd_soc_card *card)
 	}
 
 	if (ret) {
-		dev_err(component->dev, "%s: mbhc hs detect failed, err:%d\n",
+		dev_err(card->dev, "%s: mbhc hs detect failed, err:%d\n",
 			__func__, ret);
 		goto err_hs_detect;
 	}
@@ -6283,7 +6283,7 @@ static int msm_init_aux_dev(struct platform_device *pdev,
 	u32 codec_max_aux_devs = 0;
 	u32 codec_aux_dev_cnt = 0;
 	int i;
-	struct msm_wsa881x_dev_info *wsa881x_dev_info;
+	struct msm_wsa881x_dev_info *wsa881x_dev_info = NULL;
 	struct aux_codec_dev_info *aux_cdc_dev_info;
 	const char *auxdev_name_prefix[1];
 	char *dev_name_str = NULL;
@@ -6858,7 +6858,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto ret;
 	}
 	if (len <= 0 || len > sizeof(u32)) {
-		dev_dbg(&pdev->dev, "%s: nvmem cell length out of range: %d\n",
+		dev_dbg(&pdev->dev, "%s: nvmem cell length out of range: %ld\n",
 			__func__, len);
 		kfree(buf);
 		goto ret;

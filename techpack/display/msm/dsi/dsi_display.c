@@ -5452,16 +5452,10 @@ end:
 
 int dsi_display_dev_remove(struct platform_device *pdev)
 {
-	int rc = 0i, i = 0;
-	struct dsi_display *display;
-	struct dsi_display_ctrl *ctrl;
+	int rc = 0, i = 0;
+	struct dsi_display *display = platform_get_drvdata(pdev);
+	struct dsi_display_ctrl *ctrl = NULL;
 
-	if (!pdev) {
-		DSI_ERR("Invalid device\n");
-		return -EINVAL;
-	}
-
-	display = platform_get_drvdata(pdev);
 	if (!display || !display->panel_node) {
 		DSI_ERR("invalid display\n");
 		return -EINVAL;
@@ -6428,8 +6422,10 @@ exit:
 	rc = 0;
 
 error:
-	if (rc)
+	if (rc) {
 		kfree(display->modes);
+		display->modes = NULL;
+	}
 
 	mutex_unlock(&display->display_lock);
 	return rc;

@@ -2274,7 +2274,6 @@ static int cam_ope_mgr_process_cmd_desc(struct cam_ope_hw_mgr *hw_mgr,
 {
 	int rc = 0;
 	int i;
-	int num_cmd_buf = 0;
 	size_t len;
 	struct cam_cmd_buf_desc *cmd_desc = NULL;
 	uintptr_t cpu_addr = 0;
@@ -2284,7 +2283,7 @@ static int cam_ope_mgr_process_cmd_desc(struct cam_ope_hw_mgr *hw_mgr,
 		((uint32_t *) &packet->payload + packet->cmd_buf_offset/4);
 
 	*ope_cmd_buf_addr = 0;
-	for (i = 0; i < packet->num_cmd_buf; i++, num_cmd_buf++) {
+	for (i = 0; i < packet->num_cmd_buf; i++) {
 		rc = cam_packet_util_validate_cmd_desc(&cmd_desc[i]);
 		if (rc)
 			return rc;
@@ -2298,8 +2297,6 @@ static int cam_ope_mgr_process_cmd_desc(struct cam_ope_hw_mgr *hw_mgr,
 		if (rc || !cpu_addr) {
 			CAM_ERR(CAM_OPE, "get cmd buf failed %x",
 				hw_mgr->iommu_hdl);
-			num_cmd_buf = (num_cmd_buf > 0) ?
-				num_cmd_buf-- : 0;
 			goto end;
 		}
 		if ((len <= cmd_desc[i].offset) ||

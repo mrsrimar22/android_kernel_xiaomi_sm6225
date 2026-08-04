@@ -696,6 +696,7 @@ out:
 					POWER_SUPPLY_PROP_SET_SHIP_MODE, &val);
 			if (rc)
 				dev_err(sys_reset_dev->dev, "Failed to set ship mode\n");
+			power_supply_put(batt_psy);
 		}
 	}
 
@@ -971,7 +972,7 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	 * event
 	 */
 	if (pon->log_kpd_event && (cfg->pon_type == PON_KPDPWR))
-		pr_info_ratelimited("PMIC input: KPDPWR status=0x%02x, KPDPWR_ON=%d\n",
+		pr_info_ratelimited("PMIC input: KPDPWR status=0x%02x, KPDPWR_ON=%lu\n",
 			pon_rt_sts, (pon_rt_sts & QPNP_PON_KPDPWR_ON));
 
 	if (!cfg->old_state && !key_status) {
@@ -1407,7 +1408,7 @@ static int qpnp_pon_config_kpdpwr_init(struct qpnp_pon *pon,
 		if (rc < 0)
 			pr_err("failed to read QPNP_PON_RT_STS rc=%d\n", rc);
 
-		pr_info("KPDPWR status at init=0x%02x, KPDPWR_ON=%d\n",
+		pr_info("KPDPWR status at init=0x%02x, KPDPWR_ON=%lu\n",
 			pon_rt_sts, (pon_rt_sts & QPNP_PON_KPDPWR_ON));
 	}
 
@@ -1777,7 +1778,7 @@ static int pon_regulator_init(struct qpnp_pon *pon)
 	struct regulator_config reg_cfg = {};
 	struct device_node *node;
 	struct pon_regulator *pon_reg;
-	int rc, i;
+	int rc, i = 0;
 
 	if (!pon->num_pon_reg)
 		return 0;
@@ -1788,7 +1789,6 @@ static int pon_regulator_init(struct qpnp_pon *pon)
 	if (!pon->pon_reg_cfg)
 		return -ENOMEM;
 
-	i = 0;
 	for_each_available_child_of_node(dev->of_node, node) {
 		if (!of_find_property(node, "regulator-name", NULL))
 			continue;

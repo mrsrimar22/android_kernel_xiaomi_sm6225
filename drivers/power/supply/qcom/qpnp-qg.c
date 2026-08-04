@@ -4524,7 +4524,7 @@ static int process_suspend(struct qpnp_qg *chip)
 
 	get_rtc_time(&chip->suspend_time);
 
-	qg_dbg(chip, QG_DEBUG_PM, "FIFO rt_length=%d sleep_fifo_length=%d default_s2_count=%d suspend_data=%d time=%d\n",
+	qg_dbg(chip, QG_DEBUG_PM, "FIFO rt_length=%d sleep_fifo_length=%d default_s2_count=%d suspend_data=%d time=%lu\n",
 			fifo_rt_length, sleep_fifo_length,
 			chip->dt.s2_fifo_length, chip->suspend_data,
 			chip->suspend_time);
@@ -4587,7 +4587,7 @@ static int process_resume(struct qpnp_qg *chip)
 	}
 	rt_status &= FIFO_UPDATE_DONE_INT_LAT_STS_BIT;
 
-	qg_dbg(chip, QG_DEBUG_PM, "FIFO_DONE_STS=%d suspend_data=%d good_ocv=%d sleep_time=%d secs\n",
+	qg_dbg(chip, QG_DEBUG_PM, "FIFO_DONE_STS=%d suspend_data=%d good_ocv=%d sleep_time=%lu secs\n",
 				!!rt_status, chip->suspend_data,
 				chip->kdata.param[QG_GOOD_OCV_UV].valid,
 				sleep_time_secs);
@@ -4738,7 +4738,7 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 	chip->batt_age_level = -EINVAL;
 	chip->qg_charge_counter = -EINVAL;
 
-	chip->qg_version = (u8)of_device_get_match_data(&pdev->dev);
+	chip->qg_version = (enum qg_version)of_device_get_match_data(&pdev->dev);
 
 	switch (chip->qg_version) {
 	case QG_LITE:

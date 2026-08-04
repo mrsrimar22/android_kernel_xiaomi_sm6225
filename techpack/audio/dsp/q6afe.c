@@ -8901,7 +8901,7 @@ static int afe_get_clk_src(u16 port_id, char *clk_src)
 		return -EINVAL;
 	}
 
-	if (clkinfo_per_port[idx].clk_src_name == NULL)
+	if (clkinfo_per_port[idx].clk_src_name[0] == '\0')
 		return -EINVAL;
 	strlcpy(clk_src, clkinfo_per_port[idx].clk_src_name,
 				CLK_SRC_NAME_MAX);
@@ -9208,6 +9208,7 @@ int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg)
 	uint32_t build_minor_version = 0;
 	uint32_t build_branch_version = 0;
 	int afe_api_version = 0;
+	char *selected_clk = NULL;
 
 	index = q6audio_get_port_index(port_id);
 	if (index < 0 || index >= AFE_MAX_PORTS) {
@@ -9215,6 +9216,7 @@ int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg)
 				__func__, index);
 		return -EINVAL;
 	}
+
 	ret = q6audio_is_digital_pcm_interface(port_id);
 	if (ret < 0) {
 		pr_err("%s: q6audio_is_digital_pcm_interface fail %d\n",
@@ -9222,19 +9224,20 @@ int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg)
 		return -EINVAL;
 	}
 
-	if (clk_src_name != NULL) {
-		if (cfg->clk_freq_in_hz % AFE_SAMPLING_RATE_8KHZ) {
-			if (clk_src_name[CLK_SRC_FRACT] != NULL)
-				ret = afe_set_source_clk(port_id,
-						clk_src_name[CLK_SRC_FRACT]);
-		} else if (clk_src_name[CLK_SRC_INTEGRAL] != NULL) {
-			ret = afe_set_source_clk(port_id,
-					clk_src_name[CLK_SRC_INTEGRAL]);
-		}
+	if (cfg->clk_freq_in_hz % AFE_SAMPLING_RATE_8KHZ) {
+		if (clk_src_name[CLK_SRC_FRACT][0] != '\0')
+			selected_clk = clk_src_name[CLK_SRC_FRACT];
+	} else if (clk_src_name[CLK_SRC_INTEGRAL][0] != '\0') {
+		selected_clk = clk_src_name[CLK_SRC_INTEGRAL];
+	}
+
+	if (selected_clk != NULL) {
+		ret = afe_set_source_clk(port_id, selected_clk);
 		if (ret < 0)
 			pr_err("%s: afe_set_source_clk fail %d\n",
 				__func__, ret);
 	}
+
 	idx = afe_get_port_idx(port_id);
 	if (idx < 0) {
 		pr_debug("%s: cannot get clock id for port id 0x%x\n", __func__,

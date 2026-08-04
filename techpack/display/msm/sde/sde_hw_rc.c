@@ -860,7 +860,7 @@ int sde_hw_rc_setup_pu_roi(struct sde_hw_dspp *hw_dspp, void *cfg)
 
 	rc = _sde_hw_rc_get_merge_mode(hw_cfg, &merge_mode);
 	if (rc) {
-		SDE_ERROR("invalid merge_mode, rc:%d\n");
+		SDE_ERROR("invalid merge_mode, rc:%d\n", rc);
 		return rc;
 	}
 
@@ -941,7 +941,7 @@ int sde_hw_rc_setup_mask(struct sde_hw_dspp *hw_dspp, void *cfg)
 
 	rc = _sde_hw_rc_get_merge_mode(hw_cfg, &merge_mode);
 	if (rc) {
-		SDE_ERROR("invalid merge_mode, rc:%d\n");
+		SDE_ERROR("invalid merge_mode, rc:%d\n", rc);
 		return rc;
 	}
 

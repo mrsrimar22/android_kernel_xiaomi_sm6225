@@ -278,7 +278,7 @@ TRACE_EVENT(cam_delay_detect,
 		__entry->rc          = rc;
 	),
 	TP_printk(
-		"%s: %s request=%lld ctx_id=%d link_hdl=0x%x session_hdl=0x%x rc=%d",
+		"%s: %s request=%lld ctx_id=%llu link_hdl=0x%x session_hdl=0x%x rc=%d",
 			__get_str(entity), __get_str(text), __entry->req_id,
 			__entry->ctx_id, __entry->link_hdl,
 			__entry->session_hdl, __entry->rc
