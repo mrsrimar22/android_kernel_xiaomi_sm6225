@@ -229,7 +229,7 @@ static int qti_flash_led_write(struct qti_flash_led *led, u16 offset,
 		pr_err("Failed to write to 0x%04X rc = %d\n",
 			(led->base + offset), rc);
 	else
-		pr_debug("Wrote 0x%02X to addr 0x%04X\n", data,
+		pr_debug("Wrote %pK to addr 0x%04X\n", data,
 			(led->base + offset));
 
 	return rc;
@@ -677,7 +677,7 @@ static int qti_flash_switch_disable(struct flash_switch_data *snode)
 		rc = qti_flash_led_disable(&led->fnode[i]);
 		if (rc < 0) {
 			pr_err("Failed to disable LED%d\n",
-				&led->fnode[i].id);
+				led->fnode[i].id);
 			break;
 		}
 

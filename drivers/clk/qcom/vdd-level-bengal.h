@@ -49,7 +49,7 @@ enum vdd_l2_levels {
 	VDD_L2_NUM,
 };
 
-static int vdd_l2_corner[] = {
+static int __maybe_unused vdd_l2_corner[] = {
 	[VDD_L2_NONE]    = 0,
 	[VDD_L2_MIN]     = RPM_SMD_REGULATOR_LEVEL_MIN_SVS,
 	[VDD_L2_LOWER]   = RPM_SMD_REGULATOR_LEVEL_LOW_SVS,

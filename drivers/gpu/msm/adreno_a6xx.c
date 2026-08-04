@@ -2688,7 +2688,7 @@ static int a6xx_perfcounter_update(struct adreno_device *adreno_dev,
 		data[offset - 2] = reg->select;
 		data[offset - 1] = reg->countable;
 
-		data[offset] = A6XX_RBBM_PERFCTR_CNTL,
+		data[offset] = A6XX_RBBM_PERFCTR_CNTL;
 		data[offset + 1] = 1;
 	} else {
 		data[offset] = reg->select;
