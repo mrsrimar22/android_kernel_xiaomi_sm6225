@@ -241,10 +241,17 @@ static int xhci_plat_probe(struct platform_device *pdev)
 			return ret;
 	}
 
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_noresume(&pdev->dev);
+
 	hcd = __usb_create_hcd(driver, sysdev, &pdev->dev,
 			       dev_name(&pdev->dev), NULL);
-	if (!hcd)
-		return -ENOMEM;
+	if (!hcd) {
+		ret = -ENOMEM;
+		goto disable_runtime;
+	}
 
 	hcd_to_bus(hcd)->skip_resume = true;
 
@@ -285,11 +292,7 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	if (pdev->dev.parent)
 		pm_runtime_resume(pdev->dev.parent);
 
-	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 1000);
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	pm_runtime_get_sync(&pdev->dev);
 
 	xhci = hcd_to_xhci(hcd);
 	priv_match = of_device_get_match_data(&pdev->dev);
@@ -359,7 +362,8 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	if (ret)
 		goto disable_usb_phy;
 
-	if (HCC_MAX_PSA(xhci->hcc_params) >= 4)
+	if (HCC_MAX_PSA(xhci->hcc_params) >= 4 &&
+	    !(xhci->quirks & XHCI_BROKEN_STREAMS))
 		xhci->shared_hcd->can_do_streams = 1;
 
 	ret = usb_add_hcd(xhci->shared_hcd, irq, IRQF_SHARED);
@@ -396,6 +400,10 @@ disable_reg_clk:
 
 put_hcd:
 	usb_put_hcd(hcd);
+
+disable_runtime:
+	pm_runtime_put_noidle(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	return ret;
 }
