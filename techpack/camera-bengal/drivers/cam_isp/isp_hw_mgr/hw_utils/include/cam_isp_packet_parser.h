@@ -44,7 +44,7 @@ struct cam_isp_generic_blob_info {
  * @prepare:               Contain the packet and HW update variables
  * @res_list_isp_src:      Resource list for IFE/VFE source
  * @base_idx:              Base or dev index of the IFE/VFE HW instance for
- *                         which change change base need to be added
+ *                         which change base need to be added
  * @kmd_buf_info:          Kmd buffer to store the change base command
  *
  * @return:                0 for success

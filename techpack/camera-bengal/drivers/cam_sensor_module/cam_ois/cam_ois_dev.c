@@ -131,7 +131,7 @@ static int cam_ois_init_subdev_param(struct cam_ois_ctrl_t *o_ctrl)
 
 	o_ctrl->v4l2_dev_str.internal_ops = &cam_ois_internal_ops;
 	o_ctrl->v4l2_dev_str.ops = &cam_ois_subdev_ops;
-	strlcpy(o_ctrl->device_name, CAM_OIS_NAME,
+	strscpy(o_ctrl->device_name, CAM_OIS_NAME,
 		sizeof(o_ctrl->device_name));
 	o_ctrl->v4l2_dev_str.name = o_ctrl->device_name;
 	o_ctrl->v4l2_dev_str.sd_flags =
@@ -239,6 +239,7 @@ static int cam_ois_i2c_driver_remove(struct i2c_client *client)
 
 	kfree(o_ctrl->soc_info.soc_private);
 	v4l2_set_subdevdata(&o_ctrl->v4l2_dev_str.sd, NULL);
+	mutex_destroy(&(o_ctrl->ois_mutex));
 	kfree(o_ctrl);
 
 	return 0;
@@ -284,12 +285,12 @@ static int32_t cam_ois_platform_driver_probe(
 	rc = cam_ois_driver_soc_init(o_ctrl);
 	if (rc) {
 		CAM_ERR(CAM_OIS, "failed: soc init rc %d", rc);
-		goto free_soc;
+		goto free_subdev;
 	}
 
 	rc = cam_ois_init_subdev_param(o_ctrl);
 	if (rc)
-		goto free_soc;
+		goto free_subdev;
 
 	rc = cam_ois_update_i2c_info(o_ctrl, &soc_private->i2c_info);
 	if (rc) {
@@ -302,9 +303,11 @@ static int32_t cam_ois_platform_driver_probe(
 	o_ctrl->cam_ois_state = CAM_OIS_INIT;
 
 	return rc;
+
 unreg_subdev:
 	cam_unregister_subdev(&(o_ctrl->v4l2_dev_str));
-free_soc:
+free_subdev:
+	mutex_destroy(&(o_ctrl->ois_mutex));
 	kfree(soc_private);
 free_cci_client:
 	kfree(o_ctrl->io_master_info.cci_client);
@@ -345,6 +348,7 @@ static int cam_ois_platform_driver_remove(struct platform_device *pdev)
 	kfree(o_ctrl->io_master_info.cci_client);
 	platform_set_drvdata(pdev, NULL);
 	v4l2_set_subdevdata(&o_ctrl->v4l2_dev_str.sd, NULL);
+	mutex_destroy(&(o_ctrl->ois_mutex));
 	kfree(o_ctrl);
 
 	return 0;

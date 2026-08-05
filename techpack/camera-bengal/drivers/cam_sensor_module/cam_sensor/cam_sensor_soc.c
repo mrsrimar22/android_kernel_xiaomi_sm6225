@@ -265,7 +265,7 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
 			CAM_ERR(CAM_SENSOR, "get failed for %s",
 				 soc_info->clk_name[i]);
 			rc = -ENOENT;
-			return rc;
+			goto FREE_DT_DATA;
 		}
 	}
 	rc = msm_sensor_init_default_params(s_ctrl);
@@ -278,6 +278,7 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
 	return rc;
 
 FREE_DT_DATA:
+	mutex_destroy(&(s_ctrl->cam_sensor_mutex));
 	kfree(s_ctrl->sensordata);
 	s_ctrl->sensordata = NULL;
 

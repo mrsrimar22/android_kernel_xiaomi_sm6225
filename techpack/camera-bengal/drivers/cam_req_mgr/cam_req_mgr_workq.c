@@ -282,7 +282,7 @@ void cam_req_mgr_thread_switch_delay_detect(ktime_t workq_scheduled)
 
 	if (diff > CAM_WORKQ_RESPONSE_TIME_THRESHOLD) {
 		CAM_ERR(CAM_CRM,
-			"Workq delay detected %ld:%06ld %ld:%06ld %ld:",
+			"Workq delay detected %lld:%06ld %lld:%06ld %lld:",
 			workq_scheduled_ts.tv_sec,
 			workq_scheduled_ts.tv_nsec/NSEC_PER_USEC,
 			cur_ts.tv_sec, cur_ts.tv_nsec/NSEC_PER_USEC,

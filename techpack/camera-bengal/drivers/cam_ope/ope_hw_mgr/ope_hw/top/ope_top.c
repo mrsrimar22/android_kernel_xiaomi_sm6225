@@ -149,7 +149,7 @@ static int cam_ope_top_acquire(struct ope_hw *ope_hw_info,
 	int rc = 0;
 
 	if (ctx_id < 0 || !data) {
-		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, data);
+		CAM_ERR(CAM_OPE, "Invalid data: %d %pK", ctx_id, data);
 		return -EINVAL;
 	}
 
@@ -350,7 +350,7 @@ int cam_ope_top_process(struct ope_hw *ope_hw_info,
 		rc = cam_ope_top_reset(ope_hw_info, 0, 0);
 		break;
 	case OPE_HW_DUMP_DEBUG:
-		rc - cam_ope_top_dump_debug_reg(ope_hw_info);
+		rc = cam_ope_top_dump_debug_reg(ope_hw_info);
 	default:
 		break;
 	}

@@ -204,6 +204,13 @@ void cam_cci_soc_remove(struct platform_device *pdev,
 	struct cci_device *cci_dev)
 {
 	struct cam_hw_soc_info *soc_info = &cci_dev->soc_info;
+	int i, j;
+
+	for (i = NUM_MASTERS - 1; i >= 0; i--) {
+		for (j = NUM_QUEUES - 1; j >= 0; j--)
+			mutex_destroy(&cci_dev->cci_master_info[i].mutex_q[j]);
+		mutex_destroy(&cci_dev->cci_master_info[i].mutex);
+	}
 
 	cam_soc_util_release_platform_resource(soc_info);
 }

@@ -136,7 +136,7 @@ static int cam_eeprom_init_subdev(struct cam_eeprom_ctrl_t *e_ctrl)
 
 	e_ctrl->v4l2_dev_str.internal_ops = &cam_eeprom_internal_ops;
 	e_ctrl->v4l2_dev_str.ops = &cam_eeprom_subdev_ops;
-	strlcpy(e_ctrl->device_name, CAM_EEPROM_NAME,
+	strscpy(e_ctrl->device_name, CAM_EEPROM_NAME,
 		sizeof(e_ctrl->device_name));
 	e_ctrl->v4l2_dev_str.name = e_ctrl->device_name;
 	e_ctrl->v4l2_dev_str.sd_flags =
@@ -220,6 +220,7 @@ static int cam_eeprom_i2c_driver_probe(struct i2c_client *client,
 
 	return rc;
 free_soc:
+	mutex_destroy(&(e_ctrl->eeprom_mutex));
 	kfree(soc_private);
 ectrl_free:
 	kfree(e_ctrl);
@@ -343,6 +344,7 @@ static int cam_eeprom_spi_setup(struct spi_device *spi)
 	return rc;
 
 board_free:
+	mutex_destroy(&(e_ctrl->eeprom_mutex));
 	kfree(e_ctrl->soc_info.soc_private);
 spi_free:
 	kfree(spi_client);
@@ -472,6 +474,7 @@ static int32_t cam_eeprom_platform_driver_probe(
 
 	return rc;
 free_soc:
+	mutex_destroy(&(e_ctrl->eeprom_mutex));
 	kfree(soc_private);
 free_cci_client:
 	kfree(e_ctrl->io_master_info.cci_client);

@@ -64,7 +64,7 @@ int cam_ope_get_hw_caps(void *hw_priv, void *get_hw_cap_args,
 	core_info = (struct cam_ope_device_core_info *)ope_dev->core_info;
 
 	if ((!soc_info) || (!core_info)) {
-		CAM_ERR(CAM_OPE, "soc_info = %x core_info = %x",
+		CAM_ERR(CAM_OPE, "soc_info = %pK core_info = %pK",
 			soc_info, core_info);
 		return -EINVAL;
 	}
@@ -1651,7 +1651,7 @@ int cam_ope_process_cmd(void *device_priv, uint32_t cmd_type,
 	unsigned long flags;
 
 	if (!device_priv) {
-		CAM_ERR(CAM_OPE, "Invalid args %x for cmd %u",
+		CAM_ERR(CAM_OPE, "Invalid args %pK for cmd %u",
 			device_priv, cmd_type);
 		return -EINVAL;
 	}
@@ -1659,7 +1659,7 @@ int cam_ope_process_cmd(void *device_priv, uint32_t cmd_type,
 	soc_info = &ope_dev->soc_info;
 	core_info = (struct cam_ope_device_core_info *)ope_dev->core_info;
 	if ((!soc_info) || (!core_info)) {
-		CAM_ERR(CAM_OPE, "soc_info = %x core_info = %x",
+		CAM_ERR(CAM_OPE, "soc_info = %pK core_info = %pK",
 			soc_info, core_info);
 		return -EINVAL;
 	}

@@ -732,7 +732,7 @@ int cam_top_tpg_hw_probe_init(struct cam_hw_intf  *tpg_hw_intf,
 	tpg_data = kzalloc(sizeof(*tpg_data), GFP_KERNEL);
 	if (!tpg_data) {
 		rc = -ENOMEM;
-		goto err;
+		goto free;
 	}
 	tpg_hw->tpg_res.res_priv = tpg_data;
 
@@ -745,8 +745,13 @@ int cam_top_tpg_hw_probe_init(struct cam_hw_intf  *tpg_hw_intf,
 		tpg_hw->hw_intf->hw_idx, val);
 
 	cam_top_tpg_disable_soc_resources(&tpg_hw->hw_info->soc_info);
-err:
 
+	return 0;
+
+free:
+	cam_top_tpg_deinit_soc_resources(&tpg_hw->hw_info->soc_info);
+err:
+	mutex_destroy(&tpg_hw->hw_info->hw_mutex);
 	return rc;
 }
 
@@ -762,6 +767,7 @@ int cam_top_tpg_hw_deinit(struct cam_top_tpg_hw *top_tpg_hw)
 	/* release the privdate data memory from resources */
 	kfree(top_tpg_hw->tpg_res.res_priv);
 	cam_top_tpg_deinit_soc_resources(&top_tpg_hw->hw_info->soc_info);
+	mutex_destroy(&top_tpg_hw->hw_info->hw_mutex);
 
 	return 0;
 }

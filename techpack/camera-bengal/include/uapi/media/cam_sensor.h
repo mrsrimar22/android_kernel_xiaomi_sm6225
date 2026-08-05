@@ -272,7 +272,7 @@ struct cam_cmd_i2c_random_rd {
 } __attribute__((packed));
 
 /**
- * struct cam_cmd_i2c_continuous_rd - I2C continuous continuous read command
+ * struct cam_cmd_i2c_continuous_rd - I2C continuous read command
  * @ header          :   header of READ/WRITE I2C command
  * @ reg_addr        :   Register address
  *

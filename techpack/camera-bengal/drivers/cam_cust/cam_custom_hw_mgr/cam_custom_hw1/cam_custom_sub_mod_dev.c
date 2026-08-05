@@ -127,6 +127,35 @@ free_hw_intf:
 	return rc;
 }
 
+static int cam_custom_hw_sub_mod_remove(struct platform_device *pdev)
+{
+	struct cam_hw_intf *hw_intf = platform_get_drvdata(pdev);
+	struct cam_hw_info *hw = NULL;
+
+	if (!hw_intf) {
+		CAM_ERR(CAM_CUSTOM, "hw_intf is NULL");
+		return -ENODEV;
+	}
+
+	hw = (struct cam_hw_info *)hw_intf->hw_priv;
+	if (!hw) {
+		CAM_ERR(CAM_CUSTOM, "hw is NULL");
+		return -ENODEV;
+	}
+
+	if (hw_intf->hw_idx < CAM_CUSTOM_HW_SUB_MOD_MAX)
+		cam_custom_hw_sub_mod_list[hw_intf->hw_idx] = NULL;
+
+	cam_custom_hw_sub_mod_deinit_soc_resources(&hw->soc_info);
+
+	mutex_destroy(&hw->hw_mutex);
+	kfree(hw->core_info);
+	kfree(hw);
+	kfree(hw_intf);
+
+	return 0;
+}
+
 static const struct of_device_id cam_custom_hw_sub_mod_dt_match[] = {
 	{
 		.compatible = "qcom,cam_custom_hw_sub_mod",
@@ -139,6 +168,7 @@ MODULE_DEVICE_TABLE(of, cam_custom_hw_sub_mod_dt_match);
 
 static struct platform_driver cam_custom_hw_sub_mod_driver = {
 	.probe = cam_custom_hw_sub_mod_probe,
+	.remove = cam_custom_hw_sub_mod_remove,
 	.driver = {
 		.name = CAM_CUSTOM_SUB_MOD_NAME,
 		.of_match_table = cam_custom_hw_sub_mod_dt_match,

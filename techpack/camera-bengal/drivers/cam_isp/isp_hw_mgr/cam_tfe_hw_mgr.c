@@ -1742,13 +1742,13 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 		status == CAM_CDM_CB_STATUS_HW_ERROR) {
 		ctx = userdata;
 		CAM_INFO(CAM_ISP,
-			"req_id =%d ctx_id =%d Bl_cmd_count =%d status=%d",
+			"req_id =%llu ctx_id =%d Bl_cmd_count =%d status=%d",
 			ctx->applied_req_id, ctx->ctx_index,
 			ctx->last_submit_bl_cmd.bl_count, status);
 
 		for (i = 0; i < ctx->last_submit_bl_cmd.bl_count; i++) {
 			CAM_INFO(CAM_ISP,
-				"BL(%d) hdl=0x%x addr=0x%x len=%d input_len =%d offset=0x%x type=%d",
+				"BL(%d) hdl=0x%x addr=0x%llx len=%zu input_len =%d offset=0x%x type=%d",
 				i, ctx->last_submit_bl_cmd.cmd[i].mem_handle,
 				ctx->last_submit_bl_cmd.cmd[i].hw_addr,
 				ctx->last_submit_bl_cmd.cmd[i].len,
@@ -3844,7 +3844,7 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 			(struct cam_isp_tfe_csid_clock_config *)blob_data;
 
 		if (blob_size < sizeof(struct cam_isp_tfe_csid_clock_config)) {
-			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %u",
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %zu",
 				blob_size,
 				sizeof(struct cam_isp_tfe_csid_clock_config));
 			return -EINVAL;
@@ -5560,7 +5560,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 
 	if (CAM_TFE_HW_NUM_MAX != CAM_TFE_CSID_HW_NUM_MAX) {
 		CAM_ERR(CAM_ISP, "CSID num is different then TFE num");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	/* fill tfe hw intf information */
@@ -5584,7 +5585,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	}
 	if (j == 0) {
 		CAM_ERR(CAM_ISP, "no valid TFE HW");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	/* fill csid hw intf information */
@@ -5595,7 +5597,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	}
 	if (!j) {
 		CAM_ERR(CAM_ISP, "no valid TFE CSID HW");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	/* fill tpg hw intf information */
@@ -5606,7 +5609,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	}
 	if (!j) {
 		CAM_ERR(CAM_ISP, "no valid TFE TPG HW");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	cam_tfe_hw_mgr_sort_dev_with_caps(&g_tfe_hw_mgr);
@@ -5625,7 +5629,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	if (cam_smmu_get_handle("tfe",
 		&g_tfe_hw_mgr.mgr_common.img_iommu_hdl)) {
 		CAM_ERR(CAM_ISP, "Can not get iommu handle");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	if (cam_smmu_get_handle("cam-secure",
@@ -5742,5 +5747,39 @@ end:
 secure_fail:
 	cam_smmu_destroy_handle(g_tfe_hw_mgr.mgr_common.img_iommu_hdl);
 	g_tfe_hw_mgr.mgr_common.img_iommu_hdl = -1;
+destroy_mutex:
+	mutex_destroy(&g_tfe_hw_mgr.ctx_mutex);
 	return rc;
+}
+
+void cam_tfe_hw_mgr_deinit(struct cam_hw_mgr_intf *hw_mgr_intf)
+{
+	int i;
+
+	debugfs_remove_recursive(g_tfe_hw_mgr.debug_cfg.dentry);
+	g_tfe_hw_mgr.debug_cfg.dentry = NULL;
+
+	cam_req_mgr_workq_destroy(&g_tfe_hw_mgr.workq);
+
+	for (i = 0; i < CAM_TFE_CTX_MAX; i++) {
+		cam_tasklet_deinit(
+			&g_tfe_hw_mgr.mgr_common.tasklet_pool[i]);
+		kfree(g_tfe_hw_mgr.ctx_pool[i].cdm_cmd);
+		g_tfe_hw_mgr.ctx_pool[i].cdm_cmd = NULL;
+		g_tfe_hw_mgr.ctx_pool[i].common.tasklet_info = NULL;
+	}
+
+	if (g_tfe_hw_mgr.mgr_common.img_iommu_hdl_secure > 0) {
+		cam_smmu_destroy_handle(
+			g_tfe_hw_mgr.mgr_common.img_iommu_hdl_secure);
+		g_tfe_hw_mgr.mgr_common.img_iommu_hdl_secure = -1;
+	}
+
+	if (g_tfe_hw_mgr.mgr_common.img_iommu_hdl > 0) {
+		cam_smmu_destroy_handle(g_tfe_hw_mgr.mgr_common.img_iommu_hdl);
+		g_tfe_hw_mgr.mgr_common.img_iommu_hdl = -1;
+	}
+
+	mutex_destroy(&g_tfe_hw_mgr.ctx_mutex);
+	memset(&g_tfe_hw_mgr, 0, sizeof(g_tfe_hw_mgr));
 }

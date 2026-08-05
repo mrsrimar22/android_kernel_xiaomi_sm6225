@@ -53,7 +53,7 @@ struct cdm_regrandom_cmd {
 	unsigned int count    : 16;
 	unsigned int reserved : 8;
 	unsigned int cmd      : 8;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_regcontinuous_cmd - Definition for a CDM register range command.
@@ -69,7 +69,7 @@ struct cdm_regcontinuous_cmd {
 	unsigned int cmd       : 8;
 	unsigned int offset    : 24;
 	unsigned int reserved1 : 8;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_dmi_cmd - Definition for a CDM DMI command.
@@ -87,7 +87,7 @@ struct cdm_dmi_cmd {
 	unsigned int addr;
 	unsigned int DMIAddr  : 24;
 	unsigned int DMISel   : 8;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_indirect_cmd - Definition for a CDM indirect buffer command.
@@ -101,7 +101,7 @@ struct cdm_indirect_cmd {
 	unsigned int reserved   : 8;
 	unsigned int cmd        : 8;
 	unsigned int addr;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_changebase_cmd - Definition for CDM base address change command.
@@ -111,7 +111,7 @@ struct cdm_indirect_cmd {
 struct cdm_changebase_cmd {
 	unsigned int base   : 24;
 	unsigned int cmd    : 8;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_wait_event_cmd - Definition for a CDM Gen IRQ command.
@@ -133,7 +133,7 @@ struct cdm_wait_event_cmd {
 	unsigned int offset           : 24;
 	unsigned int offset_reserved  : 8;
 	unsigned int data;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_genirq_cmd - Definition for a CDM Wait event command.
@@ -145,7 +145,7 @@ struct cdm_genirq_cmd {
 	unsigned int reserved   : 24;
 	unsigned int cmd        : 8;
 	unsigned int userdata;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct cdm_perf_ctrl_cmd_t - Definition for CDM perf control command.
@@ -157,7 +157,7 @@ struct cdm_perf_ctrl_cmd {
 	unsigned int perf     : 2;
 	unsigned int reserved : 22;
 	unsigned int cmd      : 8;
-} __attribute__((__packed__));
+} __packed;
 
 struct cdm_wait_comp_event_cmd {
 	unsigned int reserved   : 8;
@@ -166,7 +166,7 @@ struct cdm_wait_comp_event_cmd {
 	unsigned int cmd        : 8;
 	unsigned int mask1;
 	unsigned int mask2;
-} __attribute__((__packed__));
+} __packed;
 
 struct cdm_clear_comp_event_cmd {
 	unsigned int reserved   : 8;
@@ -175,7 +175,7 @@ struct cdm_clear_comp_event_cmd {
 	unsigned int cmd        : 8;
 	unsigned int mask1;
 	unsigned int mask2;
-} __attribute__((__packed__));
+} __packed;
 
 struct cdm_prefetch_disable_event_cmd {
 	unsigned int reserved   : 8;
@@ -184,7 +184,7 @@ struct cdm_prefetch_disable_event_cmd {
 	unsigned int cmd        : 8;
 	unsigned int mask1;
 	unsigned int mask2;
-} __attribute__((__packed__));
+} __packed;
 
 uint32_t cdm_get_cmd_header_size(unsigned int command)
 {

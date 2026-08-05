@@ -299,8 +299,8 @@ int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 		*len = tbl.bufq[idx].len;
 	} else {
 		CAM_ERR(CAM_MEM,
-			"No KMD access request, vddr= %p, idx= %d, handle= %d",
-			tbl.bufq[idx].kmdvaddr, idx, buf_handle);
+			"No KMD access request, vddr= %pK, idx= %d, handle= %d",
+			(void *)tbl.bufq[idx].kmdvaddr, idx, buf_handle);
 		return -EINVAL;
 	}
 
@@ -685,7 +685,7 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 
 		if (rc) {
 			CAM_ERR(CAM_MEM,
-				"Failed in map_hw_va, len=%llu, flags=0x%x, fd=%d, region=%d, num_hdl=%d, rc=%d",
+				"Failed in map_hw_va, len=%zu, flags=0x%x, fd=%d, region=%d, num_hdl=%d, rc=%d",
 				len, cmd->flags, fd, region,
 				cmd->num_hdl, rc);
 			goto map_hw_fail;
@@ -976,6 +976,8 @@ static int cam_mem_mgr_cleanup_table(void)
 void cam_mem_mgr_deinit(void)
 {
 	atomic_set(&cam_mem_mgr_state, CAM_MEM_MGR_UNINITIALIZED);
+	debugfs_remove_recursive(tbl.dentry);
+	tbl.dentry = NULL;
 	cam_mem_mgr_cleanup_table();
 	mutex_lock(&tbl.m_lock);
 	bitmap_zero(tbl.bitmap, tbl.bits);

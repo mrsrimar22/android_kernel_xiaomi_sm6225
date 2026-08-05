@@ -329,6 +329,7 @@ static int cam_flash_platform_remove(struct platform_device *pdev)
 	cam_unregister_subdev(&(fctrl->v4l2_dev_str));
 	platform_set_drvdata(pdev, NULL);
 	v4l2_set_subdevdata(&fctrl->v4l2_dev_str.sd, NULL);
+	mutex_destroy(&fctrl->flash_mutex);
 	kfree(fctrl);
 
 	return 0;
@@ -345,9 +346,14 @@ static int32_t cam_flash_i2c_driver_remove(struct i2c_client *client)
 	}
 
 	CAM_INFO(CAM_FLASH, "i2c driver remove invoked");
+	mutex_lock(&fctrl->flash_mutex);
+	cam_flash_shutdown(fctrl);
+	mutex_unlock(&fctrl->flash_mutex);
+	cam_unregister_subdev(&(fctrl->v4l2_dev_str));
 	/*Free Allocated Mem */
 	kfree(fctrl->i2c_data.per_frame);
 	fctrl->i2c_data.per_frame = NULL;
+	mutex_destroy(&fctrl->flash_mutex);
 	kfree(fctrl);
 	return rc;
 }
@@ -389,7 +395,7 @@ static int cam_flash_init_subdev(struct cam_flash_ctrl *fctrl)
 {
 	int rc = 0;
 
-	strlcpy(fctrl->device_name, CAM_FLASH_NAME,
+	strscpy(fctrl->device_name, CAM_FLASH_NAME,
 		sizeof(fctrl->device_name));
 	fctrl->v4l2_dev_str.internal_ops =
 		&cam_flash_internal_ops;
@@ -564,9 +570,8 @@ static int32_t cam_flash_i2c_driver_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	if (id == NULL) {
+	if (id == NULL)
 		CAM_DBG(CAM_FLASH, "device id is Null");
-	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		CAM_ERR(CAM_FLASH, "%s :: i2c_check_functionality failed",
