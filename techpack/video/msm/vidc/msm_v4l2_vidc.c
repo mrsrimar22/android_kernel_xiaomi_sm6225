@@ -490,7 +490,7 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 		return -ENOMEM;
 
 	core->platform_data = vidc_get_drv_data(&pdev->dev);
-	if(!core->platform_data) {
+	if (!core->platform_data) {
 		d_vpr_e("Failed to get platform data\n");
 		rc = -EINVAL;
 		goto err_core_init;
@@ -504,7 +504,7 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 	rc = sysfs_create_group(&pdev->dev.kobj, &msm_vidc_core_attr_group);
 	if (rc) {
 		d_vpr_e("Failed to create attributes\n");
-		goto err_core_init;
+		goto err_sysfs_create;
 	}
 
 	core->id = MSM_VIDC_CORE_VENUS;
@@ -578,6 +578,9 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 			"vidc_core_workq");
 	if (!core->vidc_core_workq) {
 		d_vpr_e("%s: create core workq failed\n", __func__);
+		mutex_lock(&vidc_driver->lock);
+		vidc_driver->num_cores--;
+		mutex_unlock(&vidc_driver->lock);
 		goto err_core_workq;
 	}
 	mutex_lock(&vidc_driver->lock);
@@ -608,6 +611,13 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 	return rc;
 
 err_fail_sub_device_probe:
+#ifdef CONFIG_DEBUG_FS
+	debugfs_remove_recursive(core->debugfs_root);
+#endif
+	mutex_lock(&vidc_driver->lock);
+	list_del(&core->list);
+	vidc_driver->num_cores--;
+	mutex_unlock(&vidc_driver->lock);
 	if (core->vidc_core_workq)
 		destroy_workqueue(core->vidc_core_workq);
 err_core_workq:
@@ -630,8 +640,14 @@ err_dec:
 	v4l2_device_unregister(&core->v4l2_dev);
 err_v4l2_register:
 	kfree(vidc_driver->ctxt);
+	vidc_driver->ctxt = NULL;
+	vidc_driver->num_ctxt = 0;
 err_vidc_context:
 	sysfs_remove_group(&pdev->dev.kobj, &msm_vidc_core_attr_group);
+err_sysfs_create:
+	msm_vidc_free_platform_resources(&core->resources);
+	mutex_destroy(&core->resources.cb_lock);
+	mutex_destroy(&core->lock);
 err_core_init:
 	dev_set_drvdata(&pdev->dev, NULL);
 	kfree(core);
@@ -753,7 +769,6 @@ static int msm_vidc_pm_suspend(struct device *dev)
 
 static int msm_vidc_pm_resume(struct device *dev)
 {
-	d_vpr_h("%s\n", __func__);
 	return 0;
 }
 
@@ -780,7 +795,7 @@ static int __init msm_vidc_init(void)
 	vidc_driver = kzalloc(sizeof(*vidc_driver),
 						GFP_KERNEL);
 	if (!vidc_driver) {
-		d_vpr_e("Failed to allocate memroy for msm_vidc_drv\n");
+		d_vpr_e("Failed to allocate memory for msm_vidc_drv\n");
 		return -ENOMEM;
 	}
 
@@ -796,18 +811,27 @@ static int __init msm_vidc_init(void)
 	rc = platform_driver_register(&msm_vidc_driver);
 	if (rc) {
 		d_vpr_e("Failed to register platform driver\n");
-		debugfs_remove_recursive(vidc_driver->debugfs_root);
-		kfree(vidc_driver);
-		vidc_driver = NULL;
+		goto err_register_driver;
 	}
 
+	return 0;
+
+err_register_driver:
+#ifdef CONFIG_DEBUG_FS
+	debugfs_remove_recursive(vidc_driver->debugfs_root);
+#endif
+	mutex_destroy(&vidc_driver->lock);
+	kfree(vidc_driver);
+	vidc_driver = NULL;
 	return rc;
 }
 
 static void __exit msm_vidc_exit(void)
 {
 	platform_driver_unregister(&msm_vidc_driver);
+#ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(vidc_driver->debugfs_root);
+#endif
 	mutex_destroy(&vidc_driver->lock);
 	kfree(vidc_driver);
 	vidc_driver = NULL;

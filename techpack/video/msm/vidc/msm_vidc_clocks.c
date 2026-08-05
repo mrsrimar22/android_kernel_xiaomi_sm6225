@@ -392,8 +392,8 @@ int msm_comm_vote_bus(struct msm_vidc_inst *inst, bool force_reset)
 		vote_data->power_mode = VIDC_POWER_TURBO;
 
 	if (inst->session_type == MSM_VIDC_CVP) {
-		vote_data->calc_bw_ddr= inst->clk_data.ddr_bw;
-		vote_data->calc_bw_llcc= inst->clk_data.sys_cache_bw;
+		vote_data->calc_bw_ddr = inst->clk_data.ddr_bw;
+		vote_data->calc_bw_llcc = inst->clk_data.sys_cache_bw;
 	} else if (vote_data->power_mode != VIDC_POWER_TURBO) {
 		out_f = &inst->fmts[OUTPUT_PORT].v4l2_fmt;
 		inp_f = &inst->fmts[INPUT_PORT].v4l2_fmt;
@@ -1645,7 +1645,7 @@ static inline int msm_vidc_power_save_mode_enable(struct msm_vidc_inst *inst,
 			(void *)inst->session, prop_id, pdata,
 			sizeof(hfi_perf_mode));
 	if (rc) {
-		s_vpr_e(inst->sid, "%s: Failed to set power save mode\n",
+		s_vpr_e(inst->sid, "%s: Failed to set power save mode %pK\n",
 			__func__, inst);
 		return rc;
 	}

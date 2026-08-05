@@ -110,7 +110,7 @@ static int hfi_process_sess_evt_seq_changed(u32 device_id,
 	struct hfi_bit_depth *pixel_depth;
 	struct hfi_pic_struct *pic_struct;
 	struct hfi_dpb_counts *dpb_counts;
-	u32 rem_size,entropy_mode = 0;
+	u32 rem_size, entropy_mode = 0;
 	u8 *data_ptr;
 	int prop_id;
 	int luma_bit_depth, chroma_bit_depth;
@@ -408,7 +408,7 @@ static int hfi_process_event_notify(u32 device_id,
 	struct hfi_msg_event_notify_packet *pkt = _pkt;
 
 	if (pkt->size < sizeof(struct hfi_msg_event_notify_packet)) {
-		d_vpr_e("%s: invalid params %u %u\n", __func__,
+		d_vpr_e("%s: invalid params %u %zu\n", __func__,
 			pkt->size, sizeof(struct hfi_msg_event_notify_packet));
 		return -E2BIG;
 	}
@@ -1152,6 +1152,7 @@ static int hfi_process_sys_property_info(u32 device_id,
 		struct msm_vidc_cb_info *info)
 {
 	struct hfi_msg_sys_property_info_packet *pkt = _pkt;
+
 	if (!pkt) {
 		d_vpr_e("%s: invalid params\n", __func__);
 		return -EINVAL;
