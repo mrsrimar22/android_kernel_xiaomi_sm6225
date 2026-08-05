@@ -427,21 +427,21 @@ static const struct reg_default wcd937x_defaults[] = {
 
 static bool wcd937x_readable_register(struct device *dev, unsigned int reg)
 {
-	if(reg <= WCD937X_BASE_ADDRESS)
+	if (reg <= WCD937X_BASE_ADDRESS)
 		return 0;
 	return wcd937x_reg_access[WCD937X_REG(reg)] & RD_REG;
 }
 
 static bool wcd937x_writeable_register(struct device *dev, unsigned int reg)
 {
-	if(reg <= WCD937X_BASE_ADDRESS)
+	if (reg <= WCD937X_BASE_ADDRESS)
 		return 0;
 	return wcd937x_reg_access[WCD937X_REG(reg)] & WR_REG;
 }
 
 static bool wcd937x_volatile_register(struct device *dev, unsigned int reg)
 {
-	if(reg <= WCD937X_BASE_ADDRESS)
+	if (reg <= WCD937X_BASE_ADDRESS)
 		return 0;
 	if ((wcd937x_reg_access[WCD937X_REG(reg)] & RD_REG)
 		&& !(wcd937x_reg_access[WCD937X_REG(reg)] & WR_REG))

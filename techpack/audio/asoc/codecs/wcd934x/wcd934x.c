@@ -10464,7 +10464,6 @@ static int tavil_soc_codec_probe(struct snd_soc_component *component)
 
 	snd_soc_component_init_regmap(component, control->regmap);
 
-	dev_info(component->dev, "%s()\n", __func__);
 	tavil = snd_soc_component_get_drvdata(component);
 	tavil->intf_type = wcd9xxx_get_intf_type();
 
@@ -10656,8 +10655,6 @@ static void tavil_soc_codec_remove(struct snd_soc_component *component)
 	/* Deinitialize MBHC module */
 	tavil_mbhc_deinit(component);
 	tavil->mbhc = NULL;
-
-	return;
 }
 
 static const struct snd_soc_component_driver soc_codec_dev_tavil = {
@@ -11074,12 +11071,12 @@ static void tavil_add_child_devices(struct work_struct *work)
 
 		/* Parse other child device nodes and add platform device */
 		if (!strcmp(node->name, "swr_master"))
-			strlcpy(plat_dev_name, "tavil_swr_ctrl",
-				(WCD934X_STRING_LEN - 1));
+			strscpy(plat_dev_name, "tavil_swr_ctrl",
+				sizeof(plat_dev_name));
 		else if (strnstr(node->name, "msm_cdc_pinctrl",
 				 strlen("msm_cdc_pinctrl")) != NULL)
-			strlcpy(plat_dev_name, node->name,
-				(WCD934X_STRING_LEN - 1));
+			strscpy(plat_dev_name, node->name,
+				sizeof(plat_dev_name));
 		else
 			continue;
 

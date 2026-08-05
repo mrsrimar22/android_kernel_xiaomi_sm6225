@@ -212,7 +212,7 @@ struct cpe_svc_tgt_abstraction {
 	enum cpe_svc_result (*tgt_deinit)
 				(struct cpe_svc_tgt_abstraction *param);
 	enum cpe_svc_result (*tgt_voice_tx_lab)
-				(bool);
+				(bool enable);
 	u8 *inbox;
 	u8 *outbox;
 	struct cpe_tgt_waiti_info *tgt_waiti_info;
@@ -260,9 +260,8 @@ struct cpe_notif_node {
 struct cpe_priv {
 	struct cpe_info *cpe_default_handle;
 	void (*cpe_irq_control_callback)(u32 enable);
-	void (*cpe_query_freq_plans_cb)
-		(void *cdc_priv,
-		 struct cpe_svc_cfg_clk_plan *clk_freq);
+	void (*cpe_query_freq_plans_cb)(void *cdc_priv,
+		struct cpe_svc_cfg_clk_plan *clk_freq);
 	void (*cpe_change_freq_plan_cb)(void *cdc_priv,
 			u32 clk_freq);
 	u32 cpe_msg_buffer;

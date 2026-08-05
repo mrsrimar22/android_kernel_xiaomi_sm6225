@@ -27,7 +27,6 @@ static inline int msm_mdf_init(void)
 
 static inline void msm_mdf_exit(void)
 {
-	return;
 }
 #endif
 #ifdef CONFIG_XT_LOGGING
@@ -77,7 +76,6 @@ static inline int voice_mhi_init(void)
 
 static inline void voice_mhi_exit(void)
 {
-	return;
 }
 #endif
 

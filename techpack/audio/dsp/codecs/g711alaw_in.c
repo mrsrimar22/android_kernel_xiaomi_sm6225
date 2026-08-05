@@ -288,9 +288,8 @@ static int g711_in_open(struct inode *inode, struct file *file)
 				(void *)audio);
 
 	if (!audio->ac) {
-		kfree(audio->enc_cfg);
-		kfree(audio);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto free;
 	}
 
 	/* open g711 encoder in T/NT mode */
@@ -342,6 +341,10 @@ static int g711_in_open(struct inode *inode, struct file *file)
 	return 0;
 fail:
 	q6asm_audio_client_free(audio->ac);
+free:
+	mutex_destroy(&audio->lock);
+	mutex_destroy(&audio->read_lock);
+	mutex_destroy(&audio->write_lock);
 	kfree(audio->enc_cfg);
 	kfree(audio);
 	return rc;

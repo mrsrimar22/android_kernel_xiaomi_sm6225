@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef WCD9320_REGISTERS_H
 #define WCD9320_REGISTERS_H
 
@@ -1394,6 +1395,6 @@
 		((reg) = ((packed >> 16) & (0xffff))); \
 		((mask) = ((packed >> 8) & (0xff))); \
 		((val) = ((packed) & (0xff))); \
-	} while (0);
+	} while (0)
 
 #endif

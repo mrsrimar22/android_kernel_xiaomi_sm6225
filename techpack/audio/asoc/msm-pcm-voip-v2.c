@@ -1244,7 +1244,6 @@ msm_pcm_playback_pointer(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct voip_drv_info *prtd = runtime->private_data;
 
-	pr_debug("%s\n", __func__);
 	if (prtd->pcm_playback_irq_pos >= prtd->pcm_size)
 		prtd->pcm_playback_irq_pos = 0;
 	return bytes_to_frames(runtime, (prtd->pcm_playback_irq_pos));
@@ -1265,7 +1264,6 @@ static snd_pcm_uframes_t msm_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	snd_pcm_uframes_t ret = 0;
 
-	pr_debug("%s\n", __func__);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		ret = msm_pcm_playback_pointer(substream);
 	else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
@@ -1278,7 +1276,6 @@ static int msm_pcm_mmap(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	pr_debug("%s\n", __func__);
 	dma_mmap_coherent(substream->pcm->card->dev, vma,
 				     runtime->dma_area,
 				     runtime->dma_addr,
@@ -1630,7 +1627,6 @@ static int msm_asoc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_card *card = rtd->card->snd_card;
 	int ret = 0;
 
-	pr_debug("msm_asoc_pcm_new\n");
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 	return ret;
@@ -1676,7 +1672,7 @@ static int msm_pcm_probe(struct platform_device *pdev)
 	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
 	rc = snd_soc_register_component(&pdev->dev,
 				       &msm_soc_component,
-					NULL, 0);
+				       NULL, 0);
 
 done:
 	return rc;
@@ -1707,6 +1703,8 @@ static struct platform_driver msm_pcm_driver = {
 
 int __init msm_pcm_voip_init(void)
 {
+	int rc;
+
 	memset(&voip_info, 0, sizeof(voip_info));
 	voip_info.mode = MODE_PCM;
 	mutex_init(&voip_info.lock);
@@ -1722,12 +1720,16 @@ int __init msm_pcm_voip_init(void)
 	INIT_LIST_HEAD(&voip_info.out_queue);
 	INIT_LIST_HEAD(&voip_info.free_out_queue);
 
-	return platform_driver_register(&msm_pcm_driver);
+	rc = platform_driver_register(&msm_pcm_driver);
+	if (rc)
+		mutex_destroy(&voip_info.lock);
+	return rc;
 }
 
 void msm_pcm_voip_exit(void)
 {
 	platform_driver_unregister(&msm_pcm_driver);
+	mutex_destroy(&voip_info.lock);
 }
 
 MODULE_DESCRIPTION("PCM module platform driver");

@@ -152,10 +152,11 @@ static long amrwb_in_ioctl(struct file *file,
 	}
 	case AUDIO_GET_AMRWB_ENC_CONFIG: {
 		if (copy_to_user((void *)arg, audio->enc_cfg,
-				sizeof(struct msm_audio_amrwb_enc_config)))
+				sizeof(struct msm_audio_amrwb_enc_config))) {
 			pr_err("%s: copy_to_user for AUDIO_GET_AMRWB_ENC_CONFIG failed\n",
 				__func__);
 			rc = -EFAULT;
+		}
 		break;
 	}
 	case AUDIO_SET_AMRWB_ENC_CONFIG: {
@@ -305,9 +306,8 @@ static int amrwb_in_open(struct inode *inode, struct file *file)
 	if (!audio->ac) {
 		pr_err("%s:audio[%pK]: Could not allocate memory for audio client\n",
 			__func__, audio);
-		kfree(audio->enc_cfg);
-		kfree(audio);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto free;
 	}
 
 	/* open amrwb encoder in T/NT mode */
@@ -363,6 +363,10 @@ static int amrwb_in_open(struct inode *inode, struct file *file)
 	return 0;
 fail:
 	q6asm_audio_client_free(audio->ac);
+free:
+	mutex_destroy(&audio->lock);
+	mutex_destroy(&audio->read_lock);
+	mutex_destroy(&audio->write_lock);
 	kfree(audio->enc_cfg);
 	kfree(audio);
 	return rc;

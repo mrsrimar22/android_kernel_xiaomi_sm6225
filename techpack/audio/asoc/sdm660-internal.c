@@ -459,8 +459,6 @@ static int is_ext_spk_gpio_support(struct platform_device *pdev,
 {
 	const char *spk_ext_pa = "qcom,msm-spk-ext-pa";
 
-	pr_debug("%s:Enter\n", __func__);
-
 	pdata->spk_ext_pa_gpio = of_get_named_gpio(pdev->dev.of_node,
 				spk_ext_pa, 0);
 
@@ -551,7 +549,6 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = 2;
 
@@ -725,7 +722,6 @@ static int msm_int_enable_dig_cdc_clk(struct snd_soc_component *component,
 static int loopback_mclk_get(struct snd_kcontrol *kcontrol,
 			     struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s\n", __func__);
 	return 0;
 }
 

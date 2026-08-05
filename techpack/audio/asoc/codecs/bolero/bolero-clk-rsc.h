@@ -46,7 +46,6 @@ static inline int bolero_rsc_clk_reset(struct device *dev, int clk_id)
 static inline void bolero_clk_rsc_enable_all_clocks(struct device *dev,
 						    bool enable)
 {
-	return;
 }
 #endif /* CONFIG_SND_SOC_BOLERO */
 #endif /* BOLERO_CLK_RSC_H */

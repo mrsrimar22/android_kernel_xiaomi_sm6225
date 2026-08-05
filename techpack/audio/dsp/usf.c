@@ -104,7 +104,8 @@ struct usf_xx_type {
 	uint32_t new_region;
 	uint32_t prev_region;
 	/* Q6:USM's events handler */
-	void (*cb)(uint32_t, uint32_t, uint32_t *, void *);
+	void (*cb)(uint32_t opcode, uint32_t token,
+		   uint32_t *payload, void *priv);
 	/* US detection result */
 	enum usf_us_detect_type us_detect_type;
 	/* User's update info isn't acceptable */
@@ -139,14 +140,13 @@ struct usf_input_dev_type {
 	/* Input device name */
 	const char *input_dev_name;
 	/* Input device registration function */
-	int (*prepare_dev)(uint16_t, struct usf_type *,
-			    struct us_input_info_type *,
-			   const char *);
+	int (*prepare_dev)(uint16_t ind, struct usf_type *usf_info,
+			   struct us_input_info_type *input_info,
+			   const char *name);
 	/* Input event notification function */
-	void (*notify_event)(struct usf_type *,
-			     uint16_t,
-			     struct usf_event_type *
-			     );
+	void (*notify_event)(struct usf_type *usf_info,
+			     uint16_t if_ind,
+			     struct usf_event_type *event);
 };
 
 
@@ -2345,11 +2345,10 @@ static uint16_t add_opened_dev(int minor)
 			pr_err("%s: device %d is already opened\n",
 			       __func__, minor);
 			return USF_UNDEF_DEV_ID;
-		} else {
-			pr_debug("%s: device %d is added; ind=%d\n",
-				__func__, minor, ind);
-			return ind;
 		}
+		pr_debug("%s: device %d is added; ind=%d\n",
+			__func__, minor, ind);
+		return ind;
 	}
 
 	pr_err("%s: there is no place for device %d\n",
@@ -2370,11 +2369,8 @@ static int usf_open(struct inode *inode, struct file *file)
 	usf = kzalloc(sizeof(struct usf_type), GFP_KERNEL);
 	if (usf == NULL)
 		return -ENOMEM;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 110))
+
 	usf_wakeup_source = wakeup_source_register(NULL, "usf");
-#else
-	usf_wakeup_source = wakeup_source_register("usf");
-#endif
 
 	file->private_data = usf;
 	usf->dev_ind = dev_ind;
@@ -2452,7 +2448,8 @@ static int __init usf_init(void)
 			break;
 		}
 	}
-	if (!rc) q6usm_init();
+	if (!rc)
+		q6usm_init();
 
 	return rc;
 }
@@ -2460,9 +2457,9 @@ module_init(usf_init);
 
 static void __exit usf_exit(void)
 {
-        uint16_t ind = 0;
+	uint16_t ind = 0;
 
-        for (ind = 0; ind < MAX_DEVS_NUMBER; ++ind)
+	for (ind = 0; ind < MAX_DEVS_NUMBER; ++ind)
 		misc_deregister(&usf_misc[ind]);
 }
 module_exit(usf_exit);

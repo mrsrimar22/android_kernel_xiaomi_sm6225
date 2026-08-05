@@ -23,7 +23,7 @@ enum usdev_event_status {
 };
 
 struct usfcdev_event {
-	bool (*match_cb)(uint16_t, struct input_dev *dev);
+	bool (*match_cb)(uint16_t event_type_ind, struct input_dev *dev);
 	bool registered_event;
 	bool interleaved;
 	enum usdev_event_status event_status;
@@ -243,7 +243,7 @@ static bool usfcdev_filter(struct input_handle *handle,
 
 bool usfcdev_register(
 	uint16_t event_type_ind,
-	bool (*match_cb)(uint16_t, struct input_dev *dev))
+	bool (*match_cb)(uint16_t event_type_ind, struct input_dev *dev))
 {
 	int ret = 0;
 	bool rc = false;

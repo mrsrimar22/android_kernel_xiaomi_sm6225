@@ -328,7 +328,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 	u32 *buf;
 	const char **adsp_fw_name_array = NULL;
 	int adsp_fw_cnt;
-	u32* adsp_fw_bit_values = NULL;
+	u32 *adsp_fw_bit_values = NULL;
 	int i;
 	int fw_name_size;
 	u32 adsp_var_idx = 0;
@@ -346,7 +346,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 	/* get adsp variant idx */
 	cell = nvmem_cell_get(&pdev->dev, "adsp_variant");
 	if (IS_ERR_OR_NULL(cell)) {
-		dev_dbg(&pdev->dev, "%s: FAILED to get nvmem cell \n",
+		dev_dbg(&pdev->dev, "%s: FAILED to get nvmem cell\n",
 			__func__);
 
 		/*
@@ -381,7 +381,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 						GFP_KERNEL);
 			if (!priv->adsp_fw_name)
 				goto wqueue;
-			strlcpy(priv->adsp_fw_name, adsp_fw_name,
+			strscpy(priv->adsp_fw_name, adsp_fw_name,
 				fw_name_size);
 		}
 		goto wqueue;
@@ -389,7 +389,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 	buf = nvmem_cell_read(cell, &len);
 	nvmem_cell_put(cell);
 	if (IS_ERR_OR_NULL(buf)) {
-		dev_dbg(&pdev->dev, "%s: FAILED to read nvmem cell \n", __func__);
+		dev_dbg(&pdev->dev, "%s: FAILED to read nvmem cell\n", __func__);
 		goto wqueue;
 	}
 	if (len <= 0 || len > sizeof(u32)) {
@@ -450,7 +450,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 						GFP_KERNEL);
 			if (!priv->adsp_fw_name)
 				goto wqueue;
-			strlcpy(priv->adsp_fw_name, adsp_fw_name_array[i],
+			strscpy(priv->adsp_fw_name, adsp_fw_name_array[i],
 				fw_name_size);
 			break;
 		}

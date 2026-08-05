@@ -41,7 +41,7 @@
 #define DRV_NAME "wsa-codec"
 
 enum {
-	WSA_4OHMS =4,
+	WSA_4OHMS = 4,
 	WSA_8OHMS = 8,
 	WSA_16OHMS = 16,
 	WSA_32OHMS = 32,
@@ -1246,7 +1246,7 @@ static int wsa883x_get_temperature(struct snd_soc_component *component,
 			pr_debug("%s: T0: %d is out of range[%d, %d]\n", __func__,
 				 temp_val, LOW_TEMP_THRESHOLD, HIGH_TEMP_THRESHOLD);
 			if (retry--)
-				msleep(10);
+				usleep_range(10000, 11000);
 		} else {
 			break;
 		}
@@ -1296,8 +1296,6 @@ static void wsa883x_codec_remove(struct snd_soc_component *component)
 		return;
 
 	snd_soc_component_exit_regmap(component);
-
-	return;
 }
 
 static int wsa883x_soc_codec_suspend(struct snd_soc_component *component)
@@ -1490,7 +1488,7 @@ static int wsa883x_event_notify(struct notifier_block *nb,
 	return 0;
 }
 
-static int wsa883x_enable_supplies(struct device * dev,
+static int wsa883x_enable_supplies(struct device *dev,
 				   struct wsa883x_priv *priv)
 {
 	int ret = 0;
@@ -1551,7 +1549,7 @@ static int wsa883x_swr_probe(struct swr_device *pdev)
 	/*
 	 * Add 5msec delay to provide sufficient time for
 	 * soundwire auto enumeration of slave devices as
-	 * as per HW requirement.
+	 * per HW requirement.
 	 */
 	usleep_range(20000, 20010);
 	ret = swr_get_logical_dev_num(pdev, pdev->addr, &devnum);

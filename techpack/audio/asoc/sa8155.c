@@ -3,18 +3,18 @@
  */
 /*
  * Copyright 2011, The Android Open Source Project
-
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
-     * Redistributions of source code must retain the above copyright
-       notice, this list of conditions and the following disclaimer.
-     * Redistributions in binary form must reproduce the above copyright
-       notice, this list of conditions and the following disclaimer in the
-       documentation and/or other materials provided with the distribution.
-     * Neither the name of The Android Open Source Project nor the names of
-       its contributors may be used to endorse or promote products derived
-       from this software without specific prior written permission.
-
+ *   - Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   - Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *   - Neither the name of The Android Open Source Project nor the names of
+ *     its contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
  * THIS SOFTWARE IS PROVIDED BY The Android Open Source Project ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -355,8 +355,8 @@ static struct tdm_slot_cfg tdm_slot[TDM_INTERFACE_MAX] = {
 };
 
 /*****************************************************************************
-* TO BE UPDATED: Codec/Platform specific tdm slot table
-*****************************************************************************/
+ * TO BE UPDATED: Codec/Platform specific tdm slot table
+ *****************************************************************************/
 static struct tdm_slot_cfg tdm_slot_custom[TDM_INTERFACE_MAX] = {
 	/* PRI TDM */
 	{16, 16},
@@ -414,7 +414,7 @@ static unsigned int tdm_rx_slot_offset
 		{0xFFFF}, /* not used */
 		{0xFFFF}, /* not used */
 		{0xFFFF}, /* not used */
-		{60,0xFFFF},
+		{60, 0xFFFF},
 	},
 	{/* QUIN TDM */
 		{0, 4, 8, 12, 16, 20, 24, 28,
@@ -469,7 +469,7 @@ static unsigned int tdm_tx_slot_offset
 		{0xFFFF}, /* not used */
 		{0xFFFF}, /* not used */
 		{0xFFFF}, /* not used */
-		{60,0xFFFF},
+		{60, 0xFFFF},
 	},
 	{/* QUIN TDM */
 		{0, 4, 8, 12, 16, 20, 24, 28, 0xFFFF}, /*8 CH MIC ARR2*/
@@ -484,12 +484,12 @@ static unsigned int tdm_tx_slot_offset
 };
 
 /*****************************************************************************
-* TO BE UPDATED: Codec/Platform specific tdm slot offset table
-* NOTE:
-*     Each entry represents the slot offset array of one backend tdm device
-*     valid offset represents the starting offset in byte for the channel
-*     use 0xFFFF for end or unused slot offset entry.
-*****************************************************************************/
+ * TO BE UPDATED: Codec/Platform specific tdm slot offset table
+ * NOTE:
+ *     Each entry represents the slot offset array of one backend tdm device
+ *     valid offset represents the starting offset in byte for the channel
+ *     use 0xFFFF for end or unused slot offset entry.
+ *****************************************************************************/
 static unsigned int tdm_rx_slot_offset_custom
 	[TDM_INTERFACE_MAX][TDM_PORT_MAX][TDM_SLOT_OFFSET_MAX] = {
 	{/* PRI TDM */
@@ -7366,8 +7366,8 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 }
 
 /*****************************************************************************
-* TO BE UPDATED: Codec/Platform specific tdm slot and offset table selection
-*****************************************************************************/
+ * TO BE UPDATED: Codec/Platform specific tdm slot and offset table selection
+ *****************************************************************************/
 static int msm_tdm_init(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
@@ -7651,13 +7651,11 @@ static struct platform_driver sa8155_asoc_machine_driver = {
 
 int __init sa8155_init(void)
 {
-	pr_debug("%s\n", __func__);
 	return platform_driver_register(&sa8155_asoc_machine_driver);
 }
 
 void sa8155_exit(void)
 {
-	pr_debug("%s\n", __func__);
 	platform_driver_unregister(&sa8155_asoc_machine_driver);
 }
 

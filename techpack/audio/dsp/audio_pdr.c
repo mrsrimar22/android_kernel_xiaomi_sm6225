@@ -25,8 +25,7 @@ static int audio_pdr_locator_callback(struct notifier_block *this,
 
 	if (opcode == LOCATOR_DOWN) {
 		pr_debug("%s: Service %s is down!", __func__,
-			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].
-			service_name);
+			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].service_name);
 		goto done;
 	}
 
@@ -36,16 +35,14 @@ static int audio_pdr_locator_callback(struct notifier_block *this,
 		pr_debug("%s: Service %s, returned total domains %d, ",
 			__func__,
 			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].service_name,
-			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].
-			total_domains);
+			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].total_domains);
 		pdr_state = AUDIO_PDR_FRAMEWORK_UP;
 		goto done;
 	} else
 		pr_err("%s: Service %s returned invalid total domains %d",
 			__func__,
 			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].service_name,
-			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].
-			total_domains);
+			audio_pdr_services[AUDIO_PDR_DOMAIN_ADSP].total_domains);
 done:
 	srcu_notifier_call_chain(&audio_pdr_cb_list, pdr_state, NULL);
 	return NOTIFY_OK;
@@ -111,8 +108,7 @@ void *audio_pdr_service_register(int domain_id,
 		pr_err("%s: Failed to register for service %s, instance %d\n",
 			__func__,
 			audio_pdr_services[domain_id].domain_list[0].name,
-			audio_pdr_services[domain_id].domain_list[0].
-			instance_id);
+			audio_pdr_services[domain_id].domain_list[0].instance_id);
 	}
 	return handle;
 }

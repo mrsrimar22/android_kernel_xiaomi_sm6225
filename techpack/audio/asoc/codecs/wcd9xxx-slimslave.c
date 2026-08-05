@@ -458,7 +458,6 @@ int wcd9xxx_close_slim_sch_tx(struct wcd9xxx *wcd9xxx,
 	int ch_cnt = 0;
 	struct wcd9xxx_ch *tx;
 
-	pr_debug("%s\n", __func__);
 	list_for_each_entry(tx, wcd9xxx_ch_list, list)
 		sph[ch_cnt++] = tx->sph;
 

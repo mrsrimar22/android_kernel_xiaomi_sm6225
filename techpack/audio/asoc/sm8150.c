@@ -760,7 +760,7 @@ static int slim_get_port_idx(struct snd_kcontrol *kcontrol)
 					   "SLIM_6_RX", sizeof("SLIM_6_RX"))) {
 		port_id = SLIM_RX_6;
 	} else if (strnstr(kcontrol->id.name,
-	 				   "SLIM_0_TX", sizeof("SLIM_0_TX"))) {
+					   "SLIM_0_TX", sizeof("SLIM_0_TX"))) {
 		port_id = SLIM_TX_0;
 	} else if (strnstr(kcontrol->id.name,
 					   "SLIM_1_TX", sizeof("SLIM_1_TX"))) {
@@ -4675,9 +4675,9 @@ static int sm8150_tdm_snd_hw_params(struct snd_pcm_substream *substream,
 	case AFE_PORT_ID_QUATERNARY_TDM_TX:
 		slots = tdm_tx_cfg[TDM_QUAT][TDM_0].channels;
 		break;
-         case AFE_PORT_ID_QUINARY_TDM_TX:
-                 slots = tdm_tx_cfg[TDM_QUIN][TDM_0].channels;
-                 break;
+	case AFE_PORT_ID_QUINARY_TDM_TX:
+		slots = tdm_tx_cfg[TDM_QUIN][TDM_0].channels;
+		break;
 
 	default:
 		pr_err("%s: dai id 0x%x not supported\n",
@@ -7253,13 +7253,11 @@ static struct platform_driver sm8150_asoc_machine_driver = {
 
 int __init sm8150_init(void)
 {
-	pr_debug("%s\n", __func__);
 	return platform_driver_register(&sm8150_asoc_machine_driver);
 }
 
 void sm8150_exit(void)
 {
-	pr_debug("%s\n", __func__);
 	platform_driver_unregister(&sm8150_asoc_machine_driver);
 }
 

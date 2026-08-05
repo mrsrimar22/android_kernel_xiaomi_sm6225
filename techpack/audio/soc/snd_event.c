@@ -302,6 +302,7 @@ void snd_event_mstr_add_client(struct snd_event_clients **snd_clients,
 		client->cl_arr = kzalloc(sizeof(struct snd_event_client_array),
 					 GFP_KERNEL);
 		if (!client->cl_arr) {
+			kfree(client);
 			*snd_clients = ERR_PTR(-ENOMEM);
 			return;
 		}

@@ -811,6 +811,7 @@ static int msm_audio_ion_remove(struct platform_device *pdev)
 
 	msm_audio_ion_data.smmu_enabled = 0;
 	msm_audio_ion_data.device_status = 0;
+	mutex_destroy(&(msm_audio_ion_data.list_mutex));
 	return 0;
 }
 

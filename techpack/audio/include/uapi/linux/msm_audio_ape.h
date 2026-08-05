@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 /* The following structure has been taken
  * from Monkey's Audio SDK with permission
  */

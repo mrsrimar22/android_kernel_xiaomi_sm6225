@@ -292,7 +292,7 @@ static int rouleur_slave_bind(struct device *dev,
 	ret = swr_get_logical_dev_num(pdev, pdev->addr, &devnum);
 	if (ret) {
 		dev_dbg(&pdev->dev,
-				"%s get devnum %d for dev addr %lx failed\n",
+				"%s get devnum %d for dev addr %llx failed\n",
 				__func__, devnum, pdev->addr);
 		swr_remove_device(pdev);
 		return ret;
@@ -391,8 +391,8 @@ static int rouleur_swr_probe(struct swr_device *pdev)
 					rouleur_slave->debugfs_rouleur_dent,
 					(void *) pdev,
 					&codec_debug_dump_ops);
-                }
-        }
+		}
+	}
 #endif
 	return component_add(&pdev->dev, &rouleur_slave_comp_ops);
 }

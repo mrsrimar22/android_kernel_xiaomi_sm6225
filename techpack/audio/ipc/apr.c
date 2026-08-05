@@ -1151,7 +1151,7 @@ static int apr_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&modem_wait);
 
-	apr_priv = devm_kzalloc(&pdev->dev, sizeof(*apr_priv), GFP_KERNEL);
+	apr_priv = kzalloc(sizeof(*apr_priv), GFP_KERNEL);
 	if (!apr_priv)
 		return -ENOMEM;
 
@@ -1171,8 +1171,8 @@ static int apr_probe(struct platform_device *pdev)
 	mutex_init(&q6.lock);
 	apr_reset_workqueue = create_singlethread_workqueue("apr_driver");
 	if (!apr_reset_workqueue) {
-		apr_priv = NULL;
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_wq;
 	}
 
 	apr_pkt_ctx = ipc_log_context_create(APR_PKT_IPC_LOG_PAGE_CNT,
@@ -1188,7 +1188,8 @@ static int apr_probe(struct platform_device *pdev)
 				      (const char **)(&subsys_name));
 	if (ret) {
 		pr_err("%s: missing subsys-name entry in dt node\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_subsys;
 	}
 
 	if (!strcmp(subsys_name, "apr_adsp")) {
@@ -1201,7 +1202,8 @@ static int apr_probe(struct platform_device *pdev)
 				       &modem_service_nb);
 	} else {
 		pr_err("%s: invalid subsys-name %s\n", __func__, subsys_name);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_subsys;
 	}
 
 	apr_tal_init();
@@ -1214,13 +1216,33 @@ static int apr_probe(struct platform_device *pdev)
 	}
 
 	return apr_debug_init();
+
+err_subsys:
+	destroy_workqueue(apr_reset_workqueue);
+	apr_reset_workqueue = NULL;
+err_wq:
+	mutex_destroy(&q6.lock);
+	for (i = 0; i < APR_DEST_MAX; i++) {
+		for (j = 0; j < APR_CLIENT_MAX; j++) {
+			mutex_destroy(&client[i][j].m_lock);
+			for (k = 0; k < APR_SVC_MAX; k++)
+				mutex_destroy(&client[i][j].svc[k].m_lock);
+		}
+	}
+	kfree(apr_priv);
+	apr_priv = NULL;
+	return ret;
 }
 
 static int apr_remove(struct platform_device *pdev)
 {
+	if (!apr_priv)
+		return 0;
+
 	snd_event_client_deregister(&pdev->dev);
 	apr_cleanup();
 	apr_tal_exit();
+	kfree(apr_priv);
 	apr_priv = NULL;
 	return 0;
 }

@@ -1202,6 +1202,7 @@ static void wsa881x_remove(struct snd_soc_component *component)
 	struct wsa881x_pdata *wsa881x =
 				snd_soc_component_get_drvdata(component);
 
+	cancel_delayed_work_sync(&wsa881x->ocp_ctl_work);
 	if (wsa881x->tz_pdata.tz_dev)
 		wsa881x_deinit_thermal(wsa881x->tz_pdata.tz_dev);
 
@@ -1473,11 +1474,11 @@ static int wsa881x_i2c_probe(struct i2c_client *client,
 		}
 		pdata->wsa881x_id = wsa881x_i2c_read_device(pdata,
 					WSA881X_OTP_REG_0);
-		if (pdata->wsa881x_id & 0x01) {
+		if (pdata->wsa881x_id & 0x01)
 			pdata->wsa881x_id = WSA8815;
-		} else {
+		else
 			pdata->wsa881x_id = WSA8810;
-		}
+
 		pr_debug("%s: wsa881x_id : %d\n", __func__, pdata->wsa881x_id);
 		wsa881x_presence_count++;
 		wsa881x_probing_count++;
@@ -1496,11 +1497,8 @@ err:
 
 static int wsa881x_i2c_remove(struct i2c_client *client)
 {
-	struct wsa881x_pdata *wsa881x = client->dev.platform_data;
-
 	snd_soc_unregister_component(&client->dev);
 	i2c_set_clientdata(client, NULL);
-	kfree(wsa881x);
 	return 0;
 }
 
