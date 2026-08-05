@@ -1643,7 +1643,7 @@ static int cam_tfe_bus_rup_bottom_half(
 				evt_payload->bus_irq_val[0] &= ~BIT(i);
 			} else
 				CAM_ERR(CAM_ISP,
-					"TFE:%d No event cb id:%lld evt id:%d",
+					"TFE:%d No event cb id:%u evt id:%d",
 					bus_priv->common_data.core_index,
 					out_rsrc_data->out_id, evt_info.res_id);
 		}
@@ -2298,6 +2298,7 @@ deinit_wm:
 	for (--i; i >= 0; i--)
 		cam_tfe_bus_deinit_wm_resource(&bus_priv->bus_client[i]);
 
+	mutex_destroy(&bus_priv->common_data.bus_mutex);
 	kfree(tfe_bus_local->bus_priv);
 
 free_bus_local:

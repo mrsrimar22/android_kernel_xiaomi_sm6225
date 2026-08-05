@@ -6094,9 +6094,9 @@ icp_get_hdl_failed:
 	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_IPE]);
 	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_A5]);
 dev_init_failed:
-	mutex_destroy(&icp_hw_mgr.hw_mgr_mutex);
-	for (i = 0; i < CAM_ICP_CTX_MAX; i++)
+	for (i = CAM_ICP_CTX_MAX - 1; i >= 0; i--)
 		mutex_destroy(&icp_hw_mgr.ctx_data[i].ctx_mutex);
+	mutex_destroy(&icp_hw_mgr.hw_mgr_mutex);
 
 	return rc;
 }

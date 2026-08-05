@@ -135,7 +135,7 @@ static int cam_lrme_dev_probe(struct platform_device *pdev)
 		CAM_LRME_DEVICE_TYPE);
 	if (rc) {
 		CAM_ERR(CAM_LRME, "LRME cam_subdev_probe failed");
-		goto free_mem;
+		goto destroy_mutex;
 	}
 	node = (struct cam_node *)g_lrme_dev->sd.token;
 
@@ -159,6 +159,7 @@ static int cam_lrme_dev_probe(struct platform_device *pdev)
 		CAM_LRME_DEV_NAME);
 	if (rc) {
 		CAM_ERR(CAM_LRME, "LRME node init failed");
+		i = CAM_CTX_MAX;
 		goto deinit_ctx;
 	}
 
@@ -171,11 +172,15 @@ deinit_ctx:
 		if (cam_lrme_context_deinit(&g_lrme_dev->lrme_ctx[i]))
 			CAM_ERR(CAM_LRME, "LRME context %d deinit failed", i);
 	}
+	cam_lrme_hw_mgr_deinit();
 unregister:
 	if (cam_subdev_remove(&g_lrme_dev->sd))
 		CAM_ERR(CAM_LRME, "Failed in subdev remove");
+destroy_mutex:
+	mutex_destroy(&g_lrme_dev->lock);
 free_mem:
 	kfree(g_lrme_dev);
+	g_lrme_dev = NULL;
 
 	return rc;
 }
@@ -184,6 +189,11 @@ static int cam_lrme_dev_remove(struct platform_device *pdev)
 {
 	int i;
 	int rc = 0;
+	struct cam_node *node = NULL;
+
+	node = (struct cam_node *)g_lrme_dev->sd.token;
+	if (node)
+		cam_node_deinit(node);
 
 	for (i = 0; i < CAM_CTX_MAX; i++) {
 		rc = cam_lrme_context_deinit(&g_lrme_dev->lrme_ctx[i]);

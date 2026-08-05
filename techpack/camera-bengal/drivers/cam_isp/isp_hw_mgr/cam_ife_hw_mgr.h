@@ -198,12 +198,16 @@ struct cam_ife_hw_event_recovery_data {
  * @iommu_hdl:          Iommu handle to be returned
  *
  */
+#ifdef CONFIG_SPECTRA_CAMERA_IFE
 int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl);
-
-#ifndef CONFIG_SPECTRA_CAMERA_IFE
-int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
+void cam_ife_hw_mgr_deinit(struct cam_hw_mgr_intf *hw_mgr_intf);
+#else
+static inline int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 {
 	return 0;
+}
+static inline void cam_ife_hw_mgr_deinit(struct cam_hw_mgr_intf *hw_mgr_intf)
+{
 }
 #endif
 #endif /* _CAM_IFE_HW_MGR_H_ */

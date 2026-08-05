@@ -3472,7 +3472,6 @@ int cam_ife_csid_deinit_hw(void *hw_priv,
 	/* Disable CSID HW */
 	CAM_DBG(CAM_ISP, "Disabling CSID Hw\n");
 	cam_ife_csid_disable_hw(csid_hw);
-	CAM_DBG(CAM_ISP, "%s: Exit\n", __func__);
 
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
@@ -3631,8 +3630,6 @@ int cam_ife_csid_stop(void *hw_priv,
 		res = csid_stop->node_res[i];
 		res->res_state = CAM_ISP_RESOURCE_STATE_INIT_HW;
 	}
-
-	CAM_DBG(CAM_ISP,  "%s: Exit\n", __func__);
 
 	return rc;
 
@@ -4798,6 +4795,8 @@ err:
 		for (i = 0; i < CAM_IFE_CSID_CID_MAX; i++)
 			kfree(ife_csid_hw->cid_res[i].res_priv);
 
+		cam_ife_csid_deinit_soc_resources(&ife_csid_hw->hw_info->soc_info);
+		mutex_destroy(&ife_csid_hw->hw_info->hw_mutex);
 	}
 
 	return rc;
@@ -4831,6 +4830,7 @@ int cam_ife_csid_hw_deinit(struct cam_ife_csid_hw *ife_csid_hw)
 		kfree(ife_csid_hw->cid_res[i].res_priv);
 
 	cam_ife_csid_deinit_soc_resources(&ife_csid_hw->hw_info->soc_info);
+	mutex_destroy(&ife_csid_hw->hw_info->hw_mutex);
 
 	return 0;
 }

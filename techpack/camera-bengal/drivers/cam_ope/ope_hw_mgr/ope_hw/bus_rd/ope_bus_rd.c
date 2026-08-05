@@ -170,7 +170,7 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 
 
 	if (ctx_id < 0 || !prepare) {
-		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, prepare);
+		CAM_ERR(CAM_OPE, "Invalid data: %d %pK", ctx_id, prepare);
 		return NULL;
 	}
 
@@ -349,7 +349,7 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 
 
 	if (ctx_id < 0 || !prepare) {
-		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, prepare);
+		CAM_ERR(CAM_OPE, "Invalid data: %d %pK", ctx_id, prepare);
 		return NULL;
 	}
 
@@ -439,7 +439,7 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	int32_t num_stripes = 0;
 
 	if (ctx_id < 0 || !data) {
-		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, data);
+		CAM_ERR(CAM_OPE, "Invalid data: %d %pK", ctx_id, data);
 		return -EINVAL;
 	}
 	prepare = data;
@@ -579,7 +579,7 @@ static int cam_ope_bus_rd_acquire(struct ope_hw *ope_hw_info,
 
 
 	if (ctx_id < 0 || !data || !ope_hw_info || ctx_id >= OPE_CTX_MAX) {
-		CAM_ERR(CAM_OPE, "Invalid data: %d %x %x",
+		CAM_ERR(CAM_OPE, "Invalid data: %d %pK %pK",
 			ctx_id, data, ope_hw_info);
 		return -EINVAL;
 	}

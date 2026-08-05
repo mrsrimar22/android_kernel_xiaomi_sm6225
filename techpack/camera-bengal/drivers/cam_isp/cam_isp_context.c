@@ -118,7 +118,7 @@ static int __cam_isp_ctx_dump_event_record(
 
 	if (!cpu_addr || !buf_len || !offset || !ctx_isp) {
 		CAM_ERR(CAM_ISP, "Invalid args %pK %zu %pK %pK",
-			cpu_addr, buf_len, offset, ctx_isp);
+			(void *)cpu_addr, buf_len, offset, ctx_isp);
 		return -EINVAL;
 	}
 	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++) {
@@ -773,7 +773,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 				 * IRQ delay happens.
 				 */
 				CAM_WARN(CAM_ISP,
-					"BUF_DONE for res 0x%x not found in Req %lld ",
+					"BUF_DONE for res %s not found in Req %lld ",
 					__cam_isp_resource_handle_id_to_type(
 					done->resource_handle[i]),
 					req->request_id);
@@ -4347,7 +4347,7 @@ static int __cam_isp_ctx_get_dev_info_in_acquired(struct cam_context *ctx,
 	int rc = 0;
 
 	dev_info->dev_hdl = ctx->dev_hdl;
-	strlcpy(dev_info->name, CAM_ISP_DEV_NAME, sizeof(dev_info->name));
+	strscpy(dev_info->name, CAM_ISP_DEV_NAME, sizeof(dev_info->name));
 	dev_info->dev_id = CAM_REQ_MGR_DEVICE_IFE;
 	dev_info->p_delay = 1;
 	dev_info->trigger = CAM_TRIGGER_POINT_SOF;

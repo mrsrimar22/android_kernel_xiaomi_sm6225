@@ -248,6 +248,38 @@ ope_dev_alloc_failed:
 	return rc;
 }
 
+static int cam_ope_remove(struct platform_device *pdev)
+{
+	struct cam_hw_intf *ope_dev_intf = platform_get_drvdata(pdev);
+	struct cam_hw_info *ope_dev = NULL;
+	struct cam_ope_device_core_info *core_info = NULL;
+
+	if (!ope_dev_intf) {
+		CAM_ERR(CAM_OPE, "Invalid ope_dev_intf");
+		return -EINVAL;
+	}
+
+	ope_dev = ope_dev_intf->hw_priv;
+	if (!ope_dev) {
+		CAM_ERR(CAM_OPE, "Invalid ope_dev");
+		return -EINVAL;
+	}
+
+	mutex_destroy(&ope_dev->hw_mutex);
+
+	core_info = (struct cam_ope_device_core_info *)ope_dev->core_info;
+	if (core_info) {
+		cam_cpas_unregister_client(core_info->cpas_handle);
+		kfree(core_info);
+	}
+
+	cam_soc_util_release_platform_resource(&ope_dev->soc_info);
+	kfree(ope_dev);
+	kfree(ope_dev_intf);
+
+	return 0;
+}
+
 static const struct of_device_id cam_ope_dt_match[] = {
 	{
 		.compatible = "qcom,ope",
@@ -259,6 +291,7 @@ MODULE_DEVICE_TABLE(of, cam_ope_dt_match);
 
 static struct platform_driver cam_ope_driver = {
 	.probe = cam_ope_probe,
+	.remove = cam_ope_remove,
 	.driver = {
 		.name = "ope",
 		.of_match_table = cam_ope_dt_match,

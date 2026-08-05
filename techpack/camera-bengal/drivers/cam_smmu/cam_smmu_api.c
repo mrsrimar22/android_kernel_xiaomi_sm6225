@@ -344,7 +344,7 @@ static void cam_smmu_dump_monitor_array(
 		hrs = do_div(tmp, 24);
 
 		CAM_INFO(CAM_SMMU,
-		"**** %llu:%llu:%llu.%llu : Index[%d] [%s] : ion_fd=%d start=0x%x end=0x%x len=%u region=%d",
+		"**** %llu:%llu:%llu.%llu : Index[%d] [%s] : ion_fd=%d start=%pK end=0x%llx len=%u region=%d",
 		hrs, min, sec, ms,
 		index,
 		cb_info->monitor_entries[index].is_map ? "MAP" : "UNMAP",
@@ -434,7 +434,7 @@ static void cam_smmu_dump_cb_info(int idx)
 			&iommu_cb_set.cb_info[idx].smmu_buf_list, list) {
 			i++;
 			CAM_ERR(CAM_SMMU,
-				"%u. ion_fd=%d start=0x%x end=0x%x len=%u region=%d",
+				"%u. ion_fd=%d start=%pK end=0x%llx len=%u region=%d",
 				i, mapping->ion_fd, (void *)mapping->paddr,
 				((uint64_t)mapping->paddr +
 				(uint64_t)mapping->len),
@@ -535,7 +535,7 @@ end:
 	if (closest_mapping) {
 		buf_handle = GET_MEM_HANDLE(idx, closest_mapping->ion_fd);
 		CAM_INFO(CAM_SMMU,
-			"Closest map fd %d 0x%lx %llu-%llu 0x%lx-0x%lx buf=%pK mem %0x",
+			"Closest map fd %d 0x%lx %zu-%zu 0x%lx-0x%lx buf=%pK mem %0x",
 			closest_mapping->ion_fd, current_addr,
 			mapping->len, closest_mapping->len,
 			(unsigned long)closest_mapping->paddr,
@@ -754,22 +754,36 @@ void cam_smmu_reset_iommu_table(enum cam_smmu_init_dir ops)
 	unsigned int i;
 	int j = 0;
 
-	for (i = 0; i < iommu_cb_set.cb_num; i++) {
-		iommu_cb_set.cb_info[i].handle = HANDLE_INIT;
-		INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_list);
-		INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_kernel_list);
-		iommu_cb_set.cb_info[i].state = CAM_SMMU_DETACH;
-		iommu_cb_set.cb_info[i].dev = NULL;
-		iommu_cb_set.cb_info[i].cb_count = 0;
-		iommu_cb_set.cb_info[i].pf_count = 0;
-		for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
-			iommu_cb_set.cb_info[i].token[j] = NULL;
-			iommu_cb_set.cb_info[i].handler[j] = NULL;
-		}
-		if (ops == CAM_SMMU_TABLE_INIT)
+	if (ops == CAM_SMMU_TABLE_INIT) {
+		for (i = 0; i < iommu_cb_set.cb_num; i++) {
+			iommu_cb_set.cb_info[i].handle = HANDLE_INIT;
+			INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_list);
+			INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_kernel_list);
+			iommu_cb_set.cb_info[i].state = CAM_SMMU_DETACH;
+			iommu_cb_set.cb_info[i].dev = NULL;
+			iommu_cb_set.cb_info[i].cb_count = 0;
+			iommu_cb_set.cb_info[i].pf_count = 0;
+			for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
+				iommu_cb_set.cb_info[i].token[j] = NULL;
+				iommu_cb_set.cb_info[i].handler[j] = NULL;
+			}
 			mutex_init(&iommu_cb_set.cb_info[i].lock);
-		else
-			mutex_destroy(&iommu_cb_set.cb_info[i].lock);
+		}
+	} else {
+		for (i = iommu_cb_set.cb_num; i > 0; i--) {
+			int idx = i - 1;
+
+			iommu_cb_set.cb_info[idx].handle = HANDLE_INIT;
+			iommu_cb_set.cb_info[idx].state = CAM_SMMU_DETACH;
+			iommu_cb_set.cb_info[idx].dev = NULL;
+			iommu_cb_set.cb_info[idx].cb_count = 0;
+			iommu_cb_set.cb_info[idx].pf_count = 0;
+			for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
+				iommu_cb_set.cb_info[idx].token[j] = NULL;
+				iommu_cb_set.cb_info[idx].handler[j] = NULL;
+			}
+			mutex_destroy(&iommu_cb_set.cb_info[idx].lock);
+		}
 	}
 }
 
@@ -3404,9 +3418,8 @@ EXPORT_SYMBOL(cam_smmu_destroy_handle);
 
 static void cam_smmu_deinit_cb(struct cam_context_bank_info *cb)
 {
-	if (cb->io_support && cb->domain) {
+	if (cb->io_support && cb->domain)
 		cb->domain = NULL;
-	}
 
 	if (cb->shared_support) {
 		gen_pool_destroy(cb->shared_mem_pool);
@@ -3763,7 +3776,7 @@ static int cam_smmu_get_memory_regions_info(struct device_node *of_node,
 			(cb->discard_iova_len !=
 			cb->io_info.discard_iova_len)) {
 			CAM_ERR(CAM_SMMU,
-				"Mismatch Discard region specified, [0x%x 0x%x] [0x%x 0x%x]",
+				"Mismatch Discard region specified, [0x%llx 0x%zx] [0x%llx 0x%zx]",
 				cb->discard_iova_start,
 				cb->discard_iova_len,
 				cb->io_info.discard_iova_start,
@@ -3778,7 +3791,7 @@ static int cam_smmu_get_memory_regions_info(struct device_node *of_node,
 			(cb->discard_iova_start + cb->discard_iova_len >=
 			cb->io_info.iova_start + cb->io_info.iova_len)) {
 				CAM_ERR(CAM_SMMU,
-				"[%s] : Incorrect Discard region specified [0x%x 0x%x] in [0x%x 0x%x]",
+				"[%s] : Incorrect Discard region specified [0x%llx 0x%llx] in [0x%llx 0x%llx]",
 				cb->name[0],
 				cb->discard_iova_start,
 				cb->discard_iova_start + cb->discard_iova_len,
@@ -3789,7 +3802,7 @@ static int cam_smmu_get_memory_regions_info(struct device_node *of_node,
 			}
 
 			CAM_INFO(CAM_SMMU,
-				"[%s] : Discard region specified [0x%x 0x%x] in [0x%x 0x%x]",
+				"[%s] : Discard region specified [0x%llx 0x%llx] in [0x%llx 0x%llx]",
 				cb->name[0],
 				cb->discard_iova_start,
 				cb->discard_iova_start + cb->discard_iova_len,
@@ -4004,19 +4017,39 @@ static int cam_smmu_probe(struct platform_device *pdev)
 static int cam_smmu_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct cam_smmu_work_payload *payload, *payload_safe;
 
-	/* release all the context banks and memory allocated */
-	cam_smmu_reset_iommu_table(CAM_SMMU_TABLE_DEINIT);
-	if (dev && dev->dma_parms) {
-		devm_kfree(dev, dev->dma_parms);
-		dev->dma_parms = NULL;
+	if (of_device_is_compatible(dev->of_node, "qcom,msm-cam-smmu-fw-dev")) {
+		icp_fw.fw_dev = NULL;
+		return 0;
 	}
 
-	if (of_device_is_compatible(pdev->dev.of_node, "qcom,msm-cam-smmu"))
+	if (of_device_is_compatible(dev->of_node, "qcom,msm-cam-smmu")) {
+		debugfs_remove_recursive(iommu_cb_set.dentry);
+		iommu_cb_set.dentry = NULL;
+
+		cancel_work_sync(&iommu_cb_set.smmu_work);
+
+		mutex_lock(&iommu_cb_set.payload_list_lock);
+		list_for_each_entry_safe(payload, payload_safe,
+			&iommu_cb_set.payload_list, list) {
+			list_del(&payload->list);
+			kfree(payload);
+		}
+		mutex_unlock(&iommu_cb_set.payload_list_lock);
+		mutex_destroy(&iommu_cb_set.payload_list_lock);
+
 		cam_smmu_release_cb(pdev);
 
-	debugfs_remove_recursive(iommu_cb_set.dentry);
-	iommu_cb_set.dentry = NULL;
+		/* release all the context banks and memory allocated */
+		cam_smmu_reset_iommu_table(CAM_SMMU_TABLE_DEINIT);
+
+		if (dev->dma_parms) {
+			devm_kfree(dev, dev->dma_parms);
+			dev->dma_parms = NULL;
+		}
+	}
+
 	return 0;
 }
 

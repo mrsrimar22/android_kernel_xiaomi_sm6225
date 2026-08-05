@@ -148,6 +148,7 @@ int cam_ipe_probe(struct platform_device *pdev)
 	rc = cam_ipe_register_cpas(&ipe_dev->soc_info,
 		core_info, ipe_dev_intf->hw_idx);
 	if (rc < 0) {
+		cam_soc_util_release_platform_resource(&ipe_dev->soc_info);
 		kfree(ipe_dev->core_info);
 		kfree(ipe_dev);
 		kfree(ipe_dev_intf);
@@ -164,6 +165,37 @@ int cam_ipe_probe(struct platform_device *pdev)
 	return rc;
 }
 
+static int cam_ipe_remove(struct platform_device *pdev)
+{
+	struct cam_hw_intf *ipe_dev_intf = platform_get_drvdata(pdev);
+	struct cam_hw_info *ipe_dev = NULL;
+	struct cam_ipe_device_core_info *core_info = NULL;
+
+	if (!ipe_dev_intf) {
+		CAM_ERR(CAM_ICP, "Invalid ipe_dev_intf");
+		return -EINVAL;
+	}
+
+	ipe_dev = ipe_dev_intf->hw_priv;
+	if (!ipe_dev) {
+		CAM_ERR(CAM_ICP, "Invalid ipe_dev");
+		return -EINVAL;
+	}
+
+	core_info = (struct cam_ipe_device_core_info *)ipe_dev->core_info;
+	if (core_info) {
+		cam_cpas_unregister_client(core_info->cpas_handle);
+		kfree(core_info);
+	}
+
+	cam_soc_util_release_platform_resource(&ipe_dev->soc_info);
+	mutex_destroy(&ipe_dev->hw_mutex);
+	kfree(ipe_dev);
+	kfree(ipe_dev_intf);
+
+	return 0;
+}
+
 static const struct of_device_id cam_ipe_dt_match[] = {
 	{
 		.compatible = "qcom,cam-ipe",
@@ -175,6 +207,7 @@ MODULE_DEVICE_TABLE(of, cam_ipe_dt_match);
 
 static struct platform_driver cam_ipe_driver = {
 	.probe = cam_ipe_probe,
+	.remove = cam_ipe_remove,
 	.driver = {
 		.name = "cam-ipe",
 		.owner = THIS_MODULE,

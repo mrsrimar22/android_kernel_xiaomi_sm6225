@@ -701,6 +701,9 @@ static int cam_res_mgr_remove(struct platform_device *pdev)
 {
 	if (cam_res) {
 		cam_res_mgr_free_res();
+		mutex_destroy(&cam_res->clk_res_lock);
+		mutex_destroy(&cam_res->gpio_res_lock);
+		mutex_destroy(&cam_res->flash_res_lock);
 		kfree(cam_res);
 		cam_res = NULL;
 	}

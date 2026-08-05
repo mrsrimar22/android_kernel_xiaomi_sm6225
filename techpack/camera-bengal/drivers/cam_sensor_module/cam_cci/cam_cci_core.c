@@ -1779,6 +1779,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 {
 	int32_t rc = 0;
 	struct cci_device *cci_dev = v4l2_get_subdevdata(sd);
+
 	CAM_DBG(CAM_CCI, "cmd %d", cci_ctrl->cmd);
 
 	switch (cci_ctrl->cmd) {

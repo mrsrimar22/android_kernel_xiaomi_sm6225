@@ -216,7 +216,7 @@ struct cdm_dmi_cmd {
 	unsigned int addr;
 	unsigned int DMIAddr  : 24;
 	unsigned int DMISel   : 8;
-} __attribute__((__packed__));
+} __packed;
 
 /**
  * struct ope_debug_buffer

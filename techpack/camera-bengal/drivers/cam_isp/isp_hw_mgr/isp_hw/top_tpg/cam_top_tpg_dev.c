@@ -87,11 +87,15 @@ int cam_top_tpg_probe(struct platform_device *pdev)
 
 	if (tpg_hw_intf->hw_idx < CAM_TOP_TPG_HW_NUM_MAX)
 		cam_top_tpg_hw_list[tpg_hw_intf->hw_idx] = tpg_hw_intf;
-	else
-		goto free_dev;
+	else {
+		rc = -EINVAL;
+		goto deinit_tpg;
+	}
 
 	return 0;
 
+deinit_tpg:
+	cam_top_tpg_hw_deinit(tpg_dev);
 free_dev:
 	kfree(tpg_dev);
 free_hw_info:

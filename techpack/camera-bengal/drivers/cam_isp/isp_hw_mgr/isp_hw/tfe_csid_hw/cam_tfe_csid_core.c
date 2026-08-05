@@ -1718,7 +1718,7 @@ static int cam_tfe_csid_get_time_stamp(
 			U64_MAX - time_delta) {
 			CAM_WARN(CAM_ISP, "boottimestamp overflowed");
 			CAM_INFO(CAM_ISP,
-			"currQTimer %lx prevQTimer %lx prevBootTimer %lx torn %d",
+			"currQTimer %llx prevQTimer %llx prevBootTimer %llx torn %d",
 				time_stamp->time_stamp_val,
 				csid_hw->prev_qtimer_ts,
 				csid_hw->prev_boot_timestamp, torn);
@@ -2094,7 +2094,6 @@ static int cam_tfe_csid_deinit_hw(void *hw_priv,
 	/* Disable CSID HW */
 	CAM_DBG(CAM_ISP, "Disabling CSID Hw");
 	cam_tfe_csid_disable_hw(csid_hw);
-	CAM_DBG(CAM_ISP, "%s: Exit", __func__);
 
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
@@ -2215,7 +2214,6 @@ static int cam_tfe_csid_stop(void *hw_priv,
 		res->res_state = CAM_ISP_RESOURCE_STATE_INIT_HW;
 	}
 
-	CAM_DBG(CAM_ISP,  "%s: Exit", __func__);
 	return rc;
 }
 
@@ -2395,7 +2393,7 @@ static int cam_tfe_csid_get_regdump(struct cam_tfe_csid_hw *csid_hw,
 		path_data->start_line, path_data->end_line,
 		path_data->width, path_data->height);
 	CAM_INFO(CAM_ISP,
-		"clock:%d crop_enable:%d vc:%d dt:%d informat:%d outformat:%d",
+		"clock:%llu crop_enable:%d vc:%d dt:%d informat:%d outformat:%d",
 		path_data->clk_rate, path_data->crop_enable,
 		path_data->vc, path_data->dt,
 		path_data->in_format, path_data->out_format);
@@ -3095,7 +3093,7 @@ handle_fatal_error:
 
 	if (is_error_irq)
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
-			"CSID %d irq status TOP: 0x%x RX: 0x%x IPP: 0x%x RDI0: 0x%x RDI1: 0x%x RDI2: 0x%x CSID clk:%d",
+			"CSID %d irq status TOP: 0x%x RX: 0x%x IPP: 0x%x RDI0: 0x%x RDI1: 0x%x RDI2: 0x%x CSID clk:%llu",
 			csid_hw->hw_intf->hw_idx,
 			irq_status[TFE_CSID_IRQ_REG_TOP],
 			irq_status[TFE_CSID_IRQ_REG_RX],
@@ -3162,7 +3160,7 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 		cam_tfe_csid_irq, tfe_csid_hw);
 	if (rc < 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d Failed to init_soc", csid_idx);
-		goto err;
+		return rc;
 	}
 
 	mutex_init(&tfe_csid_hw->hw_info->hw_mutex);
@@ -3277,6 +3275,9 @@ err:
 			tfe_csid_hw->csid_info->csid_reg->cmn_reg->num_rdis;
 			i++)
 			kfree(tfe_csid_hw->rdi_res[i].res_priv);
+
+		mutex_destroy(&tfe_csid_hw->hw_info->hw_mutex);
+		cam_tfe_csid_deinit_soc_resources(&tfe_csid_hw->hw_info->soc_info);
 	}
 
 	return rc;
@@ -3292,6 +3293,8 @@ int cam_tfe_csid_hw_deinit(struct cam_tfe_csid_hw *tfe_csid_hw)
 		CAM_ERR(CAM_ISP, "Invalid param");
 		return rc;
 	}
+
+	mutex_destroy(&tfe_csid_hw->hw_info->hw_mutex);
 
 	/* release the privdate data memory from resources */
 	kfree(tfe_csid_hw->ipp_res.res_priv);
