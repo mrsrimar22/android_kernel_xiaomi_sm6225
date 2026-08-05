@@ -31,6 +31,7 @@ static int __init audio_q6_init(void)
 static void __exit audio_q6_exit(void)
 {
 	digital_cdc_rsc_mgr_exit();
+	voice_mhi_exit();
 	msm_mdf_exit();
 	avtimer_exit();
 	audio_slimslave_exit();
@@ -39,13 +40,12 @@ static void __exit audio_q6_exit(void)
 	voice_exit();
 	q6lsm_exit();
 	q6asm_exit();
-	afe_exit();
 	spk_params_exit();
+	afe_exit();
 	adm_exit();
 	rtac_exit();
 	audio_cal_exit();
 	adsp_err_exit();
-	voice_mhi_exit();
 }
 
 module_init(audio_q6_init);

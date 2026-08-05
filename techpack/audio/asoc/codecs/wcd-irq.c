@@ -157,9 +157,13 @@ int wcd_irq_init(struct wcd_irq_info *irq_info, struct irq_domain **virq)
 				 irq_create_mapping(*virq, 0),
 				 IRQF_ONESHOT, 0, irq_info->wcd_regmap_irq_chip,
 				 &irq_info->irq_chip);
-	if (ret)
+	if (ret) {
 		pr_err("%s: Failed to add IRQs: %d\n",
 			__func__, ret);
+		irq_dispose_mapping(irq_find_mapping(*virq, 0));
+		irq_domain_remove(*virq);
+		*virq = NULL;
+	}
 
 	return ret;
 }
@@ -173,13 +177,20 @@ EXPORT_SYMBOL(wcd_irq_init);
  */
 int wcd_irq_exit(struct wcd_irq_info *irq_info, struct irq_domain *virq)
 {
+	unsigned int irq;
+
 	if (!irq_info) {
 		pr_err("%s: Null pointer handle\n", __func__);
 		return -EINVAL;
 	}
 
-	devm_regmap_del_irq_chip(irq_info->dev, irq_find_mapping(virq, 0),
-				 irq_info->irq_chip);
+	if (virq) {
+		irq = irq_find_mapping(virq, 0);
+		devm_regmap_del_irq_chip(irq_info->dev, irq,
+					 irq_info->irq_chip);
+		irq_dispose_mapping(irq);
+		irq_domain_remove(virq);
+	}
 
 	return 0;
 }

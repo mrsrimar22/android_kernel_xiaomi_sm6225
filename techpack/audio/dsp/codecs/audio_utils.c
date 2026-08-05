@@ -939,11 +939,17 @@ int audio_in_release(struct inode *inode, struct file *file)
 	unsigned long flags = 0;
 	struct q6audio_in  *audio = file->private_data;
 
+	if (!audio)
+		return 0;
+
 	pr_info("%s: session id %d\n", __func__, audio->ac->session);
 	mutex_lock(&audio->lock);
 	audio_in_disable(audio);
 	q6asm_audio_client_free(audio->ac);
 	mutex_unlock(&audio->lock);
+	mutex_destroy(&audio->lock);
+	mutex_destroy(&audio->read_lock);
+	mutex_destroy(&audio->write_lock);
 	spin_lock_irqsave(&enc_dec_lock, flags);
 	kfree(audio->enc_cfg);
 	kfree(audio->codec_cfg);

@@ -49,15 +49,6 @@ struct snd_msm {
 #define CMD_EOS_MIN_TIMEOUT_LENGTH  50
 #define CMD_EOS_TIMEOUT_MULTIPLIER  (HZ * 50)
 
-#define ATRACE_END() \
-	trace_printk("tracing_mark_write: E\n")
-#define ATRACE_BEGIN(name) \
-	trace_printk("tracing_mark_write: B|%d|%s\n", current->tgid, name)
-#define ATRACE_FUNC() ATRACE_BEGIN(__func__)
-#define ATRACE_INT(name, value) \
-	trace_printk("tracing_mark_write: C|%d|%s|%d\n", \
-			current->tgid, name, (int)(value))
-
 #define SIO_PLAYBACK_MAX_PERIOD_SIZE PLAYBACK_MAX_PERIOD_SIZE
 #define SIO_PLAYBACK_MIN_PERIOD_SIZE 48
 #define SIO_PLAYBACK_MAX_NUM_PERIODS 512
@@ -512,7 +503,7 @@ static int msm_pcm_mmap_fd(struct snd_pcm_substream *substream,
 	}
 
 buf_fd_fail:
-        return rc;
+	return rc;
 }
 
 static int msm_pcm_ioctl(struct snd_pcm_substream *substream,
@@ -739,7 +730,6 @@ static int msm_pcm_volume_ctl_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component = NULL;
 	struct msm_audio *prtd;
 
-	pr_debug("%s\n", __func__);
 	if (!vol) {
 		pr_err("%s: vol is NULL\n", __func__);
 		return -ENODEV;
@@ -1421,41 +1411,45 @@ static int msm_pcm_probe(struct platform_device *pdev)
 		}
 	}
 
-	pdata = devm_kzalloc(&pdev->dev,
-			     sizeof(struct msm_plat_data), GFP_KERNEL);
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
 
 	pdata->perf_mode = perf_mode;
 
 	mutex_init(&pdata->lock);
-
 	dev_set_drvdata(&pdev->dev, pdata);
 
 	dev_dbg(&pdev->dev, "%s: dev name %s\n",
-				__func__, dev_name(&pdev->dev));
+		__func__, dev_name(&pdev->dev));
 	dev_dbg(&pdev->dev, "Pull mode driver register\n");
 	rc = snd_soc_register_component(&pdev->dev,
 				&msm_soc_component,
 				NULL, 0);
-
-	if (rc)
+	if (rc) {
 		dev_err(&pdev->dev, "Failed to register pull mode driver\n");
+		mutex_destroy(&pdata->lock);
+		kfree(pdata);
+		dev_set_drvdata(&pdev->dev, NULL);
+	}
 
 	return rc;
 }
 
 static int msm_pcm_remove(struct platform_device *pdev)
 {
-	struct msm_plat_data *pdata;
+	struct msm_plat_data *pdata = dev_get_drvdata(&pdev->dev);
 
 	dev_dbg(&pdev->dev, "Pull mode remove\n");
-	pdata = dev_get_drvdata(&pdev->dev);
-	mutex_destroy(&pdata->lock);
-	devm_kfree(&pdev->dev, pdata);
 	snd_soc_unregister_component(&pdev->dev);
+	if (pdata) {
+		mutex_destroy(&pdata->lock);
+		kfree(pdata);
+	}
+
 	return 0;
 }
+
 static const struct of_device_id msm_pcm_noirq_dt_match[] = {
 	{.compatible = "qcom,msm-pcm-dsp-noirq"},
 	{}

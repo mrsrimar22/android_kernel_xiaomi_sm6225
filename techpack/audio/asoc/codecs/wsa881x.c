@@ -103,7 +103,7 @@ struct wsa881x_priv {
 	struct device_node *wsa_rst_np;
 	int pa_mute;
 	struct device_node *bolero_np;
-	struct platform_device* bolero_dev;
+	struct platform_device *bolero_dev;
 	struct notifier_block bolero_nblock;
 	void *handle;
 	int (*register_notifier)(void *handle,
@@ -1353,8 +1353,6 @@ static void wsa881x_remove(struct snd_soc_component *component)
 	if (wsa881x->tz_pdata.tz_dev)
 		wsa881x_deinit_thermal(wsa881x->tz_pdata.tz_dev);
 	mutex_destroy(&wsa881x->bg_lock);
-
-	return;
 }
 
 static const struct snd_soc_component_driver soc_codec_dev_wsa881x = {
@@ -1534,7 +1532,7 @@ static int wsa881x_swr_probe(struct swr_device *pdev)
 	/*
 	 * Add 5msec delay to provide sufficient time for
 	 * soundwire auto enumeration of slave devices as
-	 * as per HW requirement.
+	 * per HW requirement.
 	 */
 	usleep_range(5000, 5010);
 	ret = swr_get_logical_dev_num(pdev, pdev->addr, &devnum);

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef __VOICE_PARAMS_H__
 #define __VOICE_PARAMS_H__
 

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef __AUDIO_SLIMSLAVE_H__
 #define __AUDIO_SLIMSLAVE_H__
 

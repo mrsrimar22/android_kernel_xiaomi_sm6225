@@ -8618,9 +8618,8 @@ static int msm_aux_codec_init(struct snd_soc_component *component)
 	wcd937x_info_create_codec_entry(pdata->codec_root, component);
 codec_root_err:
 	mbhc_calibration = def_wcd_mbhc_cal();
-	if (!mbhc_calibration) {
+	if (!mbhc_calibration)
 		return -ENOMEM;
-	}
 	wcd_mbhc_cfg.calibration = mbhc_calibration;
 	ret = wcd937x_mbhc_hs_detect(component, &wcd_mbhc_cfg);
 
@@ -9305,13 +9304,11 @@ static struct platform_driver sm6150_asoc_machine_driver = {
 
 int __init sm6150_init(void)
 {
-	pr_debug("%s\n", __func__);
 	return platform_driver_register(&sm6150_asoc_machine_driver);
 }
 
 void sm6150_exit(void)
 {
-	pr_debug("%s\n", __func__);
 	platform_driver_unregister(&sm6150_asoc_machine_driver);
 }
 

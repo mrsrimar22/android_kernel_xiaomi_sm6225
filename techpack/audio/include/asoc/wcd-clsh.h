@@ -92,11 +92,11 @@ static inline void wcd_cls_h_fsm(struct snd_soc_component *component,
 {
 }
 
-static inline extern void wcd_cls_h_init(struct wcd_clsh_cdc_info *clsh)
+static inline void wcd_cls_h_init(struct wcd_clsh_cdc_info *clsh)
 {
 }
 
-static inline extern void wcd_clsh_set_hph_mode(struct snd_soc_component *component,
+static inline void wcd_clsh_set_hph_mode(struct snd_soc_component *component,
 				  int mode)
 {
 }

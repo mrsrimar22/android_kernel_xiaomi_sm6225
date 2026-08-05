@@ -27,7 +27,7 @@ struct afe_spk_ctl {
 };
 struct afe_spk_ctl this_afe_spk;
 
-static ssize_t sp_count_exceeded_temperature_l_show(struct device *dev,
+static ssize_t count_exceeded_temperature_show(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
 {
@@ -38,10 +38,16 @@ static ssize_t sp_count_exceeded_temperature_l_show(struct device *dev,
 	this_afe_spk.xt_logging.count_exceeded_temperature[SP_V2_SPKR_1] = 0;
 	return ret;
 }
-static DEVICE_ATTR(count_exceeded_temperature, 0644,
-		sp_count_exceeded_temperature_l_show, NULL);
 
-static ssize_t sp_count_exceeded_temperature_r_show(struct device *dev,
+static ssize_t count_exceeded_temperature_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(count_exceeded_temperature);
+
+static ssize_t count_exceeded_temperature_r_show(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
 {
@@ -52,10 +58,16 @@ static ssize_t sp_count_exceeded_temperature_r_show(struct device *dev,
 	this_afe_spk.xt_logging.count_exceeded_temperature[SP_V2_SPKR_2] = 0;
 	return ret;
 }
-static DEVICE_ATTR(count_exceeded_temperature_r, 0644,
-		sp_count_exceeded_temperature_r_show, NULL);
 
-static ssize_t sp_count_exceeded_excursion_l_show(struct device *dev,
+static ssize_t count_exceeded_temperature_r_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(count_exceeded_temperature_r);
+
+static ssize_t count_exceeded_excursion_show(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
 {
@@ -66,10 +78,16 @@ static ssize_t sp_count_exceeded_excursion_l_show(struct device *dev,
 	this_afe_spk.xt_logging.count_exceeded_excursion[SP_V2_SPKR_1] = 0;
 	return ret;
 }
-static DEVICE_ATTR(count_exceeded_excursion, 0644,
-		sp_count_exceeded_excursion_l_show, NULL);
 
-static ssize_t sp_count_exceeded_excursion_r_show(struct device *dev,
+static ssize_t count_exceeded_excursion_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(count_exceeded_excursion);
+
+static ssize_t count_exceeded_excursion_r_show(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
@@ -80,10 +98,16 @@ static ssize_t sp_count_exceeded_excursion_r_show(struct device *dev,
 	this_afe_spk.xt_logging.count_exceeded_excursion[SP_V2_SPKR_2] = 0;
 	return ret;
 }
-static DEVICE_ATTR(count_exceeded_excursion_r, 0644,
-		sp_count_exceeded_excursion_r_show, NULL);
 
-static ssize_t sp_max_excursion_l_show(struct device *dev,
+static ssize_t count_exceeded_excursion_r_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(count_exceeded_excursion_r);
+
+static ssize_t max_excursion_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
@@ -98,9 +122,16 @@ static ssize_t sp_max_excursion_l_show(struct device *dev,
 	this_afe_spk.xt_logging.max_excursion[SP_V2_SPKR_1] = 0;
 	return ret;
 }
-static DEVICE_ATTR(max_excursion, 0644, sp_max_excursion_l_show, NULL);
 
-static ssize_t sp_max_excursion_r_show(struct device *dev,
+static ssize_t max_excursion_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(max_excursion);
+
+static ssize_t max_excursion_r_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
@@ -115,9 +146,16 @@ static ssize_t sp_max_excursion_r_show(struct device *dev,
 	this_afe_spk.xt_logging.max_excursion[SP_V2_SPKR_2] = 0;
 	return ret;
 }
-static DEVICE_ATTR(max_excursion_r, 0644, sp_max_excursion_r_show, NULL);
 
-static ssize_t sp_max_temperature_l_show(struct device *dev,
+static ssize_t max_excursion_r_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(max_excursion_r);
+
+static ssize_t max_temperature_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
@@ -128,9 +166,16 @@ static ssize_t sp_max_temperature_l_show(struct device *dev,
 	this_afe_spk.xt_logging.max_temperature[SP_V2_SPKR_1] = 0;
 	return ret;
 }
-static DEVICE_ATTR(max_temperature, 0644, sp_max_temperature_l_show, NULL);
 
-static ssize_t sp_max_temperature_r_show(struct device *dev,
+static ssize_t max_temperature_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(max_temperature);
+
+static ssize_t max_temperature_r_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
@@ -141,38 +186,57 @@ static ssize_t sp_max_temperature_r_show(struct device *dev,
 	this_afe_spk.xt_logging.max_temperature[SP_V2_SPKR_2] = 0;
 	return ret;
 }
-static DEVICE_ATTR(max_temperature_r, 0644, sp_max_temperature_r_show, NULL);
 
-static ssize_t sp_max_temperature_rd_l_show(struct device *dev,
+static ssize_t max_temperature_r_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(max_temperature_r);
+
+static ssize_t max_temperature_rd_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
 	return snprintf(buf, BUF_SZ, "%d\n",
 			this_afe_spk.max_temperature_rd[SP_V2_SPKR_1]/Q22);
 }
-static DEVICE_ATTR(max_temperature_rd, 0644,
-		sp_max_temperature_rd_l_show, NULL);
 
-static ssize_t sp_max_temperature_rd_r_show(struct device *dev,
+static ssize_t max_temperature_rd_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(max_temperature_rd);
+
+static ssize_t max_temperature_rd_r_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
 	return snprintf(buf, BUF_SZ, "%d\n",
 			this_afe_spk.max_temperature_rd[SP_V2_SPKR_2]/Q22);
 }
-static DEVICE_ATTR(max_temperature_rd_r, 0644,
-		sp_max_temperature_rd_r_show, NULL);
 
-static ssize_t q6afe_initial_cal_show(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
+static ssize_t max_temperature_rd_r_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(max_temperature_rd_r);
+
+static ssize_t initial_cal_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
 {
 	return snprintf(buf, BUF_SZ, "%d\n", afe_get_spk_initial_cal());
 }
 
-static ssize_t q6afe_initial_cal_store(struct device *dev,
-				       struct device_attribute *attr,
-				       const char *buf, size_t size)
+static ssize_t initial_cal_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t size)
 {
 	int initial_cal = 0;
 
@@ -187,19 +251,18 @@ static ssize_t q6afe_initial_cal_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(initial_cal, 0644,
-	q6afe_initial_cal_show, q6afe_initial_cal_store);
+static DEVICE_ATTR_RW(initial_cal);
 
-static ssize_t q6afe_v_vali_flag_show(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
+static ssize_t v_vali_flag_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
 {
 	return snprintf(buf, BUF_SZ, "%d\n", afe_get_spk_v_vali_flag());
 }
 
-static ssize_t q6afe_v_vali_flag_store(struct device *dev,
-				       struct device_attribute *attr,
-				       const char *buf, size_t size)
+static ssize_t v_vali_flag_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t size)
 {
 	int v_vali_flag = 0;
 
@@ -214,12 +277,11 @@ static ssize_t q6afe_v_vali_flag_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(v_vali_flag, 0644,
-	q6afe_v_vali_flag_show, q6afe_v_vali_flag_store);
+static DEVICE_ATTR_RW(v_vali_flag);
 
-static ssize_t q6afe_spk_r0_l_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
+static ssize_t spk_r0_show(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
 {
 	int r0[SP_V2_NUM_MAX_SPKRS];
 
@@ -227,11 +289,17 @@ static ssize_t q6afe_spk_r0_l_show(struct device *dev,
 	return snprintf(buf, BUF_SZ, "%d\n", r0[SP_V2_SPKR_1]);
 }
 
-static DEVICE_ATTR(spk_r0, 0644, q6afe_spk_r0_l_show, NULL);
+static ssize_t spk_r0_store(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(spk_r0);
 
-static ssize_t q6afe_spk_t0_l_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
+static ssize_t spk_t0_show(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
 {
 	int t0[SP_V2_NUM_MAX_SPKRS];
 
@@ -239,11 +307,17 @@ static ssize_t q6afe_spk_t0_l_show(struct device *dev,
 	return snprintf(buf, BUF_SZ, "%d\n", t0[SP_V2_SPKR_1]);
 }
 
-static DEVICE_ATTR(spk_t0, 0644, q6afe_spk_t0_l_show, NULL);
+static ssize_t spk_t0_store(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(spk_t0);
 
-static ssize_t q6afe_spk_r0_r_show(struct device *dev,
-				   struct device_attribute *attr,
-				   char *buf)
+static ssize_t spk_r0_r_show(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
 {
 	int r0[SP_V2_NUM_MAX_SPKRS];
 
@@ -251,11 +325,17 @@ static ssize_t q6afe_spk_r0_r_show(struct device *dev,
 	return snprintf(buf, BUF_SZ, "%d\n", r0[SP_V2_SPKR_2]);
 }
 
-static DEVICE_ATTR(spk_r0_r, 0644, q6afe_spk_r0_r_show, NULL);
+static ssize_t spk_r0_r_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(spk_r0_r);
 
-static ssize_t q6afe_spk_t0_r_show(struct device *dev,
-				   struct device_attribute *attr,
-				   char *buf)
+static ssize_t spk_t0_r_show(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
 {
 	int t0[SP_V2_NUM_MAX_SPKRS];
 
@@ -263,11 +343,17 @@ static ssize_t q6afe_spk_t0_r_show(struct device *dev,
 	return snprintf(buf, BUF_SZ, "%d\n", t0[SP_V2_SPKR_2]);
 }
 
-static DEVICE_ATTR(spk_t0_r, 0644, q6afe_spk_t0_r_show, NULL);
+static ssize_t spk_t0_r_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(spk_t0_r);
 
-static ssize_t q6afe_spk_v_vali_l_show(struct device *dev,
-				     struct device_attribute *attr,
-				     char *buf)
+static ssize_t spk_v_vali_status_show(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
 {
 	int v_vali_sts[SP_V2_NUM_MAX_SPKRS];
 
@@ -275,11 +361,17 @@ static ssize_t q6afe_spk_v_vali_l_show(struct device *dev,
 	return snprintf(buf, BUF_SZ, "%d\n", v_vali_sts[SP_V2_SPKR_1]);
 }
 
-static DEVICE_ATTR(spk_v_vali_status, 0644, q6afe_spk_v_vali_l_show, NULL);
-
-static ssize_t q6afe_spk_v_vali_r_show(struct device *dev,
+static ssize_t spk_v_vali_status_store(struct device *dev,
 				       struct device_attribute *attr,
-				       char *buf)
+				       const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(spk_v_vali_status);
+
+static ssize_t spk_v_vali_r_status_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
 {
 	int v_vali_sts[SP_V2_NUM_MAX_SPKRS];
 
@@ -287,7 +379,13 @@ static ssize_t q6afe_spk_v_vali_r_show(struct device *dev,
 	return snprintf(buf, BUF_SZ, "%d\n", v_vali_sts[SP_V2_SPKR_2]);
 }
 
-static DEVICE_ATTR(spk_v_vali_r_status, 0644, q6afe_spk_v_vali_r_show, NULL);
+static ssize_t spk_v_vali_r_status_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t size)
+{
+	return -EIO;
+}
+static DEVICE_ATTR_RW(spk_v_vali_r_status);
 
 static struct attribute *afe_spk_cal_attr[] = {
 	&dev_attr_max_excursion.attr,
@@ -406,20 +504,45 @@ int __init spk_params_init(void)
 	this_afe_spk.xt_logging.count_exceeded_excursion[SP_V2_SPKR_2] = 0;
 
 	this_afe_spk.p_class = class_create(THIS_MODULE, SPK_PARAMS);
-	if (this_afe_spk.p_class) {
-		this_afe_spk.p_dev = device_create(this_afe_spk.p_class, NULL,
-						   1, NULL, CLASS_NAME);
-		if (!IS_ERR(this_afe_spk.p_dev)) {
-			if (sysfs_create_group(&this_afe_spk.p_dev->kobj,
-				&afe_spk_cal_attr_grp))
-				pr_err("%s: Failed to create sysfs group\n",
-					__func__);
-		}
+	if (IS_ERR(this_afe_spk.p_class)) {
+		pr_err("%s: Failed to create class\n", __func__);
+		this_afe_spk.p_class = NULL;
+		return -ENODEV;
 	}
+
+	this_afe_spk.p_dev = device_create(this_afe_spk.p_class, NULL,
+					   1, NULL, CLASS_NAME);
+	if (IS_ERR(this_afe_spk.p_dev)) {
+		pr_err("%s: Failed to create device\n", __func__);
+		class_destroy(this_afe_spk.p_class);
+		this_afe_spk.p_class = NULL;
+		this_afe_spk.p_dev = NULL;
+		return -ENODEV;
+	}
+
+	if (sysfs_create_group(&this_afe_spk.p_dev->kobj,
+			       &afe_spk_cal_attr_grp)) {
+		pr_err("%s: Failed to create sysfs group\n", __func__);
+		device_destroy(this_afe_spk.p_class, 1);
+		this_afe_spk.p_dev = NULL;
+		class_destroy(this_afe_spk.p_class);
+		this_afe_spk.p_class = NULL;
+		return -ENODEV;
+	}
+
 	return 0;
 }
 
 void spk_params_exit(void)
 {
-	pr_debug("%s\n", __func__);
+	if (!IS_ERR_OR_NULL(this_afe_spk.p_dev)) {
+		sysfs_remove_group(&this_afe_spk.p_dev->kobj,
+				   &afe_spk_cal_attr_grp);
+		device_destroy(this_afe_spk.p_class, 1);
+		this_afe_spk.p_dev = NULL;
+	}
+	if (!IS_ERR_OR_NULL(this_afe_spk.p_class)) {
+		class_destroy(this_afe_spk.p_class);
+		this_afe_spk.p_class = NULL;
+	}
 }

@@ -242,7 +242,7 @@ static bool wcd938x_mbhc_lock_sleep(struct wcd_mbhc *mbhc, bool lock)
 	struct snd_soc_component *component = mbhc->component;
 	struct wcd938x_priv *wcd938x = dev_get_drvdata(component->dev);
 
-	wcd938x->wakeup((void*)wcd938x, lock);
+	wcd938x->wakeup((void *)wcd938x, lock);
 
 	return true;
 }
@@ -551,7 +551,7 @@ static void wcd938x_wcd_mbhc_calc_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 	 * This is done to give correct value for high impedance.
 	 */
 	regmap_update_bits(wcd938x->regmap,
-                          WCD938X_HPH_SURGE_HPHLR_SURGE_EN, 0xC0, 0x00);
+			   WCD938X_HPH_SURGE_HPHLR_SURGE_EN, 0xC0, 0x00);
 	/* 1ms delay needed after disable surge protection */
 	usleep_range(1000, 1010);
 

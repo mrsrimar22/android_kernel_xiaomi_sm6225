@@ -82,8 +82,9 @@ struct q6audio_in {
 	uint16_t			min_frame_size;
 	uint16_t			max_frames_per_buf;
 	bool				reset_event;
-	long (*enc_ioctl)(struct file *, unsigned int, unsigned long);
-	long (*enc_compat_ioctl)(struct file *, unsigned int, unsigned long);
+	long (*enc_ioctl)(struct file *file, unsigned int cmd, unsigned long arg);
+	long (*enc_compat_ioctl)(struct file *file, unsigned int cmd,
+				 unsigned long arg);
 };
 
 int audio_in_enable(struct q6audio_in  *audio);

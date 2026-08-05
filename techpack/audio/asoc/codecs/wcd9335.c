@@ -1286,10 +1286,9 @@ static bool tasha_mbhc_lock_sleep(struct wcd_mbhc *mbhc, bool lock)
 				&wcd9xxx->core_res;
 	if (lock)
 		return wcd9xxx_lock_sleep(core_res);
-	else {
-		wcd9xxx_unlock_sleep(core_res);
-		return 0;
-	}
+
+	wcd9xxx_unlock_sleep(core_res);
+	return 0;
 }
 
 static int tasha_mbhc_register_notifier(struct wcd_mbhc *mbhc,
@@ -12066,7 +12065,6 @@ static int tasha_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 static int tasha_set_dai_sysclk(struct snd_soc_dai *dai,
 		int clk_id, unsigned int freq, int dir)
 {
-	pr_debug("%s\n", __func__);
 	return 0;
 }
 
@@ -13288,8 +13286,8 @@ done:
 static struct wcd_cpe_core *tasha_codec_get_cpe_core(
 		struct snd_soc_component *component)
 {
-	struct tasha_priv *priv = NULL;
-	priv = dev_get_drvdata(component->dev);
+	struct tasha_priv *priv = dev_get_drvdata(component->dev);
+
 	if (priv)
 		return priv->cpe_core;
 	return NULL;
@@ -13932,7 +13930,6 @@ static int tasha_codec_probe(struct snd_soc_component *component)
 
 	snd_soc_component_init_regmap(component, control->regmap);
 
-	dev_info(component->dev, "%s()\n", __func__);
 	tasha = snd_soc_component_get_drvdata(component);
 	tasha->intf_type = wcd9xxx_get_intf_type();
 
@@ -14162,8 +14159,6 @@ static void tasha_codec_remove(struct snd_soc_component *component)
 	/* Cleanup MBHC */
 	wcd_mbhc_deinit(&tasha->mbhc);
 	/* Cleanup resmgr */
-
-	return;
 }
 
 static const struct snd_soc_component_driver soc_codec_dev_tasha = {
@@ -14495,12 +14490,12 @@ static void tasha_add_child_devices(struct work_struct *work)
 
 	for_each_child_of_node(wcd9xxx->dev->of_node, node) {
 		if (!strcmp(node->name, "swr_master"))
-			strlcpy(plat_dev_name, "tasha_swr_ctrl",
-				(WCD9335_STRING_LEN - 1));
+			strscpy(plat_dev_name, "tasha_swr_ctrl",
+				sizeof(plat_dev_name));
 		else if (strnstr(node->name, "msm_cdc_pinctrl",
 				 strlen("msm_cdc_pinctrl")) != NULL)
-			strlcpy(plat_dev_name, node->name,
-				(WCD9335_STRING_LEN - 1));
+			strscpy(plat_dev_name, node->name,
+				sizeof(plat_dev_name));
 		else
 			continue;
 

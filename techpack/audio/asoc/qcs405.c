@@ -3825,8 +3825,7 @@ static int msm_mi2s_rx_format_put(struct snd_kcontrol *kcontrol,
 
 	/* check for PRIM_MI2S and CSRAx config to allow 24bit BE config only */
 	if ((idx == PRIM_MI2S) && (pdata->codec_is_csra == true)
-			&& mi2s_rx_cfg[idx].data_format != AFE_DSD_DATA)
-	{
+			&& mi2s_rx_cfg[idx].data_format != AFE_DSD_DATA) {
 		mi2s_rx_cfg[idx].bit_format = SNDRV_PCM_FORMAT_S24_LE;
 		pr_debug("%s: Keeping default format idx[%d]_rx_format = %d, item = %d\n",
 			__func__, idx, mi2s_rx_cfg[idx].bit_format,
@@ -10633,7 +10632,7 @@ static int msm_detect_ep92_dev(struct platform_device *pdev,
 
 	/* update codec info in MI2S dai link */
 	dai = &msm_mi2s_be_dai_links[0];
-	for (i=0; i<ARRAY_SIZE(msm_mi2s_be_dai_links); i++) {
+	for (i = 0; i < ARRAY_SIZE(msm_mi2s_be_dai_links); i++) {
 		if (strcmp(dai->name, LPASS_BE_SEC_MI2S_TX) == 0) {
 			dev_dbg(&pdev->dev,
 				"%s: Set Sec MI2S dai to ep92 codec\n",
@@ -10647,7 +10646,7 @@ static int msm_detect_ep92_dev(struct platform_device *pdev,
 
 	/* update codec info in SPDIF dai link */
 	dai = &msm_spdif_be_dai_links[0];
-	for (i=0; i<ARRAY_SIZE(msm_spdif_be_dai_links); i++) {
+	for (i = 0; i < ARRAY_SIZE(msm_spdif_be_dai_links); i++) {
 		if (strcmp(dai->name, LPASS_BE_SEC_SPDIF_TX) == 0) {
 			dev_dbg(&pdev->dev,
 				"%s: Set Sec SPDIF dai to ep92 codec\n",

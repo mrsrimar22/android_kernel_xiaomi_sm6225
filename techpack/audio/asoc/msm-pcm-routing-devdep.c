@@ -14,7 +14,6 @@
 #ifdef CONFIG_SND_HWDEP
 static int msm_pcm_routing_hwdep_open(struct snd_hwdep *hw, struct file *file)
 {
-	pr_debug("%s\n", __func__);
 	msm_ds2_dap_update_port_parameters(hw, file, true);
 	return 0;
 }
@@ -22,7 +21,6 @@ static int msm_pcm_routing_hwdep_open(struct snd_hwdep *hw, struct file *file)
 static int msm_pcm_routing_hwdep_release(struct snd_hwdep *hw,
 					 struct file *file)
 {
-	pr_debug("%s\n", __func__);
 	msm_ds2_dap_update_port_parameters(hw, file, false);
 	return 0;
 }
@@ -56,7 +54,6 @@ static int msm_pcm_routing_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 
 void msm_pcm_routing_hwdep_free(struct snd_pcm *pcm)
 {
-	pr_debug("%s\n", __func__);
 }
 
 #ifdef CONFIG_COMPAT

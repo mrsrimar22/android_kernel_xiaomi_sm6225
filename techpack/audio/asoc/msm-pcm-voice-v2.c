@@ -127,8 +127,6 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct msm_voice *prtd = runtime->private_data;
 
-	pr_debug("%s\n", __func__);
-
 	if (!prtd->playback_start)
 		prtd->playback_start = 1;
 
@@ -139,8 +137,6 @@ static int msm_pcm_capture_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct msm_voice *prtd = runtime->private_data;
-
-	pr_debug("%s\n", __func__);
 
 	if (!prtd->capture_start)
 		prtd->capture_start = 1;
@@ -204,8 +200,6 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct msm_voice *prtd = runtime->private_data;
 
-	pr_debug("%s\n", __func__);
-
 	if (prtd->playback_start)
 		prtd->playback_start = 0;
 
@@ -217,8 +211,6 @@ static int msm_pcm_capture_close(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct msm_voice *prtd = runtime->private_data;
-
-	pr_debug("%s\n", __func__);
 
 	if (prtd->capture_start)
 		prtd->capture_start = 0;
@@ -672,8 +664,6 @@ static int msm_voice_cvd_version_info(struct snd_kcontrol *kcontrol,
 {
 	int ret = 0;
 
-	pr_debug("%s:\n", __func__);
-
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_BYTES;
 	uinfo->count = CVD_VERSION_STRING_MAX_SIZE;
 
@@ -686,10 +676,7 @@ static int msm_voice_cvd_version_get(struct snd_kcontrol *kcontrol,
 	char cvd_version[CVD_VERSION_STRING_MAX_SIZE] = CVD_VERSION_DEFAULT;
 	int ret;
 
-	pr_debug("%s:\n", __func__);
-
 	ret = voc_get_cvd_version(cvd_version);
-
 	if (ret)
 		pr_err("%s: Error retrieving CVD version, error:%d\n",
 			__func__, ret);
@@ -808,9 +795,9 @@ static int msm_pcm_probe(struct platform_device *pdev)
 
 	rc = snd_soc_register_component(&pdev->dev,
 				       &msm_soc_component,
-					NULL, 0);
+				       NULL, 0);
 	if (!rc) {
-		pr_debug("%s msm_pcm_voice probe success! \n", __func__);
+		pr_debug("%s msm_pcm_voice probe success!\n", __func__);
 		voice_probe_done = 1;
 	}
 
@@ -831,7 +818,6 @@ int msm_voice_get_probe_status(void)
 {
 	return voice_probe_done;
 }
-
 EXPORT_SYMBOL(msm_voice_get_probe_status);
 
 static int msm_pcm_remove(struct platform_device *pdev)
@@ -860,18 +846,28 @@ static struct platform_driver msm_pcm_driver = {
 int __init msm_pcm_voice_init(void)
 {
 	int i = 0;
+	int rc;
 
 	memset(&voice_info, 0, sizeof(voice_info));
 
 	for (i = 0; i < VOICE_SESSION_INDEX_MAX; i++)
 		mutex_init(&voice_info[i].lock);
 
-	return platform_driver_register(&msm_pcm_driver);
+	rc = platform_driver_register(&msm_pcm_driver);
+	if (rc) {
+		for (i = 0; i < VOICE_SESSION_INDEX_MAX; i++)
+			mutex_destroy(&voice_info[i].lock);
+	}
+	return rc;
 }
 
 void msm_pcm_voice_exit(void)
 {
+	int i;
+
 	platform_driver_unregister(&msm_pcm_driver);
+	for (i = 0; i < VOICE_SESSION_INDEX_MAX; i++)
+		mutex_destroy(&voice_info[i].lock);
 }
 
 MODULE_DESCRIPTION("Voice PCM module platform driver");

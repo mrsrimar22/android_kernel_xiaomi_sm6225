@@ -184,7 +184,6 @@ void bolero_clk_rsc_enable_all_clocks(struct device *dev, bool enable)
 		}
 	}
 	mutex_unlock(&priv->rsc_clk_lock);
-	return;
 }
 EXPORT_SYMBOL(bolero_clk_rsc_enable_all_clocks);
 

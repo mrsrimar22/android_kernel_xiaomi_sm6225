@@ -618,6 +618,8 @@ static int audio_ref_clk_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev,
 				"Request ext clk gpio failed %d, err:%d\n",
 				clk_gpio, ret);
+			if (use_pinctrl)
+				audio_put_pinctrl(pdev);
 			return ret;
 		}
 		if (of_property_read_bool(pdev->dev.of_node,

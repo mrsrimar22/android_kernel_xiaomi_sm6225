@@ -26,8 +26,6 @@ static int msm_dai_stub_set_channel_map(struct snd_soc_dai *dai,
 		unsigned int tx_num, unsigned int *tx_slot,
 		unsigned int rx_num, unsigned int *rx_slot)
 {
-	pr_debug("%s:\n", __func__);
-
 	return 0;
 }
 
@@ -76,7 +74,6 @@ static int msm_dai_stub_dai_probe(struct snd_soc_dai *dai)
 
 static int msm_dai_stub_dai_remove(struct snd_soc_dai *dai)
 {
-	pr_debug("%s:\n", __func__);
 	return 0;
 }
 
@@ -324,8 +321,7 @@ static int msm_dai_stub_probe(struct platform_device *pdev)
 
 static int msm_dai_stub_remove(struct platform_device *pdev)
 {
-	pr_debug("%s:\n", __func__);
-
+	of_platform_depopulate(&pdev->dev);
 	return 0;
 }
 
@@ -352,8 +348,6 @@ int __init msm_dai_stub_init(void)
 {
 	int rc = 0;
 
-	pr_debug("%s:\n", __func__);
-
 	rc = platform_driver_register(&msm_dai_stub_driver);
 	if (rc) {
 		pr_err("%s: fail to register dai q6 driver", __func__);
@@ -375,8 +369,6 @@ fail:
 
 void msm_dai_stub_exit(void)
 {
-	pr_debug("%s:\n", __func__);
-
 	platform_driver_unregister(&msm_dai_stub_dev);
 	platform_driver_unregister(&msm_dai_stub_driver);
 }

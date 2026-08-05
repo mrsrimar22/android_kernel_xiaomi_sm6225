@@ -343,8 +343,6 @@ void msm_anlg_cdc_spk_ext_pa_cb(
 	}
 
 	sdm660_cdc = snd_soc_component_get_drvdata(component);
-
-	dev_dbg(component->dev, "%s: Enter\n", __func__);
 	sdm660_cdc->codec_spk_ext_pa_cb = codec_spk_ext_pa;
 }
 EXPORT_SYMBOL(msm_anlg_cdc_spk_ext_pa_cb);
@@ -2850,8 +2848,6 @@ static void wcd_imped_config(struct snd_soc_component *component,
 			MSM89XX_PMIC_ANALOG_NCP_VCTRL,
 			0x07, 0x04);
 	}
-
-	dev_dbg(component->dev, "%s: Exit\n", __func__);
 }
 
 static int msm_anlg_cdc_hphl_dac_event(struct snd_soc_dapm_widget *w,
@@ -3234,13 +3230,11 @@ EXPORT_SYMBOL(msm_anlg_cdc_mclk_enable);
 static int msm_anlg_cdc_set_dai_sysclk(struct snd_soc_dai *dai,
 		int clk_id, unsigned int freq, int dir)
 {
-	dev_dbg(dai->component->dev, "%s\n", __func__);
 	return 0;
 }
 
 static int msm_anlg_cdc_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
-	dev_dbg(dai->component->dev, "%s\n", __func__);
 	return 0;
 }
 
@@ -3249,7 +3243,6 @@ static int msm_anlg_cdc_set_channel_map(struct snd_soc_dai *dai,
 				unsigned int rx_num, unsigned int *rx_slot)
 
 {
-	dev_dbg(dai->component->dev, "%s\n", __func__);
 	return 0;
 }
 
@@ -3258,7 +3251,6 @@ static int msm_anlg_cdc_get_channel_map(struct snd_soc_dai *dai,
 				 unsigned int *rx_num, unsigned int *rx_slot)
 
 {
-	dev_dbg(dai->component->dev, "%s\n", __func__);
 	return 0;
 }
 
@@ -4586,8 +4578,8 @@ static void msm_anlg_add_child_devices(struct work_struct *work)
 
 	for_each_child_of_node(pdata->dev->of_node, node) {
 		if (!strcmp(node->name, "msm-dig-codec"))
-			strlcpy(plat_dev_name, "msm_digital_codec",
-				(MSM_DIG_CDC_STRING_LEN - 1));
+			strscpy(plat_dev_name, "msm_digital_codec",
+				sizeof(plat_dev_name));
 		else
 			continue;
 

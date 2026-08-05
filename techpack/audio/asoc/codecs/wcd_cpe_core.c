@@ -144,8 +144,6 @@ static bool wcd_cpe_lsm_session_active(void)
 		if (lsm_sessions[index] != NULL) {
 			lsm_active = true;
 			break;
-		} else {
-			lsm_active = false;
 		}
 	}
 	return lsm_active;
@@ -760,13 +758,12 @@ static bool wcd_cpe_is_online_state(void *core_handle)
 {
 	struct wcd_cpe_core *core = core_handle;
 
-	if (core_handle) {
+	if (core_handle)
 		return !core->ssr_entry.offline;
-	} else {
-		pr_err("%s: Core handle NULL\n", __func__);
-		/* still return 1- offline if core ptr null */
-		return false;
-	}
+
+	pr_err("%s: Core handle NULL\n", __func__);
+	/* still return 1- offline if core ptr null */
+	return false;
 }
 
 static struct snd_info_entry_ops wcd_cpe_state_proc_ops = {
@@ -791,10 +788,10 @@ static int wcd_cpe_check_new_image(struct wcd_cpe_core *core)
 	 * Different firmware name requested,
 	 * Re-load the instruction section
 	 */
-	strlcpy(temp_img_name, core->fname,
-		WCD_CPE_IMAGE_FNAME_MAX);
-	strlcpy(core->fname, core->dyn_fname,
-		WCD_CPE_IMAGE_FNAME_MAX);
+	strscpy(temp_img_name, core->fname,
+		sizeof(temp_img_name));
+	strscpy(core->fname, core->dyn_fname,
+		sizeof(core->fname));
 
 	rc = wcd_cpe_load_fw(core, ELF_FLAG_EXECUTE);
 	if (rc) {
@@ -802,8 +799,8 @@ static int wcd_cpe_check_new_image(struct wcd_cpe_core *core)
 			"%s: Failed to dload new image %s, err = %d\n",
 			__func__, core->fname, rc);
 		/* If new image download failed, revert back to old image */
-		strlcpy(core->fname, temp_img_name,
-			WCD_CPE_IMAGE_FNAME_MAX);
+		strscpy(core->fname, temp_img_name,
+			sizeof(core->fname));
 		rc = wcd_cpe_load_fw(core, ELF_FLAG_EXECUTE);
 		if (rc)
 			dev_err(core->dev,
@@ -1735,7 +1732,8 @@ static ssize_t fw_name_store(struct wcd_cpe_core *core,
 		return -EINVAL;
 	}
 
-	strlcpy(core->dyn_fname, buf, copy_count + 1);
+	memcpy(core->dyn_fname, buf, copy_count);
+	core->dyn_fname[copy_count] = '\0';
 
 	return count;
 }
@@ -1914,7 +1912,7 @@ struct wcd_cpe_core *wcd_cpe_init(const char *img_fname,
 		return NULL;
 
 	snprintf(core->fname, sizeof(core->fname), "%s", img_fname);
-	strlcpy(core->dyn_fname, core->fname, WCD_CPE_IMAGE_FNAME_MAX);
+	strscpy(core->dyn_fname, core->fname, sizeof(core->dyn_fname));
 
 	wcd_get_cpe_core = params->get_cpe_core;
 
@@ -2300,13 +2298,13 @@ static int wcd_cpe_is_valid_lsm_session(struct wcd_cpe_core *core,
 		struct cpe_lsm_session *session,
 		const char *func)
 {
-	if (unlikely(IS_ERR_OR_NULL(core))) {
+	if (IS_ERR_OR_NULL(core)) {
 		pr_err("%s: invalid handle to core\n",
 			func);
 		return -EINVAL;
 	}
 
-	if (unlikely(IS_ERR_OR_NULL(session))) {
+	if (IS_ERR_OR_NULL(session)) {
 		dev_err(core->dev, "%s: invalid session\n",
 			func);
 		return -EINVAL;
@@ -4251,7 +4249,7 @@ static int wcd_cpe_is_valid_port(struct wcd_cpe_core *core,
 		struct wcd_cpe_afe_port_cfg *afe_cfg,
 		const char *func)
 {
-	if (unlikely(IS_ERR_OR_NULL(core))) {
+	if (IS_ERR_OR_NULL(core)) {
 		pr_err("%s: Invalid core handle\n", func);
 		return -EINVAL;
 	}

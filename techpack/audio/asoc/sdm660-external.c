@@ -691,7 +691,6 @@ static int msm_ext_set_spk(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component =
 				snd_soc_kcontrol_component(kcontrol);
 
-	pr_debug("%s()\n", __func__);
 	if (msm_ext_spk_control == ucontrol->value.integer.value[0])
 		return 0;
 
@@ -1134,8 +1133,6 @@ static int msm_afe_set_config(struct snd_soc_component *component)
 {
 	int rc;
 	void *config_data;
-
-	pr_debug("%s: enter\n", __func__);
 
 	if (!msm_codec_fn.get_afe_config_fn) {
 		dev_err(component->dev, "%s: codec get afe config not init'ed\n",

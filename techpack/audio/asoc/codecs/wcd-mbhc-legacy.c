@@ -402,7 +402,6 @@ static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 	struct snd_soc_component *component = mbhc->component;
 	bool micbias1 = false;
 
-	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	if (mbhc->mbhc_cb->hph_pull_down_ctrl)
@@ -424,7 +423,6 @@ static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 	/* Re-initialize button press completion object */
 	reinit_completion(&mbhc->btn_press_compl);
 	wcd_schedule_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
-	pr_debug("%s: leave\n", __func__);
 }
 
 static void wcd_correct_swch_plug(struct work_struct *work)
@@ -444,8 +442,6 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	int rc, spl_hs_count = 0;
 	int cross_conn;
 	int try = 0;
-
-	pr_debug("%s: enter\n", __func__);
 
 	mbhc = container_of(work, struct wcd_mbhc, correct_plug_swch);
 	component = mbhc->component;
@@ -780,7 +776,6 @@ exit:
 		mbhc->mbhc_cb->hph_pull_down_ctrl(component, true);
 
 	mbhc->mbhc_cb->lock_sleep(mbhc, false);
-	pr_debug("%s: leave\n", __func__);
 }
 
 static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
@@ -794,8 +789,6 @@ static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
 	int retry = 0;
 	bool hphpa_on = false;
 	u8 moisture_status = 0;
-
-	pr_debug("%s: enter\n", __func__);
 
 	WCD_MBHC_RSC_LOCK(mbhc);
 
@@ -908,7 +901,6 @@ static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
 	}
 exit:
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return IRQ_HANDLED;
 
 report_unplug:
@@ -921,7 +913,6 @@ report_unplug:
 	hphl_trigerred = 0;
 	mic_trigerred = 0;
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return IRQ_HANDLED;
 }
 
@@ -933,7 +924,6 @@ static irqreturn_t wcd_mbhc_hs_ins_irq(int irq, void *data)
 	static u16 hphl_trigerred;
 	static u16 mic_trigerred;
 
-	pr_debug("%s: enter\n", __func__);
 	if (!mbhc->mbhc_cfg->detect_extn_cable) {
 		pr_debug("%s: Returning as Extension cable feature not enabled\n",
 			__func__);
@@ -983,7 +973,6 @@ static irqreturn_t wcd_mbhc_hs_ins_irq(int irq, void *data)
 		}
 	}
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return IRQ_HANDLED;
 
 determine_plug:
@@ -1002,7 +991,6 @@ determine_plug:
 	mbhc->btn_press_intr = false;
 	wcd_mbhc_detect_plug_type(mbhc);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return IRQ_HANDLED;
 }
 

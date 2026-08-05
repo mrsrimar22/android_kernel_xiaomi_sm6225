@@ -360,8 +360,8 @@ static int audio_notifer_dereg_client(struct client_data *client_data)
 		goto done;
 	}
 
-	ret = srcu_notifier_chain_unregister(&service_data[service][domain].
-					     client_nb_list, client_data->nb);
+	ret = srcu_notifier_chain_unregister(&service_data[service][domain].client_nb_list,
+				client_data->nb);
 	if (ret < 0) {
 		pr_err("%s: srcu_notifier_chain_unregister failed, ret %d\n",
 			__func__, ret);
@@ -458,8 +458,8 @@ static int audio_notifer_service_cb(unsigned long opcode,
 	mutex_lock(&notifier_mutex);
 
 	service_data[service][domain].state = notifier_opcode;
-	ret = srcu_notifier_call_chain(&service_data[service][domain].
-		client_nb_list, notifier_opcode, &data);
+	ret = srcu_notifier_call_chain(&service_data[service][domain].client_nb_list,
+				notifier_opcode, &data);
 	if (ret < 0)
 		pr_err("%s: srcu_notifier_call_chain returned %d, service %s, opcode 0x%lx\n",
 			__func__, ret, service_data[service][domain].name,
@@ -551,7 +551,7 @@ int audio_notifier_register(char *client_name, int domain,
 	}
 	INIT_LIST_HEAD(&client_data->list);
 	client_data->nb = nb;
-	strlcpy(client_data->client_name, client_name,
+	strscpy(client_data->client_name, client_name,
 		sizeof(client_data->client_name));
 	client_data->service = NO_SERVICE;
 	client_data->domain = domain;

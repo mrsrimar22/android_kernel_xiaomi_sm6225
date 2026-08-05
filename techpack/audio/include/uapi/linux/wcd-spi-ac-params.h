@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef __UAPI_WCD_SPI_AC_PARAMS_H__
 #define __UAPI_WCD_SPI_AC_PARAMS_H__
 

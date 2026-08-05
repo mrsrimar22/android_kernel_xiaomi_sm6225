@@ -20,8 +20,6 @@ bool suspend;
 
 static int audio_slim_open(struct inode *inode, struct file *file)
 {
-	pr_debug("%s:\n", __func__);
-
 	if (vote_count) {
 		pr_debug("%s: unvote: vote_count=%d\n", __func__, vote_count);
 		pm_runtime_mark_last_busy(slim->dev.parent);
@@ -33,8 +31,6 @@ static int audio_slim_open(struct inode *inode, struct file *file)
 
 static int audio_slim_release(struct inode *inode, struct file *file)
 {
-	pr_debug("%s:\n", __func__);
-
 	if (vote_count) {
 		pr_debug("%s: unvote: vote_count=%d\n", __func__, vote_count);
 		pm_runtime_mark_last_busy(slim->dev.parent);
@@ -98,8 +94,6 @@ struct miscdevice audio_slimslave_misc = {
 
 static int audio_slimslave_probe(struct slim_device *audio_slim)
 {
-	pr_debug("%s:\n", __func__);
-
 	mutex_init(&suspend_lock);
 	suspend = false;
 	slim = audio_slim;
@@ -109,16 +103,12 @@ static int audio_slimslave_probe(struct slim_device *audio_slim)
 
 static int audio_slimslave_remove(struct slim_device *audio_slim)
 {
-	pr_debug("%s:\n", __func__);
-
 	misc_deregister(&audio_slimslave_misc);
 	return 0;
 }
 
 static int audio_slimslave_resume(struct slim_device *audio_slim)
 {
-	pr_debug("%s:\n", __func__);
-
 	mutex_lock(&suspend_lock);
 	suspend = false;
 	mutex_unlock(&suspend_lock);
@@ -128,8 +118,6 @@ static int audio_slimslave_resume(struct slim_device *audio_slim)
 static int audio_slimslave_suspend(struct slim_device *audio_slim,
 				   pm_message_t pmesg)
 {
-	pr_debug("%s:\n", __func__);
-
 	mutex_lock(&suspend_lock);
 	suspend = true;
 	mutex_unlock(&suspend_lock);

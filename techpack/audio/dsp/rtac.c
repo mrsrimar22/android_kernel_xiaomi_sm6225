@@ -120,8 +120,6 @@ int rtac_clear_mapping(uint32_t cal_type)
 {
 	int result = 0;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type >= MAX_RTAC_BLOCKS) {
 		pr_debug("%s: invalid cal type %d\n", __func__, cal_type);
 		result = -EINVAL;
@@ -137,8 +135,6 @@ int rtac_allocate_cal_buffer(uint32_t cal_type)
 {
 	int result = 0;
 	size_t len;
-
-	pr_debug("%s\n", __func__);
 
 	if (cal_type >= MAX_RTAC_BLOCKS) {
 		pr_err("%s: cal_type %d is invalid!\n",
@@ -178,8 +174,6 @@ int rtac_free_cal_buffer(uint32_t cal_type)
 {
 	int result = 0;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type >= MAX_RTAC_BLOCKS) {
 		pr_err("%s: cal_type %d is invalid!\n",
 		       __func__, cal_type);
@@ -212,8 +206,6 @@ done:
 int rtac_map_cal_buffer(uint32_t cal_type)
 {
 	int result = 0;
-
-	pr_debug("%s\n", __func__);
 
 	if (cal_type >= MAX_RTAC_BLOCKS) {
 		pr_err("%s: cal_type %d is invalid!\n",
@@ -263,8 +255,6 @@ int rtac_unmap_cal_buffer(uint32_t cal_type)
 {
 	int result = 0;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type >= MAX_RTAC_BLOCKS) {
 		pr_err("%s: cal_type %d is invalid!\n",
 		       __func__, cal_type);
@@ -309,8 +299,6 @@ static int rtac_open(struct inode *inode, struct file *f)
 {
 	int result = 0;
 
-	pr_debug("%s\n", __func__);
-
 	mutex_lock(&rtac_common.rtac_fops_mutex);
 	atomic_inc(&rtac_common.usage_count);
 	mutex_unlock(&rtac_common.rtac_fops_mutex);
@@ -322,8 +310,6 @@ static int rtac_release(struct inode *inode, struct file *f)
 	int result = 0;
 	int result2 = 0;
 	int i;
-
-	pr_debug("%s\n", __func__);
 
 	mutex_lock(&rtac_common.rtac_fops_mutex);
 	atomic_dec(&rtac_common.usage_count);
@@ -493,17 +479,15 @@ static void shift_popp(u32 copp_idx, u32 popp_idx)
 	for (; popp_idx < rtac_adm_data.device[copp_idx].num_of_popp;
 							popp_idx++) {
 		memcpy(&rtac_adm_data.device[copp_idx].popp[popp_idx].popp,
-			&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].
-			popp, sizeof(uint32_t));
-		memcpy(&rtac_adm_data.device[copp_idx].popp[popp_idx].
-			popp_topology,
-			&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].
-			popp_topology,
+			&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].popp,
 			sizeof(uint32_t));
-		memset(&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].
-			popp, 0, sizeof(uint32_t));
-		memset(&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].
-			popp_topology, 0, sizeof(uint32_t));
+		memcpy(&rtac_adm_data.device[copp_idx].popp[popp_idx].popp_topology,
+			&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].popp_topology,
+			sizeof(uint32_t));
+		memset(&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].popp,
+			0, sizeof(uint32_t));
+		memset(&rtac_adm_data.device[copp_idx].popp[popp_idx + 1].popp_topology,
+			0, sizeof(uint32_t));
 	}
 }
 
@@ -545,8 +529,7 @@ void rtac_remove_popp_from_adm_devices(u32 popp_id)
 			if (rtac_adm_data.device[i].popp[j].popp ==
 								popp_id) {
 				rtac_adm_data.device[i].popp[j].popp = 0;
-				rtac_adm_data.device[i].popp[j].
-					popp_topology = 0;
+				rtac_adm_data.device[i].popp[j].popp_topology = 0;
 				rtac_adm_data.device[i].num_of_popp--;
 				shift_popp(i, j);
 			}
@@ -595,7 +578,6 @@ void rtac_add_voice(u32 cvs_handle, u32 cvp_handle, u32 rx_afe_port,
 {
 	u32 i = 0;
 
-	pr_debug("%s\n", __func__);
 	mutex_lock(&rtac_voice_mutex);
 
 	if (rtac_voice_data.num_of_voice_combos ==
@@ -640,8 +622,6 @@ static void shift_voice_devices(u32 idx)
 void rtac_remove_voice(u32 cvs_handle)
 {
 	u32 i = 0;
-
-	pr_debug("%s\n", __func__);
 
 	mutex_lock(&rtac_voice_mutex);
 	/* look for device */
@@ -721,7 +701,6 @@ bool rtac_make_adm_callback(uint32_t *payload, u32 payload_size)
 	if (atomic_read(&rtac_adm_apr_data.cmd_state) != 1)
 		return false;
 
-	pr_debug("%s\n", __func__);
 	if (payload_size == sizeof(uint32_t))
 		atomic_set(&rtac_common.apr_err_code, payload[0]);
 	else if (payload_size == (2*sizeof(uint32_t)))
@@ -742,8 +721,6 @@ int send_adm_apr(void *buf, u32 opcode)
 	int	copp_idx;
 	int	port_idx;
 	struct apr_hdr	adm_params;
-
-	pr_debug("%s\n", __func__);
 
 	if (rtac_cal[ADM_RTAC_CAL].map_data.dma_buf == NULL) {
 		result = rtac_allocate_cal_buffer(ADM_RTAC_CAL);
@@ -886,8 +863,9 @@ int send_adm_apr(void *buf, u32 opcode)
 
 	mutex_lock(&rtac_adm_apr_mutex);
 	if (opcode == ADM_CMD_GET_PP_PARAMS_V5) {
-		bytes_returned = ((u32 *)rtac_cal[ADM_RTAC_CAL].cal_data.
-			kvaddr)[2] + 3 * sizeof(u32);
+		bytes_returned =
+			((u32 *)rtac_cal[ADM_RTAC_CAL].cal_data.kvaddr)[2] +
+			3 * sizeof(u32);
 	} else if (opcode == ADM_CMD_GET_PP_PARAMS_V6) {
 		bytes_returned =
 			((u32 *) rtac_cal[ADM_RTAC_CAL].cal_data.kvaddr)[3] +
@@ -933,8 +911,6 @@ err:
 /* ASM APR */
 void rtac_set_asm_handle(u32 session_id, void *handle)
 {
-	pr_debug("%s\n", __func__);
-
 	if (session_id >= (ASM_ACTIVE_STREAMS_ALLOWED + 1)) {
 		pr_err_ratelimited("%s: Invalid Session = %d\n",
 				 __func__, session_id);
@@ -958,7 +934,6 @@ bool rtac_make_asm_callback(u32 session_id, uint32_t *payload,
 	if (atomic_read(&rtac_asm_apr_data[session_id].cmd_state) != 1)
 		return false;
 
-	pr_debug("%s\n", __func__);
 	if (payload_size == sizeof(uint32_t))
 		atomic_set(&rtac_common.apr_err_code, payload[0]);
 	else if (payload_size == (2*sizeof(uint32_t)))
@@ -979,8 +954,6 @@ int send_rtac_asm_apr(void *buf, u32 opcode)
 	u32 payload_size;
 	u32 data_size = 0;
 	struct apr_hdr asm_params;
-
-	pr_debug("%s\n", __func__);
 
 	if (rtac_cal[ASM_RTAC_CAL].map_data.dma_buf == NULL) {
 		result = rtac_allocate_cal_buffer(ASM_RTAC_CAL);
@@ -1152,8 +1125,9 @@ int send_rtac_asm_apr(void *buf, u32 opcode)
 	}
 
 	if (opcode == ASM_STREAM_CMD_GET_PP_PARAMS_V2) {
-		bytes_returned = ((u32 *)rtac_cal[ASM_RTAC_CAL].cal_data.
-			kvaddr)[2] + 3 * sizeof(u32);
+		bytes_returned =
+			((u32 *)rtac_cal[ASM_RTAC_CAL].cal_data.kvaddr)[2] +
+			3 * sizeof(u32);
 	} else if (opcode == ASM_STREAM_CMD_GET_PP_PARAMS_V3) {
 		bytes_returned =
 			((u32 *) rtac_cal[ASM_RTAC_CAL].cal_data.kvaddr)[3] +
@@ -1255,8 +1229,6 @@ static int send_rtac_afe_apr(void __user *buf, uint32_t opcode)
 	struct mem_mapping_hdr *mem_hdr = NULL;
 	struct param_hdr_v1 *get_resp_v2;
 	struct param_hdr_v3 *get_resp_v3;
-
-	pr_debug("%s\n", __func__);
 
 	if (rtac_cal[AFE_RTAC_CAL].map_data.dma_buf == NULL) {
 		result = rtac_allocate_cal_buffer(AFE_RTAC_CAL);
@@ -1508,8 +1480,6 @@ err:
 /* Voice APR */
 void rtac_set_voice_handle(u32 mode, void *handle)
 {
-	pr_debug("%s\n", __func__);
-
 	mutex_lock(&rtac_voice_apr_mutex);
 	rtac_voice_apr_data[mode].apr_handle = handle;
 	mutex_unlock(&rtac_voice_apr_mutex);
@@ -1521,7 +1491,6 @@ bool rtac_make_voice_callback(u32 mode, uint32_t *payload, u32 payload_size)
 		(mode >= RTAC_VOICE_MODES))
 		return false;
 
-	pr_debug("%s\n", __func__);
 	if (payload_size == sizeof(uint32_t))
 		atomic_set(&rtac_common.apr_err_code, payload[0]);
 	else if (payload_size == (2*sizeof(uint32_t)))
@@ -1541,8 +1510,6 @@ int send_voice_apr(u32 mode, void *buf, u32 opcode)
 	u32 dest_port;
 	u32 data_size = 0;
 	struct apr_hdr voice_params;
-
-	pr_debug("%s\n", __func__);
 
 	if (rtac_cal[VOICE_RTAC_CAL].map_data.dma_buf == NULL) {
 		result = rtac_allocate_cal_buffer(VOICE_RTAC_CAL);
@@ -1709,8 +1676,9 @@ int send_voice_apr(u32 mode, void *buf, u32 opcode)
 	}
 
 	if (opcode == VSS_ICOMMON_CMD_GET_PARAM_V2) {
-		bytes_returned = ((u32 *)rtac_cal[VOICE_RTAC_CAL].cal_data.
-			kvaddr)[2] + 3 * sizeof(u32);
+		bytes_returned =
+			((u32 *)rtac_cal[VOICE_RTAC_CAL].cal_data.kvaddr)[2] +
+			3 * sizeof(u32);
 	} else if (opcode == VSS_ICOMMON_CMD_GET_PARAM_V3) {
 		bytes_returned =
 			((u32 *) rtac_cal[VOICE_RTAC_CAL].cal_data.kvaddr)[3] +
@@ -1765,6 +1733,7 @@ static long rtac_ioctl_shared(struct file *f,
 {
 	u32 opcode;
 	int result = 0;
+
 	if (!arg) {
 		pr_err("%s: No data sent to driver!\n", __func__);
 		result = -EFAULT;
@@ -2058,6 +2027,13 @@ int __init rtac_init(void)
 
 	return 0;
 nomem:
+	mutex_destroy(&rtac_common.rtac_fops_mutex);
+	mutex_destroy(&rtac_adm_mutex);
+	mutex_destroy(&rtac_adm_apr_mutex);
+	mutex_destroy(&rtac_asm_apr_mutex);
+	mutex_destroy(&rtac_afe_apr_mutex);
+	mutex_destroy(&rtac_voice_mutex);
+	mutex_destroy(&rtac_voice_apr_mutex);
 	return -ENOMEM;
 }
 
@@ -2068,6 +2044,13 @@ void rtac_exit(void)
 	kzfree(rtac_asm_buffer);
 	kzfree(rtac_afe_buffer);
 	kzfree(rtac_voice_buffer);
+	mutex_destroy(&rtac_common.rtac_fops_mutex);
+	mutex_destroy(&rtac_adm_mutex);
+	mutex_destroy(&rtac_adm_apr_mutex);
+	mutex_destroy(&rtac_asm_apr_mutex);
+	mutex_destroy(&rtac_afe_apr_mutex);
+	mutex_destroy(&rtac_voice_mutex);
+	mutex_destroy(&rtac_voice_apr_mutex);
 }
 
 MODULE_DESCRIPTION("SoC QDSP6v2 Real-Time Audio Calibration driver");

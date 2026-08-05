@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef _UAPI_LSM_PARAMS_H__
 #define _UAPI_LSM_PARAMS_H__
 

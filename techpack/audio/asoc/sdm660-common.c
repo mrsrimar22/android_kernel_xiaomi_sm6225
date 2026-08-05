@@ -4914,7 +4914,6 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_component *component,
 
 	/* if active and usbc_en2_gpio_p defined, swap using usbc_en2_gpio_p */
 	if (active) {
-		dev_dbg(component->dev, "%s: enter\n", __func__);
 		if (pdata->usbc_en2_gpio_p) {
 			value = gpio_get_value_cansleep(pdata->usbc_en2_gpio);
 			if (value)

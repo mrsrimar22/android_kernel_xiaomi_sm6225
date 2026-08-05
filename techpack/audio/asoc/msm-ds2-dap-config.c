@@ -194,10 +194,8 @@ static void msm_ds2_dap_check_and_update_ramp_wait(int port_id, int copp_idx,
 
 	update_params_value = kzalloc(params_length + param_payload_len,
 				      GFP_KERNEL);
-	if (!update_params_value) {
-		pr_err("%s: params memory alloc failed\n", __func__);
-		goto end;
-	}
+	if (!update_params_value)
+		return;
 
 	memset(&param_hdr, 0, sizeof(param_hdr));
 	param_hdr.module_id = AUDPROC_MODULE_ID_VOL_CTRL;
@@ -213,13 +211,7 @@ static void msm_ds2_dap_check_and_update_ramp_wait(int port_id, int copp_idx,
 			update_params_value[2]);
 		*ramp_wait = update_params_value[0];
 	}
-end:
 	kfree(update_params_value);
-	/*
-	 * No error returned as we do not need to error out from dap on/dap
-	 * bypass. The default ramp parameter will be used to wait during
-	 * ramp down.
-	 */
 }
 
 static int msm_ds2_dap_set_vspe_vdhe(int dev_map_idx,
@@ -1160,8 +1152,8 @@ static int msm_ds2_dap_send_end_point(int dev_map_idx, int endp_idx)
 		 ds2_dap_params_offset[endp_idx],
 		 ds2_dap_params_length[endp_idx]);
 	pr_debug("%s: param 0x%x, param val %d\n", __func__,
-		 ds2_dap_params_id[endp_idx], ds2_ap_params_obj->
-		 params_val[ds2_dap_params_offset[endp_idx]]);
+		 ds2_dap_params_id[endp_idx],
+		 ds2_ap_params_obj->params_val[ds2_dap_params_offset[endp_idx]]);
 	rc = adm_pack_and_set_one_pp_param(dev_map[dev_map_idx].port_id,
 					   dev_map[dev_map_idx].copp_idx,
 					   param_hdr, (u8 *) &offset);
@@ -1527,8 +1519,7 @@ static int msm_ds2_dap_set_param(u32 cmd, void *arg)
 			ds2_dap_params[cdev].params_val[off + j] = data;
 				pr_debug("%s:off %d,val[i/p:o/p]-[%d / %d]\n",
 					 __func__, off, data,
-					 ds2_dap_params[cdev].
-					 params_val[off + j]);
+					 ds2_dap_params[cdev].params_val[off + j]);
 		}
 	}
 end:
@@ -1682,7 +1673,6 @@ static int msm_ds2_dap_param_visualizer_control_get(u32 cmd, void *arg)
 
 	visualizer_data = kzalloc(params_length, GFP_KERNEL);
 	if (!visualizer_data) {
-		pr_err("%s: params memory alloc failed\n", __func__);
 		ret = -ENOMEM;
 		dolby_data->length = 0;
 		goto end;

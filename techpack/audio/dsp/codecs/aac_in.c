@@ -607,10 +607,8 @@ static int aac_in_open(struct inode *inode, struct file *file)
 	if (!audio->ac) {
 		pr_err("%s: Could not allocate memory for audio client\n",
 			__func__);
-		kfree(audio->enc_cfg);
-		kfree(audio->codec_cfg);
-		kfree(audio);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto free;
 	}
 	/* open aac encoder in tunnel mode */
 	audio->buf_cfg.frames_per_buf = 0x01;
@@ -671,6 +669,10 @@ static int aac_in_open(struct inode *inode, struct file *file)
 	return 0;
 fail:
 	q6asm_audio_client_free(audio->ac);
+free:
+	mutex_destroy(&audio->lock);
+	mutex_destroy(&audio->read_lock);
+	mutex_destroy(&audio->write_lock);
 	kfree(audio->enc_cfg);
 	kfree(audio->codec_cfg);
 	kfree(audio);
