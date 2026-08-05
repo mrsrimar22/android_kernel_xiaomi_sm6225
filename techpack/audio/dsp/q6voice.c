@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/slab.h>
 #include <linux/kthread.h>
@@ -8050,7 +8050,7 @@ static int32_t qdsp_cvs_callback(struct apr_client_data *data, void *priv)
 		pr_debug("Send dec buf resp\n");
 	} else if (data->opcode == APR_RSP_ACCEPTED) {
 		ptr = data->payload;
-		if (ptr[0])
+		if (ptr != NULL && ptr[0] !=0)
 			pr_debug("%s: APR_RSP_ACCEPTED for 0x%x:\n",
 				 __func__, ptr[0]);
 	} else if (data->opcode == VSS_ISTREAM_EVT_NOT_READY) {
@@ -8061,7 +8061,7 @@ static int32_t qdsp_cvs_callback(struct apr_client_data *data, void *priv)
 		   data->opcode == VSS_ICOMMON_RSP_GET_PARAM_V3) {
 		pr_debug("%s: VSS_ICOMMON_RSP_GET_PARAM\n", __func__);
 		ptr = data->payload;
-		if (ptr[0] != 0) {
+		if (ptr != NULL && ptr[0] !=0) {
 			pr_err("%s: VSS_ICOMMON_RSP_GET_PARAM returned error = 0x%x\n",
 			       __func__, ptr[0]);
 		}
