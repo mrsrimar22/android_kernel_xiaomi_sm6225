@@ -605,9 +605,8 @@ static bool _sde_enc_phys_wb_detect_cwb(struct sde_encoder_phys *phys_enc,
 		if (encoder->crtc != crtc_state->crtc)
 			continue;
 
-		if (phys_enc->parent != encoder) {
+		if (phys_enc->parent != encoder)
 			return true;
-		}
 	}
 
 	return false;

@@ -3010,7 +3010,7 @@ static inline int sde_rotator_search_dt_clk(struct platform_device *pdev,
 		rc = PTR_ERR(tmp);
 	}
 
-	strlcpy(mgr->rot_clk[clk_idx].clk_name, clk_name,
+	strscpy(mgr->rot_clk[clk_idx].clk_name, clk_name,
 			sizeof(mgr->rot_clk[clk_idx].clk_name));
 
 	mgr->rot_clk[clk_idx].clk = tmp;
@@ -3273,6 +3273,7 @@ error_res_init:
 error_parse_dt:
 	sysfs_remove_group(&mgr->device->kobj, &sde_rotator_fs_attr_group);
 error_create_sysfs:
+	mutex_destroy(&mgr->lock);
 	devm_kfree(&pdev->dev, mgr);
 	*pmgr = NULL;
 	return ret;
@@ -3294,6 +3295,7 @@ void sde_rotator_core_destroy(struct sde_rot_mgr *mgr)
 	pm_runtime_disable(mgr->device);
 	sde_rotator_res_destroy(mgr);
 	sysfs_remove_group(&mgr->device->kobj, &sde_rotator_fs_attr_group);
+	mutex_destroy(&mgr->lock);
 	devm_kfree(dev, mgr);
 }
 

@@ -529,7 +529,7 @@ static int calc_clk_pre(struct dsi_phy_hw *phy,
 	t->rec_max = 255;
 
 	/* register value */
-	t->rec =DIV_ROUND_UP((((t->rec_max - t->rec_min) *
+	t->rec = DIV_ROUND_UP((((t->rec_max - t->rec_min) *
 		125) + (t->rec_min * 100 * 100)), 100 * 100);
 
 	rc = dsi_phy_cmn_validate_and_set(t, "clk_pre");

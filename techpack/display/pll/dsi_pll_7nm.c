@@ -1627,7 +1627,7 @@ static unsigned long vco_7nm_recalc_rate(struct clk_hw *hw,
 	 * return the current rate as to avoid trying to set the vco rate
 	 * again. However durng handoff, recalculation should set the flag
 	 * according to the status of PLL.
-	*/
+	 */
 	if (pll->vco_current_rate != 0) {
 		pr_debug("returning vco rate = %lld\n", pll->vco_current_rate);
 		return pll->vco_current_rate;

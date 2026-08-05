@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -359,7 +360,7 @@ static ssize_t measured_fps_show(struct device *device,
 	fps_int = (uint64_t) sde_crtc->fps_info.measured_fps;
 	fps_decimal = do_div(fps_int, 10);
 	return scnprintf(buf, PAGE_SIZE,
-	"fps: %d.%d duration:%d frame_count:%lld\n", fps_int, fps_decimal,
+	"fps: %d.%d duration:%d frame_count:%lld\n", (int)fps_int, (int)fps_decimal,
 			sde_crtc->fps_info.fps_periodic_duration, frame_count);
 }
 
@@ -445,6 +446,8 @@ static void sde_crtc_destroy(struct drm_crtc *crtc)
 	_sde_crtc_deinit_events(sde_crtc);
 
 	drm_crtc_cleanup(crtc);
+	kfree(sde_crtc->fps_info.time_buf);
+	mutex_destroy(&sde_crtc->vblank_modeset_ctrl_lock);
 	mutex_destroy(&sde_crtc->crtc_lock);
 	kfree(sde_crtc);
 }
@@ -4756,9 +4759,9 @@ static int _sde_crtc_check_zpos(struct drm_crtc_state *state,
 		} else if (zpos_cnt == 2) {
 			SDE_ERROR("> 2 planes @ stage %d\n", z_pos);
 			return -EINVAL;
-		} else {
-			zpos_cnt++;
 		}
+
+		zpos_cnt++;
 
 		if (!kms->catalog->has_base_layer)
 			pstates[i].sde_pstate->stage = z_pos + SDE_STAGE_0;
@@ -6319,11 +6322,8 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 
 	/* initialize event handling */
 	rc = _sde_crtc_init_events(sde_crtc);
-	if (rc) {
-		drm_crtc_cleanup(crtc);
-		kfree(sde_crtc);
-		return ERR_PTR(rc);
-	}
+	if (rc)
+		goto error_init_events;
 
 	/* initialize output fence support */
 	sde_crtc->output_fence = sde_fence_init(sde_crtc->name, crtc->base.id);
@@ -6331,9 +6331,7 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 	if (IS_ERR(sde_crtc->output_fence)) {
 		rc = PTR_ERR(sde_crtc->output_fence);
 		SDE_ERROR("failed to init fence, %d\n", rc);
-		drm_crtc_cleanup(crtc);
-		kfree(sde_crtc);
-		return ERR_PTR(rc);
+		goto error_init_fence;
 	}
 
 	/* create CRTC properties */
@@ -6361,6 +6359,16 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 
 	SDE_DEBUG("%s: successfully initialized crtc\n", sde_crtc->name);
 	return crtc;
+
+error_init_fence:
+	_sde_crtc_deinit_events(sde_crtc);
+error_init_events:
+	drm_crtc_cleanup(crtc);
+	kfree(sde_crtc->fps_info.time_buf);
+	mutex_destroy(&sde_crtc->vblank_modeset_ctrl_lock);
+	mutex_destroy(&sde_crtc->crtc_lock);
+	kfree(sde_crtc);
+	return ERR_PTR(rc);
 }
 
 int sde_crtc_post_init(struct drm_device *dev, struct drm_crtc *crtc)

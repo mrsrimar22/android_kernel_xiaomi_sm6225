@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2014-2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -626,7 +627,7 @@ int sde_plane_wait_input_fence(struct drm_plane *plane, uint32_t wait_ms)
 
 			switch (rc) {
 			case 0:
-				SDE_ERROR_PLANE(psde, "%ums timeout on %08X fd %d\n",
+				SDE_ERROR_PLANE(psde, "%ums timeout on %08X fd %llu\n",
 						wait_ms, prefix, sde_plane_get_property(pstate,
 						PLANE_PROP_INPUT_FENCE));
 				psde->is_error = true;
@@ -1446,11 +1447,11 @@ static int _sde_plane_color_fill(struct sde_plane *psde,
 }
 
 /**
-* sde_plane_rot_atomic_check - verify rotator update of the given state
-* @plane: Pointer to drm plane
-* @state: Pointer to drm plane state to be validated
-* return: 0 if success; error code otherwise
-*/
+ * sde_plane_rot_atomic_check - verify rotator update of the given state
+ * @plane: Pointer to drm plane
+ * @state: Pointer to drm plane state to be validated
+ * return: 0 if success; error code otherwise
+ */
 static int sde_plane_rot_atomic_check(struct drm_plane *plane,
 	struct drm_plane_state *state)
 {
@@ -2586,7 +2587,7 @@ static int _sde_plane_validate_fb(struct sde_plane *psde,
 		if (!ret && ((fb_ns && (mode != SDE_DRM_FB_NON_SEC)) ||
 			(fb_sec && (mode != SDE_DRM_FB_SEC)) ||
 			(fb_sec_dir && (mode != SDE_DRM_FB_SEC_DIR_TRANS)))) {
-			SDE_ERROR_PLANE(psde, "mode:%d fb:%d flag:0x%x rc:%d\n",
+			SDE_ERROR_PLANE(psde, "mode:%d fb:%d flag:0x%lx rc:%d\n",
 			mode, fb->base.id, flags, ret);
 			SDE_EVT32(psde->base.base.id, fb->base.id, flags,
 			fb_ns, fb_sec, fb_sec_dir, ret, SDE_EVTLOG_ERROR);

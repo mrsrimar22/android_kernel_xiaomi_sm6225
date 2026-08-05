@@ -1001,6 +1001,8 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 	if (enable) {
 		rc = pm_runtime_get_sync(dsi_ctrl->drm_dev->dev);
 		if (rc < 0) {
+			/* usage_count is still incremented on failure */
+			pm_runtime_put_noidle(dsi_ctrl->drm_dev->dev);
 			DSI_CTRL_ERR(dsi_ctrl,
 				"Power resource enable failed, rc=%d\n", rc);
 			goto error;
@@ -1027,26 +1029,27 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 			goto error_get_sync;
 		}
 		return rc;
-	} else {
-		rc = dsi_pwr_enable_regulator(&dsi_ctrl->pwr_info.digital,
-					      false);
+	}
+
+	rc = dsi_pwr_enable_regulator(&dsi_ctrl->pwr_info.digital,
+				      false);
+	if (rc) {
+		DSI_CTRL_ERR(dsi_ctrl, "failed to disable gdsc, rc=%d\n",
+				rc);
+		goto error;
+	}
+
+	if (!dsi_ctrl->current_state.host_initialized) {
+		rc = dsi_pwr_enable_regulator(
+			&dsi_ctrl->pwr_info.host_pwr, false);
 		if (rc) {
-			DSI_CTRL_ERR(dsi_ctrl, "failed to disable gdsc, rc=%d\n",
-					rc);
+			DSI_CTRL_ERR(dsi_ctrl, "failed to disable host power regs\n");
 			goto error;
 		}
-
-		if (!dsi_ctrl->current_state.host_initialized) {
-			rc = dsi_pwr_enable_regulator(
-				&dsi_ctrl->pwr_info.host_pwr, false);
-			if (rc) {
-				DSI_CTRL_ERR(dsi_ctrl, "failed to disable host power regs\n");
-				goto error;
-			}
-		}
-		pm_runtime_put_sync(dsi_ctrl->drm_dev->dev);
-		return rc;
 	}
+	pm_runtime_put_sync(dsi_ctrl->drm_dev->dev);
+	return rc;
+
 error_get_sync:
 	pm_runtime_put_sync(dsi_ctrl->drm_dev->dev);
 error:
@@ -2369,6 +2372,7 @@ exit:
 int dsi_ctrl_timing_setup(struct dsi_ctrl *dsi_ctrl)
 {
 	int rc = 0;
+
 	if (!dsi_ctrl) {
 		DSI_CTRL_ERR(dsi_ctrl, "Invalid params\n");
 		return -EINVAL;

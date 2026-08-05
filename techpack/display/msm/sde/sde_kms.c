@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
@@ -518,7 +519,7 @@ static int _sde_kms_secure_ctrl(struct sde_kms *sde_kms, struct drm_crtc *crtc,
 	if (smmu_state->sui_misr_state == SUI_MISR_ENABLE_REQ) {
 		ret = _sde_kms_sui_misr_ctrl(sde_kms, crtc, true);
 		if (ret) {
-			smmu_state->sui_misr_state == NONE;
+			smmu_state->sui_misr_state = NONE;
 			goto end;
 		}
 	}
@@ -1167,7 +1168,7 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 		return;
 	priv = sde_kms->dev->dev_private;
 
-	if (sde_kms_power_resource_is_enabled(sde_kms->dev) < 0) {
+	if (!sde_kms_power_resource_is_enabled(sde_kms->dev)) {
 		SDE_ERROR("power resource is not enabled\n");
 		return;
 	}
@@ -2031,6 +2032,10 @@ static void sde_kms_destroy(struct msm_kms *kms)
 	}
 
 	_sde_kms_hw_destroy(sde_kms, to_platform_device(dev->dev));
+
+	mutex_destroy(&sde_kms->vblank_ctl_global_lock);
+	mutex_destroy(&sde_kms->secure_transition_lock);
+
 	kfree(sde_kms);
 }
 
