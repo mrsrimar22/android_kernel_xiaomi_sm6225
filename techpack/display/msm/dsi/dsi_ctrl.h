@@ -231,7 +231,7 @@ struct dsi_ctrl_interrupts {
  * @misr_enable:         Frame MISR enable/disable
  * @misr_cache:          Cached Frame MISR value
  * @frame_threshold_time_us: Frame threshold time in microseconds, where
- *		 	  dsi data lane will be idle i.e from pingpong done to
+ *			  dsi data lane will be idle i.e from pingpong done to
  *			  next TE for command mode.
  * @phy_isolation_enabled:    A boolean property allows to isolate the phy from
  *                          dsi controller and run only dsi controller.

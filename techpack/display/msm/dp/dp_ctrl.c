@@ -757,10 +757,10 @@ static int dp_ctrl_enable_stream_clocks(struct dp_ctrl_private *ctrl,
 
 	if (dp_panel->stream_id == DP_STREAM_0) {
 		clk_type = DP_STREAM0_PM;
-		strlcpy(clk_name, "strm0_pixel_clk", 32);
+		strscpy(clk_name, "strm0_pixel_clk", sizeof(clk_name));
 	} else if (dp_panel->stream_id == DP_STREAM_1) {
 		clk_type = DP_STREAM1_PM;
-		strlcpy(clk_name, "strm1_pixel_clk", 32);
+		strscpy(clk_name, "strm1_pixel_clk", sizeof(clk_name));
 	} else {
 		DP_ERR("Invalid stream:%d for clk enable\n",
 				dp_panel->stream_id);

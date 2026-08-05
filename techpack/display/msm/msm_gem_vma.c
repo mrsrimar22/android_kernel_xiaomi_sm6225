@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016 Red Hat
@@ -219,7 +220,8 @@ static void iommu_aspace_unmap_vma(struct msm_gem_address_space *aspace,
 		return;
 
 	if (aspace->mmu) {
-		unsigned size = vma->node.size << PAGE_SHIFT;
+		unsigned int size = vma->node.size << PAGE_SHIFT;
+
 		aspace->mmu->funcs->unmap(aspace->mmu, vma->iova, sgt, size);
 	}
 
@@ -263,7 +265,8 @@ static int iommu_aspace_map_vma(struct msm_gem_address_space *aspace,
 	vma->iova = vma->node.start << PAGE_SHIFT;
 
 	if (aspace->mmu) {
-		unsigned size = npages << PAGE_SHIFT;
+		unsigned int size = npages << PAGE_SHIFT;
+
 		ret = aspace->mmu->funcs->map(aspace->mmu, vma->iova, sgt,
 				size, IOMMU_READ | IOMMU_WRITE);
 	}

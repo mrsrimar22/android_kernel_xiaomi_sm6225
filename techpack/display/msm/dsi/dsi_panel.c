@@ -708,8 +708,7 @@ static int dsi_panel_update_pwm_backlight(struct dsi_panel *panel,
 
 	rc = pwm_config(bl->pwm_bl, duty, period_ns);
 	if (rc) {
-		DSI_ERR("[%s] failed to change pwm config, rc=\n", panel->name,
-			rc);
+		DSI_ERR("[%s] failed to change pwm config, rc=%d\n", panel->name, rc);
 		goto error;
 	}
 
@@ -722,8 +721,7 @@ static int dsi_panel_update_pwm_backlight(struct dsi_panel *panel,
 	if (!bl->pwm_enabled) {
 		rc = pwm_enable(bl->pwm_bl);
 		if (rc) {
-			DSI_ERR("[%s] failed to enable pwm, rc=\n", panel->name,
-				rc);
+			DSI_ERR("[%s] failed to enable pwm, rc=%d\n", panel->name, rc);
 			goto error;
 		}
 
@@ -3494,6 +3492,7 @@ void dsi_panel_put(struct dsi_panel *panel)
 	/* free resources allocated for ESD check */
 	dsi_panel_esd_config_deinit(&panel->esd_config);
 
+	mutex_destroy(&panel->panel_lock);
 	kfree(panel);
 }
 
@@ -3733,7 +3732,7 @@ void dsi_panel_put_mode(struct dsi_display_mode *mode)
 void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 		struct dsi_display_mode *mode, u32 frame_threshold_us)
 {
-	u32 frame_time_us,nslices;
+	u32 frame_time_us, nslices;
 	u64 min_bitclk_hz, total_active_pixels, bits_per_line, pclk_rate_hz,
 		dsi_transfer_time_us, pixel_clk_khz;
 	struct msm_display_dsc_info *dsc = mode->timing.dsc;
@@ -3744,7 +3743,7 @@ void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 
 	/* Packet overlead in bits,2 bytes header + 2 bytes checksum
 	 * + 1 byte dcs data command.
-        */
+	 */
 	const u32 packet_overhead = 56;
 
 	display_mode = container_of(timing, struct dsi_display_mode, timing);

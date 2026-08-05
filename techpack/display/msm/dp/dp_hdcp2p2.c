@@ -612,6 +612,7 @@ exit:
 static void dp_hdcp2p2_start_auth(struct dp_hdcp2p2_ctrl *ctrl)
 {
 	struct sde_hdcp_2x_wakeup_data cdata = {HDCP_2X_CMD_START_AUTH};
+
 	cdata.context = ctrl->lib_ctx;
 
 	if (atomic_read(&ctrl->auth_state) == HDCP_STATE_AUTHENTICATING)
@@ -825,8 +826,8 @@ void sde_dp_hdcp2p2_deinit(void *input)
 
 	kthread_stop(ctrl->thread);
 
-	mutex_destroy(&ctrl->mutex);
 	mutex_destroy(&ctrl->msg_lock);
+	mutex_destroy(&ctrl->mutex);
 	kfree(ctrl);
 }
 
@@ -970,7 +971,7 @@ void *sde_dp_hdcp2p2_init(struct sde_hdcp_init_data *init_data)
 	rc = sde_hdcp_2x_register(&register_data);
 	if (rc) {
 		DP_ERR("Unable to register with HDCP 2.2 library\n");
-		goto error;
+		goto error_register;
 	}
 
 	if (IS_ENABLED(CONFIG_HDCP_QSEECOM))
@@ -983,10 +984,15 @@ void *sde_dp_hdcp2p2_init(struct sde_hdcp_init_data *init_data)
 		DP_ERR("unable to start DP hdcp2p2 thread\n");
 		rc = PTR_ERR(ctrl->thread);
 		ctrl->thread = NULL;
-		goto error;
+		goto error_thread;
 	}
 
 	return ctrl;
+error_thread:
+	sde_hdcp_2x_deregister(ctrl->lib_ctx);
+error_register:
+	mutex_destroy(&ctrl->msg_lock);
+	mutex_destroy(&ctrl->mutex);
 error:
 	kfree(ctrl);
 	return ERR_PTR(rc);

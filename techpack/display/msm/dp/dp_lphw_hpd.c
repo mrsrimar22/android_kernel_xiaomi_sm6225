@@ -365,7 +365,7 @@ struct dp_hpd *dp_lphw_hpd_get(struct device *dev, struct dp_parser *parser,
 		goto gpio_error;
 	}
 
-	strlcpy(lphw_hpd->gpio_cfg.gpio_name, hpd_gpio_name,
+	strscpy(lphw_hpd->gpio_cfg.gpio_name, hpd_gpio_name,
 		sizeof(lphw_hpd->gpio_cfg.gpio_name));
 	lphw_hpd->gpio_cfg.value = 0;
 

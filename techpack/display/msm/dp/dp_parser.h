@@ -200,7 +200,7 @@ static inline char *dp_phy_aux_config_type_to_string(u32 cfg_type)
  * @max_dp_dsc_blks: maximum DSC blks for DP interface
  * @max_dp_dsc_input_width_pixs: Maximum input width for DSC block
  * @has_widebus: widebus (2PPC) feature eanble status
-  *@mst_fixed_port: mst port_num reserved for fixed topology
+ * @mst_fixed_port: mst port_num reserved for fixed topology
  * @display_type: display type as defined in device tree.
  * @parse: function to be called by client to parse device tree.
  * @get_io: function to be called by client to get io data.

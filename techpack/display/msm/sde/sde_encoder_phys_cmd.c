@@ -588,7 +588,7 @@ static bool _sde_encoder_phys_is_disabling_ppsplit_slave(
 static int _sde_encoder_phys_cmd_poll_write_pointer_started(
 		struct sde_encoder_phys *phys_enc)
 {
-	struct sde_encoder_phys_cmd *cmd_enc =
+	struct sde_encoder_phys_cmd __maybe_unused *cmd_enc =
 			to_sde_encoder_phys_cmd(phys_enc);
 	struct sde_hw_pingpong *hw_pp = phys_enc->hw_pp;
 	struct sde_hw_intf *hw_intf = phys_enc->hw_intf;
@@ -996,7 +996,7 @@ exit:
 static void sde_encoder_phys_cmd_tearcheck_config(
 		struct sde_encoder_phys *phys_enc)
 {
-	struct sde_encoder_phys_cmd *cmd_enc =
+	struct sde_encoder_phys_cmd __maybe_unused *cmd_enc =
 		to_sde_encoder_phys_cmd(phys_enc);
 	struct sde_hw_tear_check tc_cfg = { 0 };
 	struct drm_display_mode *mode;
@@ -1111,7 +1111,7 @@ static void sde_encoder_phys_cmd_tearcheck_config(
 static void _sde_encoder_phys_cmd_pingpong_config(
 		struct sde_encoder_phys *phys_enc)
 {
-	struct sde_encoder_phys_cmd *cmd_enc =
+	struct sde_encoder_phys_cmd __maybe_unused *cmd_enc =
 		to_sde_encoder_phys_cmd(phys_enc);
 
 	if (!phys_enc || !phys_enc->hw_ctl || !phys_enc->hw_pp) {
@@ -1156,7 +1156,7 @@ skip_flush:
 
 static void sde_encoder_phys_cmd_enable(struct sde_encoder_phys *phys_enc)
 {
-	struct sde_encoder_phys_cmd *cmd_enc =
+	struct sde_encoder_phys_cmd __maybe_unused *cmd_enc =
 		to_sde_encoder_phys_cmd(phys_enc);
 
 	if (!phys_enc || !phys_enc->hw_pp) {
@@ -1341,7 +1341,7 @@ static void sde_encoder_phys_cmd_get_hw_resources(
 		struct sde_encoder_hw_resources *hw_res,
 		struct drm_connector_state *conn_state)
 {
-	struct sde_encoder_phys_cmd *cmd_enc =
+	struct sde_encoder_phys_cmd __maybe_unused *cmd_enc =
 		to_sde_encoder_phys_cmd(phys_enc);
 
 	if (!phys_enc) {

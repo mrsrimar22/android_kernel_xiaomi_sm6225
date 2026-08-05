@@ -261,7 +261,7 @@ int sde_evtlog_get_filter(struct sde_dbg_evtlog *evtlog, int index,
 			continue;
 
 		/* don't care about return value */
-		(void)strlcpy(buf, filter_node->filter, bufsz);
+		(void)strscpy(buf, filter_node->filter, bufsz);
 		rc = 0;
 		break;
 	}
@@ -316,7 +316,7 @@ void sde_evtlog_set_filter(struct sde_dbg_evtlog *evtlog, char *filter)
 		}
 
 		/* don't care if copy truncated */
-		(void)strlcpy(filter_node->filter, flt,
+		(void)strscpy(filter_node->filter, flt,
 				SDE_EVTLOG_FILTER_STRSIZE);
 
 		spin_lock_irqsave(&evtlog->spin_lock, flags);

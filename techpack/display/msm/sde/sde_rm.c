@@ -246,7 +246,6 @@ void sde_rm_get_resource_info(struct sde_rm *rm,
 				_sde_rm_inc_resource_info(rm, avail_res, blk);
 end:
 	mutex_unlock(&rm->rm_lock);
-	return;
 }
 
 static void _sde_rm_print_rsvps(
@@ -952,7 +951,7 @@ static bool _sde_rm_check_lm_and_get_connected_blks(
 		struct sde_rm_hw_blk *primary_lm)
 {
 	const struct sde_lm_cfg *lm_cfg = to_sde_hw_mixer(lm->hw)->cap;
-	const struct sde_pingpong_cfg *pp_cfg;
+	const struct sde_pingpong_cfg *pp_cfg = NULL;
 	bool ret, is_conn_primary, is_conn_secondary;
 	u32 lm_primary_pref, lm_secondary_pref, cwb_pref;
 
@@ -968,7 +967,7 @@ static bool _sde_rm_check_lm_and_get_connected_blks(
 	is_conn_secondary = (reqs->hw_res.display_type ==
 				 SDE_CONNECTOR_SECONDARY) ? true : false;
 
-	SDE_DEBUG("check lm %d: dspp %d ds %d pp %d features %d disp type %d\n",
+	SDE_DEBUG("check lm %d: dspp %d ds %d pp %d features 0x%lx disp type %d\n",
 		 lm_cfg->id, lm_cfg->dspp, lm_cfg->ds, lm_cfg->pingpong,
 		 lm_cfg->features, (int)reqs->hw_res.display_type);
 
@@ -1003,7 +1002,7 @@ static bool _sde_rm_check_lm_and_get_connected_blks(
 	} else if ((!is_conn_primary && lm_primary_pref) ||
 			(!is_conn_secondary && lm_secondary_pref)) {
 		SDE_DEBUG(
-			"display preference is not met. display_type: %d lm_features: %x\n",
+			"display preference is not met. display_type: %d lm_features: 0x%lx\n",
 			(int)reqs->hw_res.display_type, lm_cfg->features);
 		return false;
 	}
