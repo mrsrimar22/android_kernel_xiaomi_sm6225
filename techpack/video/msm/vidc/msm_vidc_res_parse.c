@@ -580,7 +580,7 @@ static int msm_vidc_load_regulator_table(
 			d_vpr_e("Failed to alloc memory for regulator name\n");
 			goto err_reg_name_alloc;
 		}
-		strlcpy(rinfo->name, domains_property->name,
+		strscpy(rinfo->name, domains_property->name,
 			(supply - domains_property->name) + 1);
 
 		rinfo->has_hw_power_collapse = of_property_read_bool(
@@ -652,11 +652,10 @@ static int msm_vidc_load_clock_table(
 		of_property_read_string_index(pdev->dev.of_node,
 				"clock-names", c, &vc->name);
 
-		if (clock_props[c] & CLOCK_PROP_HAS_SCALING) {
+		if (clock_props[c] & CLOCK_PROP_HAS_SCALING)
 			vc->has_scaling = true;
-		} else {
+		else
 			vc->has_scaling = false;
-		}
 
 		if (clock_props[c] & CLOCK_PROP_HAS_MEM_RETENTION)
 			vc->has_mem_retention = true;
@@ -1021,7 +1020,7 @@ static int msm_vidc_setup_context_bank(struct msm_vidc_platform_resources *res,
 	if (!strcmp(cb->name, "venus_ns"))
 		iommu_dma_enable_best_fit_algo(cb->dev);
 
-	 /*
+	/*
 	 * configure device segment size and segment boundary to ensure
 	 * iommu mapping returns one mapping (which is required for partial
 	 * cache operations)

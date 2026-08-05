@@ -872,7 +872,7 @@ static int __smem_alloc(struct venus_hfi_device *dev,
 	int rc = 0;
 
 	if (!dev || !mem || !size) {
-		d_vpr_e("%s: invalid params %pK %pK %pK\n",
+		d_vpr_e("%s: invalid params %pK %pK %u\n",
 			__func__, dev, mem, size);
 		return -EINVAL;
 	}
@@ -1055,7 +1055,7 @@ static int __vote_buses(struct venus_hfi_device *device,
 				bus->range[0], bus->range[1]);
 
 			if (TRIVIAL_BW_CHANGE(ab_kbps, bw_prev) && bw_prev) {
-				s_vpr_l(sid, "Skip voting bus %s to %llu bps",
+				s_vpr_l(sid, "Skip voting bus %s to %lu bps",
 					bus->name, ab_kbps * 1000);
 				continue;
 			}
@@ -1278,7 +1278,7 @@ static int __set_clk_rate(struct venus_hfi_device *device,
 			return rc;
 		}
 		s_vpr_p(sid,
-			"cx_ipeak_update: up, clk freq = %lu rate = %lu threshold_freq = %lu\n",
+			"cx_ipeak_update: up, clk freq = %u rate = %llu threshold_freq = %llu\n",
 			device->clk_freq, rate, threshold_freq);
 	}
 
@@ -1299,7 +1299,7 @@ static int __set_clk_rate(struct venus_hfi_device *device,
 			return rc;
 		}
 		s_vpr_p(sid,
-			"cx_ipeak_update: up, clk freq = %lu rate = %lu threshold_freq = %lu\n",
+			"cx_ipeak_update: up, clk freq = %u rate = %llu threshold_freq = %llu\n",
 			device->clk_freq, rate, threshold_freq);
 	}
 
@@ -1638,7 +1638,7 @@ static int __interface_dsp_queues_init(struct venus_hfi_device *dev)
 			dev->dsp_iface_q_table.align_virtual_addr;
 	q_tbl_hdr->qtbl_version = 0;
 	q_tbl_hdr->device_addr = (void *)dev;
-	strlcpy(q_tbl_hdr->name, "msm_v4l2_vidc", sizeof(q_tbl_hdr->name));
+	strscpy(q_tbl_hdr->name, "msm_v4l2_vidc", sizeof(q_tbl_hdr->name));
 	q_tbl_hdr->qtbl_size = VIDC_IFACEQ_TABLE_SIZE;
 	q_tbl_hdr->qtbl_qhdr0_offset = sizeof(struct hfi_queue_table_header);
 	q_tbl_hdr->qtbl_qhdr_size = sizeof(struct hfi_queue_header);
@@ -1890,7 +1890,7 @@ static int __interface_queues_init(struct venus_hfi_device *dev)
 			dev->iface_q_table.align_virtual_addr;
 	q_tbl_hdr->qtbl_version = 0;
 	q_tbl_hdr->device_addr = (void *)dev;
-	strlcpy(q_tbl_hdr->name, "msm_v4l2_vidc", sizeof(q_tbl_hdr->name));
+	strscpy(q_tbl_hdr->name, "msm_v4l2_vidc", sizeof(q_tbl_hdr->name));
 	q_tbl_hdr->qtbl_size = VIDC_IFACEQ_TABLE_SIZE;
 	q_tbl_hdr->qtbl_qhdr0_offset = sizeof(struct hfi_queue_table_header);
 	q_tbl_hdr->qtbl_qhdr_size = sizeof(struct hfi_queue_header);
@@ -4514,7 +4514,7 @@ static int __load_fw(struct venus_hfi_device *device)
 
 	rc = __venus_power_on(device, DEFAULT_SID);
 	if (rc) {
-		d_vpr_e("Failed to power on venus in in load_fw\n");
+		d_vpr_e("Failed to power on venus in load_fw\n");
 		goto fail_venus_power_on;
 	}
 
@@ -4770,8 +4770,8 @@ void __init_venus_ops(struct venus_hfi_device *device)
 {
 	if (device->res->vpu_ver == VPU_VERSION_AR50)
 		device->vpu_ops = &vpu4_ops;
-        else if (device->res->vpu_ver == VPU_VERSION_AR50_LITE)
-                device->vpu_ops = &ar50_lite_ops;
+	else if (device->res->vpu_ver == VPU_VERSION_AR50_LITE)
+		device->vpu_ops = &ar50_lite_ops;
 	else if (device->res->vpu_ver == VPU_VERSION_IRIS1)
 		device->vpu_ops = &iris1_ops;
 	else
