@@ -413,6 +413,102 @@ int fts_gesture_resume(struct fts_gesture_data *gesture)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_TP_COMMON)
+static ssize_t fts_double_tap_show(struct tp_feature_entry *entry, char *buf)
+{
+	struct fts_gesture_data *gesture = container_of(entry,
+							struct fts_gesture_data,
+							dt_entry);
+	struct fts_ts_data *ts_data = gesture->ts_data;
+	bool enabled;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	enabled = ts_data->gesture_mode;
+	mutex_unlock(&ts_data->state_lock);
+
+	return sysfs_emit(buf, "%d\n", enabled ? 1 : 0);
+}
+
+static ssize_t fts_double_tap_store(struct tp_feature_entry *entry,
+				    const char *buf, size_t count)
+{
+	struct fts_gesture_data *gesture = container_of(entry,
+							struct fts_gesture_data,
+							dt_entry);
+	struct fts_ts_data *ts_data = gesture->ts_data;
+	bool enable;
+	int ret;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	ret = kstrtobool(buf, &enable);
+	if (ret)
+		return ret;
+
+	mutex_lock(&ts_data->state_lock);
+	ts_data->gesture_mode = enable;
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static const struct tp_feature_ops fts_double_tap_ops = {
+	.show  = fts_double_tap_show,
+	.store = fts_double_tap_store,
+};
+
+static ssize_t fts_single_tap_show(struct tp_feature_entry *entry, char *buf)
+{
+	struct fts_gesture_data *gesture = container_of(entry,
+							struct fts_gesture_data,
+							st_entry);
+	struct fts_ts_data *ts_data = gesture->ts_data;
+	bool enabled;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	enabled = ts_data->aod_mode;
+	mutex_unlock(&ts_data->state_lock);
+
+	return sysfs_emit(buf, "%d\n", enabled ? 1 : 0);
+}
+
+static ssize_t fts_single_tap_store(struct tp_feature_entry *entry,
+				    const char *buf, size_t count)
+{
+	struct fts_gesture_data *gesture = container_of(entry,
+							struct fts_gesture_data,
+							st_entry);
+	struct fts_ts_data *ts_data = gesture->ts_data;
+	bool enable;
+	int ret;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	ret = kstrtobool(buf, &enable);
+	if (ret)
+		return ret;
+
+	mutex_lock(&ts_data->state_lock);
+	ts_data->aod_mode = enable;
+	mutex_unlock(&ts_data->state_lock);
+
+	return count;
+}
+
+static const struct tp_feature_ops fts_single_tap_ops = {
+	.show  = fts_single_tap_show,
+	.store = fts_single_tap_store,
+};
+#endif
+
 int fts_gesture_init(struct fts_ts_data *ts_data)
 {
 	struct fts_gesture_data *gesture;
@@ -431,11 +527,39 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
 	if (ret) {
 		FTS_ERROR("gesture sysfs node create fail: %d", ret);
 		kfree(ts_data->gesture);
+		ts_data->gesture = NULL;
 		return ret;
 	}
 
 	ts_data->gesture_mode = FTS_GESTURE_EN;
 	ts_data->aod_mode = FTS_GESTURE_EN;
+
+#if IS_ENABLED(CONFIG_TP_COMMON)
+	gesture->dt_entry.feature = TP_FEATURE_DOUBLE_TAP;
+	gesture->dt_entry.ops = &fts_double_tap_ops;
+
+	ret = tp_common_register_feature(&gesture->dt_entry);
+	if (ret) {
+		FTS_ERROR("tp_common register double_tap fail: %d", ret);
+		sysfs_remove_group(&ts_data->dev->kobj, &fts_gesture_group);
+		kfree(ts_data->gesture);
+		ts_data->gesture = NULL;
+		return ret;
+	}
+
+	gesture->st_entry.feature = TP_FEATURE_SINGLE_TAP;
+	gesture->st_entry.ops = &fts_single_tap_ops;
+
+	ret = tp_common_register_feature(&gesture->st_entry);
+	if (ret) {
+		FTS_ERROR("tp_common register single_tap fail: %d", ret);
+		tp_common_unregister_feature(&gesture->dt_entry);
+		sysfs_remove_group(&ts_data->dev->kobj, &fts_gesture_group);
+		kfree(ts_data->gesture);
+		ts_data->gesture = NULL;
+		return ret;
+	}
+#endif
 
 	FTS_FUNC_EXIT();
 	return 0;
@@ -445,10 +569,18 @@ int fts_gesture_exit(struct fts_ts_data *ts_data)
 {
 	FTS_FUNC_ENTER();
 	if (ts_data) {
+#if IS_ENABLED(CONFIG_TP_COMMON)
+		if (ts_data->gesture) {
+			tp_common_unregister_feature(&ts_data->gesture->st_entry);
+			tp_common_unregister_feature(&ts_data->gesture->dt_entry);
+		}
+#endif
+
 		if (ts_data->dev)
 			sysfs_remove_group(&ts_data->dev->kobj, &fts_gesture_group);
 
 		kfree(ts_data->gesture);
+		ts_data->gesture = NULL;
 	}
 	FTS_FUNC_EXIT();
 	return 0;
