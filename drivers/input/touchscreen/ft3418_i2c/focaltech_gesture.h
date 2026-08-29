@@ -13,6 +13,9 @@
 #define __LINUX_FOCALTECH_GESTURE_H__
 
 #include "focaltech_core.h"
+#if IS_ENABLED(CONFIG_TP_COMMON)
+#include <linux/input/tp_common.h>
+#endif
 
 /**
  * struct fts_gesture_data - per-device gesture state
@@ -21,6 +24,7 @@
  * @point_num:    number of key-point coordinates reported
  * @coordinate_x: X coordinates of gesture key points
  * @coordinate_y: Y coordinates of gesture key points
+ * @dt_entry:     tp_common feature entry for double tap sysfs node
  *
  * Allocated by fts_gesture_init() via devm_kzalloc; stored in
  * ts_data->gesture. All operational functions receive this struct
@@ -33,6 +37,9 @@ struct fts_gesture_data {
 	u8			 gesture_buf[FTS_GESTURE_DATA_LEN];
 	u16			 coordinate_x[FTS_GESTURE_POINTS_MAX];
 	u16			 coordinate_y[FTS_GESTURE_POINTS_MAX];
+#if IS_ENABLED(CONFIG_TP_COMMON)
+	struct tp_feature_entry	 dt_entry;
+#endif
 };
 
 
