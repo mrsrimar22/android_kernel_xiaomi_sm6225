@@ -2113,8 +2113,6 @@ static void dp_panel_read_sink_fec_caps(struct dp_panel *dp_panel)
 		fec_overhead_fp = drm_fixp_from_fraction(100000, 97582);
 
 	dp_panel->fec_overhead_fp = fec_overhead_fp;
-
-	return;
 }
 
 static int dp_panel_read_sink_caps(struct dp_panel *dp_panel,
@@ -2637,10 +2635,10 @@ static int dp_panel_init_panel_info(struct dp_panel *dp_panel)
 	drm_dp_dpcd_writeb(panel->aux->drm_aux, DP_SET_POWER, DP_SET_POWER_D0);
 
 	/*
-	* According to the DP 1.1 specification, a "Sink Device must exit the
-	* power saving state within 1 ms" (Section 2.5.3.1, Table 5-52, "Sink
-	* Control Field" (register 0x600).
-	*/
+	 * According to the DP 1.1 specification, a "Sink Device must exit the
+	 * power saving state within 1 ms" (Section 2.5.3.1, Table 5-52, "Sink
+	 * Control Field" (register 0x600).
+	 */
 	usleep_range(1000, 2000);
 end:
 	return rc;

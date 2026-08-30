@@ -854,7 +854,7 @@ int dsi_display_check_status(struct drm_connector *connector, void *display,
 
 exit:
 	/* Handle Panel failures during display disable sequence */
-	if (rc <=0)
+	if (rc <= 0)
 		atomic_set(&panel->esd_recovery_pending, 1);
 
 release_panel_lock:
@@ -2225,7 +2225,7 @@ static int dsi_display_parse_boot_display_selection(void)
 	int i, j;
 
 	for (i = 0; i < MAX_DSI_ACTIVE_DISPLAY; i++) {
-		strlcpy(disp_buf, boot_displays[i].boot_param,
+		strscpy(disp_buf, boot_displays[i].boot_param,
 			MAX_CMDLINE_PARAM_LEN);
 
 		pos = strnstr(disp_buf, ":", MAX_CMDLINE_PARAM_LEN);
@@ -3736,6 +3736,7 @@ static int dsi_display_parse_dt(struct dsi_display *display)
 	display_for_each_ctrl(i, display) {
 		struct dsi_display_ctrl *ctrl = &display->ctrl[i];
 		int index;
+
 		index = dsi_display_get_phandle_index(display, dsi_ctrl_name,
 			display->ctrl_count, i);
 		ctrl->ctrl_of_node = of_parse_phandle(of_node,
@@ -4748,8 +4749,8 @@ static int dsi_display_set_mode_sub(struct dsi_display *display,
 			(display->panel->panel_mode == DSI_OP_CMD_MODE)) {
 		u64 cur_bitclk = display->panel->cur_mode->timing.clk_rate_hz;
 		u64 to_bitclk = mode->timing.clk_rate_hz;
-		commit_phy_timing = true;
 
+		commit_phy_timing = true;
 		/* No need to set clkrate pending flag if clocks are same */
 		if ((!cur_bitclk && !to_bitclk) || (cur_bitclk != to_bitclk))
 			atomic_set(&display->clkrate_change_pending, 1);
@@ -5889,7 +5890,7 @@ static struct mipi_dsi_host_ops dsi_host_ext_ops = {
 	.transfer = dsi_host_transfer,
 };
 
-struct drm_panel *dsi_display_get_drm_panel(struct dsi_display * display)
+struct drm_panel *dsi_display_get_drm_panel(struct dsi_display *display)
 {
 	if (!display || !display->panel) {
 		pr_err("invalid param(s)\n");

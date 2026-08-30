@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2014-2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -1446,11 +1447,11 @@ static int _sde_plane_color_fill(struct sde_plane *psde,
 }
 
 /**
-* sde_plane_rot_atomic_check - verify rotator update of the given state
-* @plane: Pointer to drm plane
-* @state: Pointer to drm plane state to be validated
-* return: 0 if success; error code otherwise
-*/
+ * sde_plane_rot_atomic_check - verify rotator update of the given state
+ * @plane: Pointer to drm plane
+ * @state: Pointer to drm plane state to be validated
+ * return: 0 if success; error code otherwise
+ */
 static int sde_plane_rot_atomic_check(struct drm_plane *plane,
 	struct drm_plane_state *state)
 {

@@ -3731,7 +3731,7 @@ void dsi_panel_put_mode(struct dsi_display_mode *mode)
 void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 		struct dsi_display_mode *mode, u32 frame_threshold_us)
 {
-	u32 frame_time_us,nslices;
+	u32 frame_time_us, nslices;
 	u64 min_bitclk_hz, total_active_pixels, bits_per_line, pclk_rate_hz,
 		dsi_transfer_time_us, pixel_clk_khz;
 	struct msm_display_dsc_info *dsc = mode->timing.dsc;
@@ -3742,7 +3742,7 @@ void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 
 	/* Packet overlead in bits,2 bytes header + 2 bytes checksum
 	 * + 1 byte dcs data command.
-        */
+	 */
 	const u32 packet_overhead = 56;
 
 	display_mode = container_of(timing, struct dsi_display_mode, timing);

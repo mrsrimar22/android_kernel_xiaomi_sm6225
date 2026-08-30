@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
@@ -34,6 +35,7 @@ static dma_addr_t physaddr(struct drm_gem_object *obj)
 {
 	struct msm_gem_object *msm_obj = to_msm_bo(obj);
 	struct msm_drm_private *priv = obj->dev->dev_private;
+
 	return (((dma_addr_t)msm_obj->vram_node->start) << PAGE_SHIFT) +
 			priv->vram.paddr;
 }
@@ -41,6 +43,7 @@ static dma_addr_t physaddr(struct drm_gem_object *obj)
 static bool use_pages(struct drm_gem_object *obj)
 {
 	struct msm_gem_object *msm_obj = to_msm_bo(obj);
+
 	return !msm_obj->vram_node;
 }
 
@@ -617,7 +620,7 @@ fail:
 	return ret;
 }
 
-static void *get_vaddr(struct drm_gem_object *obj, unsigned madv)
+static void *get_vaddr(struct drm_gem_object *obj, unsigned int madv)
 {
 	struct msm_gem_object *msm_obj = to_msm_bo(obj);
 	int ret = 0;
@@ -641,6 +644,7 @@ static void *get_vaddr(struct drm_gem_object *obj, unsigned madv)
 
 	if (!msm_obj->vaddr) {
 		struct page **pages = get_pages(obj);
+
 		if (IS_ERR(pages)) {
 			ret = PTR_ERR(pages);
 			goto fail;
@@ -703,7 +707,7 @@ void msm_gem_put_vaddr(struct drm_gem_object *obj)
 /* Update madvise status, returns true if not purged, else
  * false or -errno.
  */
-int msm_gem_madvise(struct drm_gem_object *obj, unsigned madv)
+int msm_gem_madvise(struct drm_gem_object *obj, unsigned int madv)
 {
 	struct msm_gem_object *msm_obj = to_msm_bo(obj);
 
@@ -891,7 +895,8 @@ void msm_gem_describe_objects(struct list_head *list, struct seq_file *m)
 
 	list_for_each_entry(msm_obj, list, mm_list) {
 		struct drm_gem_object *obj = &msm_obj->base;
-		seq_printf(m, "   ");
+
+		seq_puts(m, "   ");
 		msm_gem_describe(obj, m);
 		count++;
 		size += obj->size;

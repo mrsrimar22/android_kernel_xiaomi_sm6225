@@ -893,6 +893,7 @@ static void sde_cp_get_hw_payload(struct sde_cp_node *prop_node,
 				  bool *feature_enabled)
 {
 	struct drm_property_blob *blob = NULL;
+
 	memset(hw_cfg, 0, sizeof(*hw_cfg));
 	*feature_enabled = false;
 

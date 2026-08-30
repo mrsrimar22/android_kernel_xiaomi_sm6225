@@ -23,8 +23,8 @@
  * This is a helper function to retrieve the regulator information
  * for each pll resource.
  */
-struct dss_vreg *mdss_pll_get_mp_by_reg_name(struct mdss_pll_resources *pll_res
-		, char *name)
+struct dss_vreg *mdss_pll_get_mp_by_reg_name(struct mdss_pll_resources *pll_res,
+		char *name)
 {
 
 	struct dss_vreg *regulator = NULL;
@@ -134,7 +134,7 @@ static int mdss_pll_util_parse_dt_supply(struct platform_device *pdev,
 			goto error;
 		}
 
-		strlcpy(mp->vreg_config[i].vreg_name, st,
+		strscpy(mp->vreg_config[i].vreg_name, st,
 					sizeof(mp->vreg_config[i].vreg_name));
 
 		rc = of_property_read_u32(supply_node,
@@ -254,7 +254,7 @@ static int mdss_pll_util_parse_dt_clock(struct platform_device *pdev,
 	for (i = 0; i < mp->num_clk; i++) {
 		of_property_read_string_index(pdev->dev.of_node, "clock-names",
 							i, &clock_name);
-		strlcpy(mp->clk_config[i].clk_name, clock_name,
+		strscpy(mp->clk_config[i].clk_name, clock_name,
 				sizeof(mp->clk_config[i].clk_name));
 
 		of_property_read_u32_index(pdev->dev.of_node, "clock-rate",

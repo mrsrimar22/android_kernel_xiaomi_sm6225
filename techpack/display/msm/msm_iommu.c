@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -28,6 +29,7 @@ static int msm_fault_handler(struct iommu_domain *domain, struct device *dev,
 		unsigned long iova, int flags, void *arg)
 {
 	struct msm_iommu *iommu = arg;
+
 	if (iommu->base.handler)
 		return iommu->base.handler(iommu->base.arg, iova, flags);
 	pr_warn_ratelimited("*** fault: iova=%08lx, flags=%d\n", iova, flags);
@@ -58,7 +60,7 @@ static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
 }
 
 static int msm_iommu_map(struct msm_mmu *mmu, uint64_t iova,
-		struct sg_table *sgt, unsigned len, int prot)
+		struct sg_table *sgt, unsigned int len, int prot)
 {
 	struct msm_iommu *iommu = to_msm_iommu(mmu);
 	size_t ret;
@@ -72,7 +74,7 @@ static int msm_iommu_map(struct msm_mmu *mmu, uint64_t iova,
 }
 
 static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
-		struct sg_table *sgt, unsigned len)
+		struct sg_table *sgt, unsigned int len)
 {
 	struct msm_iommu *iommu = to_msm_iommu(mmu);
 
@@ -86,6 +88,7 @@ static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
 static void msm_iommu_destroy(struct msm_mmu *mmu)
 {
 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+
 	iommu_domain_free(iommu->domain);
 	kfree(iommu);
 }

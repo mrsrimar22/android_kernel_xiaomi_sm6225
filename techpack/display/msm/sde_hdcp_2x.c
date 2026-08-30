@@ -534,6 +534,7 @@ static void sde_hdcp_2x_msg_sent(struct sde_hdcp_2x_ctrl *hdcp)
 static void sde_hdcp_2x_init(struct sde_hdcp_2x_ctrl *hdcp)
 {
 	int rc;
+
 	rc = hdcp2_app_comm(hdcp->hdcp2_ctx, HDCP2_CMD_START, &hdcp->app_data);
 	if (rc)
 		sde_hdcp_2x_clean(hdcp);

@@ -3146,7 +3146,7 @@ static void _sde_dump_reg_by_ranges(struct sde_dbg_reg_base *dbg,
 			addr = dbg->base + range_node->offset.start;
 
 			if (dump_secure &&
-				is_block_exclude((char**)exclude_modules,
+				is_block_exclude((char **)exclude_modules,
 					range_node->range_name))
 				continue;
 
@@ -3643,7 +3643,7 @@ void sde_dbg_dump(enum sde_dbg_dump_context dump_mode, const char *name, ...)
 				blk_arr[index] = blk_base;
 				index++;
 			} else {
-				pr_err("insufficient space to to dump %s\n",
+				pr_err("insufficient space to dump %s\n",
 						blk_name);
 			}
 		}
@@ -4590,7 +4590,7 @@ static const struct file_operations sde_reg_fops = {
 	.open = sde_dbg_reg_base_open,
 	.release = sde_dbg_reg_base_release,
 	.read = sde_dbg_reg_base_reg_read,
-#ifdef  CONFIG_DYNAMIC_DEBUG
+#ifdef CONFIG_DYNAMIC_DEBUG
 	.write = sde_dbg_reg_base_reg_write,
 #endif
 };
@@ -4829,7 +4829,7 @@ int sde_dbg_reg_register_base(const char *name, void __iomem *base,
 	if (!reg_base)
 		return -ENOMEM;
 
-	strlcpy(reg_base->name, name, sizeof(reg_base->name));
+	strscpy(reg_base->name, name, sizeof(reg_base->name));
 	reg_base->base = base;
 	reg_base->max_offset = max_offset;
 	reg_base->off = 0;
@@ -4861,7 +4861,7 @@ int sde_dbg_reg_register_cb(const char *name, void (*cb)(void *), void *ptr)
 	if (!reg_base)
 		return -ENOMEM;
 
-	strlcpy(reg_base->name, name, sizeof(reg_base->name));
+	strscpy(reg_base->name, name, sizeof(reg_base->name));
 	reg_base->base = NULL;
 	reg_base->max_offset = 0;
 	reg_base->off = 0;
@@ -4934,7 +4934,7 @@ void sde_dbg_reg_register_dump_range(const char *base_name,
 	if (!range)
 		return;
 
-	strlcpy(range->range_name, range_name, sizeof(range->range_name));
+	strscpy(range->range_name, range_name, sizeof(range->range_name));
 	range->offset.start = offset_start;
 	range->offset.end = offset_end;
 	range->xin_id = xin_id;

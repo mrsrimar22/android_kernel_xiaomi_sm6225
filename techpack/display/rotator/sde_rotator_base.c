@@ -361,7 +361,6 @@ void sde_mdp_set_ot_limit(struct sde_mdp_set_ot_params *params)
 	SDEROT_EVTLOG(params->num, params->xin_id, ot_lim);
 exit:
 	vbif_unlock(mdata->parent_pdev);
-	return;
 }
 
 /*
@@ -433,7 +432,7 @@ struct reg_bus_client *sde_reg_bus_vote_client_create(char *client_name)
 		return ERR_PTR(-ENOMEM);
 
 	mutex_lock(&sde_res->reg_bus_lock);
-	strlcpy(client->name, client_name, MAX_CLIENT_NAME_LEN);
+	strscpy(client->name, client_name, MAX_CLIENT_NAME_LEN);
 	client->usecase_ndx = VOTE_INDEX_DISABLE;
 	client->id = id;
 	SDEROT_DBG("bus vote client %s created:%pK id :%d\n", client_name,

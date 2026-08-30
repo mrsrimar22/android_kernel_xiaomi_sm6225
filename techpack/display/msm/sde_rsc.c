@@ -106,7 +106,7 @@ struct sde_rsc_client *sde_rsc_client_create(u32 rsc_index, char *client_name,
 		return ERR_PTR(-ENOMEM);
 
 	mutex_lock(&rsc->client_lock);
-	strlcpy(client->name, client_name, MAX_RSC_CLIENT_NAME_LEN);
+	strscpy(client->name, client_name, MAX_RSC_CLIENT_NAME_LEN);
 	client->current_state = SDE_RSC_IDLE_STATE;
 	client->rsc_index = rsc_index;
 	client->id = id;

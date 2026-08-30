@@ -572,7 +572,7 @@ static ssize_t dp_debug_write_mst_con_remove(struct file *file,
 
 	buf[len] = '\0';
 
-	if (sscanf(buf, "%d", &con_id) != 1) {
+	if (kstrtoint(buf, 10, &con_id)) {
 		len = 0;
 		goto end;
 	}
@@ -1736,7 +1736,7 @@ static ssize_t dp_debug_write_dump(struct file *file,
 
 	/* qfprom register dump not supported */
 	if (!strcmp(debug->reg_dump, "qfprom_physical"))
-		strlcpy(debug->reg_dump, "clear", sizeof(debug->reg_dump));
+		strscpy(debug->reg_dump, "clear", sizeof(debug->reg_dump));
 end:
 	return len;
 }

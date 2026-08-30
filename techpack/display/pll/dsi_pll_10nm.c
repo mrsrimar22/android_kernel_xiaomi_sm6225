@@ -1294,7 +1294,7 @@ static int pixel_clk_set_div(void *context, unsigned int reg, unsigned int div)
 		return rc;
 	}
 	/**
-	 * In common clock framework the divider value provided is one less and
+	 * In common clock framework the divider value provided is one less
 	 * and hence adjusting the divider value by one prior to writing it to
 	 * hardware
 	 */
@@ -1367,7 +1367,7 @@ static int bit_clk_set_div(void *context, unsigned int reg, unsigned int div)
 	}
 
 	/**
-	 * In common clock framework the divider value provided is one less and
+	 * In common clock framework the divider value provided is one less
 	 * and hence adjusting the divider value by one prior to writing it to
 	 * hardware
 	 */

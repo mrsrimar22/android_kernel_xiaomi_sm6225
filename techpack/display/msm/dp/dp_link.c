@@ -896,7 +896,7 @@ static bool dp_link_is_link_training_requested(struct dp_link_private *link)
  *
  * This function will handle new link training requests that are initiated by
  * the sink. In particular, it will update the requested lane count and link
- * link rate, and then trigger the link retraining procedure.
+ * rate, and then trigger the link retraining procedure.
  *
  * The function will return 0 if a link training request has been processed,
  * otherwise it will return -EINVAL.
@@ -1322,7 +1322,7 @@ exit:
 	/*
 	 * log this as it can be a use initiated action to run a DP CTS
 	 * test or in normal cases, sink has encountered a problem and
-	 * and want source to redo some part of initialization which can
+	 * want source to redo some part of initialization which can
 	 * be helpful in debugging.
 	 */
 	DP_INFO("test requested: %s\n",

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -4756,9 +4757,9 @@ static int _sde_crtc_check_zpos(struct drm_crtc_state *state,
 		} else if (zpos_cnt == 2) {
 			SDE_ERROR("> 2 planes @ stage %d\n", z_pos);
 			return -EINVAL;
-		} else {
-			zpos_cnt++;
 		}
+
+		zpos_cnt++;
 
 		if (!kms->catalog->has_base_layer)
 			pstates[i].sde_pstate->stage = z_pos + SDE_STAGE_0;

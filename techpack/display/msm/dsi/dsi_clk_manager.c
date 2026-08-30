@@ -1328,7 +1328,7 @@ void *dsi_register_clk_handle(void *clk_mngr, char *client)
 		goto error;
 	}
 
-	strlcpy(c->name, client, MAX_STRING_LEN);
+	strscpy(c->name, client, sizeof(c->name));
 	c->mngr = mngr;
 
 	list_add(&c->list, &mngr->client_list);

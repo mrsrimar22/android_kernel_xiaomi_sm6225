@@ -246,7 +246,6 @@ void sde_rm_get_resource_info(struct sde_rm *rm,
 				_sde_rm_inc_resource_info(rm, avail_res, blk);
 end:
 	mutex_unlock(&rm->rm_lock);
-	return;
 }
 
 static void _sde_rm_print_rsvps(

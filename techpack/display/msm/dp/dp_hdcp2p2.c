@@ -612,6 +612,7 @@ exit:
 static void dp_hdcp2p2_start_auth(struct dp_hdcp2p2_ctrl *ctrl)
 {
 	struct sde_hdcp_2x_wakeup_data cdata = {HDCP_2X_CMD_START_AUTH};
+
 	cdata.context = ctrl->lib_ctx;
 
 	if (atomic_read(&ctrl->auth_state) == HDCP_STATE_AUTHENTICATING)

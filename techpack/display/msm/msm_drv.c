@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
@@ -129,7 +130,7 @@ static const struct drm_mode_config_helper_funcs mode_config_helper_funcs = {
 };
 
 #ifdef CONFIG_DRM_MSM_REGISTER_LOGGING
-static bool reglog = false;
+static bool reglog;
 MODULE_PARM_DESC(reglog, "Enable register read/write logging");
 module_param(reglog, bool, 0600);
 #else
@@ -146,7 +147,7 @@ static char *vram = "16m";
 MODULE_PARM_DESC(vram, "Configure VRAM size (for devices without IOMMU/GPUMMU)");
 module_param(vram, charp, 0);
 
-bool dumpstate = false;
+bool dumpstate;
 MODULE_PARM_DESC(dumpstate, "Dump KMS state on errors");
 module_param(dumpstate, bool, 0600);
 
@@ -228,8 +229,9 @@ struct clk *msm_clk_get(struct platform_device *pdev, const char *name)
 
 	clk = devm_clk_get(&pdev->dev, name2);
 	if (!IS_ERR(clk))
-		dev_warn(&pdev->dev, "Using legacy clk name binding.  Use "
-				"\"%s\" instead of \"%s\"\n", name, name2);
+		dev_warn(&pdev->dev,
+			 "Using legacy clk name binding. Use \"%s\" instead of \"%s\"\n",
+			 name, name2);
 
 	return clk;
 }
@@ -354,6 +356,8 @@ static int vblank_ctrl_queue_work(struct msm_drm_private *priv,
 	return 0;
 }
 
+static void msm_idle_deinit(struct drm_device *ddev);
+
 static int msm_drm_uninit(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -404,12 +408,15 @@ static int msm_drm_uninit(struct device *dev)
 
 	if (priv->vram.paddr) {
 		unsigned long attrs = DMA_ATTR_NO_KERNEL_MAPPING;
+
 		drm_mm_takedown(&priv->vram.mm);
 		dma_free_attrs(dev, priv->vram.size, NULL,
 			       priv->vram.paddr, attrs);
 	}
 
 	component_unbind_all(dev, ddev);
+
+	msm_idle_deinit(ddev);
 
 	sde_dbg_destroy();
 	debugfs_remove_recursive(priv->debug_root);
@@ -480,6 +487,7 @@ static int msm_init_vram(struct drm_device *dev)
 	node = of_parse_phandle(dev->dev->of_node, "memory-region", 0);
 	if (node) {
 		struct resource r;
+
 		ret = of_address_to_resource(node, 0, &r);
 		of_node_put(node);
 		if (ret)
@@ -858,6 +866,15 @@ static void msm_idle_init(struct drm_device *ddev)
 	spin_lock_init(&idle->lock);
 }
 
+static void msm_idle_deinit(struct drm_device *ddev)
+{
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+
+	cancel_delayed_work_sync(&idle->work);
+	sysfs_remove_files(&ddev->dev->kobj, msm_idle_attrs);
+}
+
 static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -996,6 +1013,7 @@ fail:
 	msm_drm_uninit(dev);
 	return ret;
 bind_fail:
+	msm_idle_deinit(ddev);
 	sde_dbg_destroy();
 dbg_init_fail:
 	sde_power_resource_deinit(pdev, &priv->phandle);
@@ -1234,6 +1252,7 @@ static irqreturn_t msm_irq(int irq, void *arg)
 	struct drm_device *dev = arg;
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+
 	BUG_ON(!kms);
 	return kms->funcs->irq(kms);
 }
@@ -1242,6 +1261,7 @@ static void msm_irq_preinstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+
 	BUG_ON(!kms);
 	kms->funcs->irq_preinstall(kms);
 }
@@ -1250,6 +1270,7 @@ static int msm_irq_postinstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+
 	BUG_ON(!kms);
 	return kms->funcs->irq_postinstall(kms);
 }
@@ -1258,6 +1279,7 @@ static void msm_irq_uninstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+
 	BUG_ON(!kms);
 	kms->funcs->irq_uninstall(kms);
 }
@@ -1266,6 +1288,7 @@ static int msm_enable_vblank(struct drm_device *dev, unsigned int pipe)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+
 	if (!kms)
 		return -ENXIO;
 	DBG("dev=%pK, crtc=%u", dev, pipe);
@@ -1276,6 +1299,7 @@ static void msm_disable_vblank(struct drm_device *dev, unsigned int pipe)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+
 	if (!kms)
 		return;
 	DBG("dev=%pK, crtc=%u", dev, pipe);

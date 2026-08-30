@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -98,12 +99,12 @@
  *	at the end of this event.
  * @SDE_ENC_RC_EVENT_FRAME_DONE:
  *	This event happens at INTERRUPT level.
- *	Event signals the end of the data transfer after the PP FRAME_DONE
- *	event. At the end of this event, a delayed work is scheduled to go to
+ *	Event signals the end of the data transfer after the PP FRAME_DONE event.
+ *	At the end of this event, a delayed work is scheduled to go to
  *	IDLE_PC state after IDLE_POWERCOLLAPSE_DURATION time.
  * @SDE_ENC_RC_EVENT_PRE_STOP:
  *	This event happens at NORMAL priority.
- *	This event, when received during the ON state, set RSC to IDLE, and
+ *	This event, when received during the ON state, set RSC to IDLE,
  *	and leave the RC STATE in the PRE_OFF state.
  *	It should be followed by the STOP event as part of encoder disable.
  *	If received during IDLE or OFF states, it will do nothing.
@@ -133,7 +134,7 @@
  *	This event is triggered from the input event thread when touch event is
  *	received from the input device. On receiving this event,
  *      - If the device is in SDE_ENC_RC_STATE_IDLE state, it turns ON the
-	  clocks and enable RSC.
+ *        clocks and enable RSC.
  *      - If the device is in SDE_ENC_RC_STATE_ON state, it resets the delayed
  *        off work since a new commit is imminent.
  */
