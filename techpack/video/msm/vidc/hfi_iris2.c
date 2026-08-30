@@ -203,9 +203,8 @@ void __power_off_iris2(struct venus_hfi_device *device)
 		usleep_range(50, 100);
 		count++;
 	}
-	if (count == max_count) {
+	if (count == max_count)
 		d_vpr_e("NOC not in qaccept status %d\n", reg_status);
-	}
 
 	/* HPG 6.1.2 Step 3, debug bridge to low power */
 skip_aon_mvp_noc:
