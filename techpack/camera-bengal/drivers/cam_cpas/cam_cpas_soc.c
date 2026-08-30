@@ -192,6 +192,8 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 	uint32_t client_idx = 0, cell_idx = 0, level_idx = 0;
 	int rc = 0, count = 0, i;
 
+	mutex_init(&cpas_core->tree_lock);
+
 	camera_bus_node = of_find_node_by_name(of_node, "camera-bus-nodes");
 	if (!camera_bus_node) {
 		CAM_ERR(CAM_CPAS, "Camera Bus node not found in cpas DT node");
@@ -395,7 +397,6 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 			}
 		}
 	}
-	mutex_init(&cpas_core->tree_lock);
 	cam_cpas_util_debug_parse_data(soc_private);
 
 	return 0;
@@ -669,7 +670,10 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 cleanup_tree:
 	cam_cpas_node_tree_cleanup(cpas_core, soc_private);
 cleanup_clients:
-	cam_cpas_util_client_cleanup(cpas_hw);
+	for (i = 0; i < soc_private->num_clients; i++) {
+		kfree(cpas_core->cpas_client[i]);
+		cpas_core->cpas_client[i] = NULL;
+	}
 	return rc;
 }
 

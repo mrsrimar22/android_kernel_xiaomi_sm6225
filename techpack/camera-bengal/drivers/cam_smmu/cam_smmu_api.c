@@ -754,22 +754,36 @@ void cam_smmu_reset_iommu_table(enum cam_smmu_init_dir ops)
 	unsigned int i;
 	int j = 0;
 
-	for (i = 0; i < iommu_cb_set.cb_num; i++) {
-		iommu_cb_set.cb_info[i].handle = HANDLE_INIT;
-		INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_list);
-		INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_kernel_list);
-		iommu_cb_set.cb_info[i].state = CAM_SMMU_DETACH;
-		iommu_cb_set.cb_info[i].dev = NULL;
-		iommu_cb_set.cb_info[i].cb_count = 0;
-		iommu_cb_set.cb_info[i].pf_count = 0;
-		for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
-			iommu_cb_set.cb_info[i].token[j] = NULL;
-			iommu_cb_set.cb_info[i].handler[j] = NULL;
-		}
-		if (ops == CAM_SMMU_TABLE_INIT)
+	if (ops == CAM_SMMU_TABLE_INIT) {
+		for (i = 0; i < iommu_cb_set.cb_num; i++) {
+			iommu_cb_set.cb_info[i].handle = HANDLE_INIT;
+			INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_list);
+			INIT_LIST_HEAD(&iommu_cb_set.cb_info[i].smmu_buf_kernel_list);
+			iommu_cb_set.cb_info[i].state = CAM_SMMU_DETACH;
+			iommu_cb_set.cb_info[i].dev = NULL;
+			iommu_cb_set.cb_info[i].cb_count = 0;
+			iommu_cb_set.cb_info[i].pf_count = 0;
+			for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
+				iommu_cb_set.cb_info[i].token[j] = NULL;
+				iommu_cb_set.cb_info[i].handler[j] = NULL;
+			}
 			mutex_init(&iommu_cb_set.cb_info[i].lock);
-		else
-			mutex_destroy(&iommu_cb_set.cb_info[i].lock);
+		}
+	} else {
+		for (i = iommu_cb_set.cb_num; i > 0; i--) {
+			int idx = i - 1;
+
+			iommu_cb_set.cb_info[idx].handle = HANDLE_INIT;
+			iommu_cb_set.cb_info[idx].state = CAM_SMMU_DETACH;
+			iommu_cb_set.cb_info[idx].dev = NULL;
+			iommu_cb_set.cb_info[idx].cb_count = 0;
+			iommu_cb_set.cb_info[idx].pf_count = 0;
+			for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
+				iommu_cb_set.cb_info[idx].token[j] = NULL;
+				iommu_cb_set.cb_info[idx].handler[j] = NULL;
+			}
+			mutex_destroy(&iommu_cb_set.cb_info[idx].lock);
+		}
 	}
 }
 
@@ -3404,9 +3418,8 @@ EXPORT_SYMBOL(cam_smmu_destroy_handle);
 
 static void cam_smmu_deinit_cb(struct cam_context_bank_info *cb)
 {
-	if (cb->io_support && cb->domain) {
+	if (cb->io_support && cb->domain)
 		cb->domain = NULL;
-	}
 
 	if (cb->shared_support) {
 		gen_pool_destroy(cb->shared_mem_pool);
@@ -4004,19 +4017,33 @@ static int cam_smmu_probe(struct platform_device *pdev)
 static int cam_smmu_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct cam_smmu_work_payload *payload, *payload_safe;
 
-	/* release all the context banks and memory allocated */
-	cam_smmu_reset_iommu_table(CAM_SMMU_TABLE_DEINIT);
+	debugfs_remove_recursive(iommu_cb_set.dentry);
+	iommu_cb_set.dentry = NULL;
+
+	cancel_work_sync(&iommu_cb_set.smmu_work);
+
+	mutex_lock(&iommu_cb_set.payload_list_lock);
+	list_for_each_entry_safe(payload, payload_safe,
+		&iommu_cb_set.payload_list, list) {
+		list_del(&payload->list);
+		kfree(payload);
+	}
+	mutex_unlock(&iommu_cb_set.payload_list_lock);
+	mutex_destroy(&iommu_cb_set.payload_list_lock);
+
+	if (of_device_is_compatible(pdev->dev.of_node, "qcom,msm-cam-smmu"))
+		cam_smmu_release_cb(pdev);
+
 	if (dev && dev->dma_parms) {
 		devm_kfree(dev, dev->dma_parms);
 		dev->dma_parms = NULL;
 	}
 
-	if (of_device_is_compatible(pdev->dev.of_node, "qcom,msm-cam-smmu"))
-		cam_smmu_release_cb(pdev);
+	/* release all the context banks and memory allocated */
+	cam_smmu_reset_iommu_table(CAM_SMMU_TABLE_DEINIT);
 
-	debugfs_remove_recursive(iommu_cb_set.dentry);
-	iommu_cb_set.dentry = NULL;
 	return 0;
 }
 

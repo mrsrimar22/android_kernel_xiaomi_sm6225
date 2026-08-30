@@ -962,7 +962,7 @@ static int cam_sync_media_controller_init(struct sync_device *sync_dev,
 		return -ENOMEM;
 
 	media_device_init(sync_dev->v4l2_dev.mdev);
-	strlcpy(sync_dev->v4l2_dev.mdev->model, CAM_SYNC_DEVICE_NAME,
+	strscpy(sync_dev->v4l2_dev.mdev->model, CAM_SYNC_DEVICE_NAME,
 			sizeof(sync_dev->v4l2_dev.mdev->model));
 	sync_dev->v4l2_dev.mdev->dev = &(pdev->dev);
 
@@ -1050,6 +1050,23 @@ static void cam_sync_register_synx_bind_ops(void)
 	if (rc)
 		CAM_ERR(CAM_SYNC, "synx registration fail with %d", rc);
 }
+
+static void cam_sync_deregister_synx_bind_ops(void)
+{
+	int rc = 0;
+	struct synx_register_params params;
+
+	params.name = CAM_SYNC_NAME;
+	params.type = SYNX_TYPE_CSL;
+	params.ops.register_callback = cam_sync_register_callback;
+	params.ops.deregister_callback = cam_sync_deregister_callback;
+	params.ops.enable_signaling = cam_sync_get_obj_ref;
+	params.ops.signal = cam_sync_signal;
+
+	rc = synx_deregister_ops(&params);
+	if (rc)
+		CAM_ERR(CAM_SYNC, "synx deregistration fail with %d", rc);
+}
 #endif
 
 static int cam_sync_probe(struct platform_device *pdev)
@@ -1083,7 +1100,7 @@ static int cam_sync_probe(struct platform_device *pdev)
 	if (rc < 0)
 		goto register_fail;
 
-	strlcpy(sync_dev->vdev->name, CAM_SYNC_NAME,
+	strscpy(sync_dev->vdev->name, CAM_SYNC_NAME,
 				sizeof(sync_dev->vdev->name));
 	sync_dev->vdev->release  = video_device_release;
 	sync_dev->vdev->fops     = &cam_sync_v4l2_fops;
@@ -1114,7 +1131,7 @@ static int cam_sync_probe(struct platform_device *pdev)
 		CAM_ERR(CAM_SYNC,
 			"Error: high priority work queue creation failed");
 		rc = -ENOMEM;
-		goto v4l2_fail;
+		goto wq_fail;
 	}
 
 	trigger_cb_without_switch = false;
@@ -1124,6 +1141,8 @@ static int cam_sync_probe(struct platform_device *pdev)
 #endif
 	return rc;
 
+wq_fail:
+	video_unregister_device(sync_dev->vdev);
 v4l2_fail:
 	v4l2_device_unregister(sync_dev->vdev->v4l2_dev);
 register_fail:
@@ -1138,11 +1157,20 @@ vdev_fail:
 
 static int cam_sync_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_MSM_GLOBAL_SYNX
+	cam_sync_deregister_synx_bind_ops();
+#endif
+	debugfs_remove_recursive(sync_dev->dentry);
+	sync_dev->dentry = NULL;
+	if (sync_dev->work_queue) {
+		destroy_workqueue(sync_dev->work_queue);
+		sync_dev->work_queue = NULL;
+	}
+	video_unregister_device(sync_dev->vdev);
 	v4l2_device_unregister(sync_dev->vdev->v4l2_dev);
 	cam_sync_media_controller_cleanup(sync_dev);
 	video_device_release(sync_dev->vdev);
-	debugfs_remove_recursive(sync_dev->dentry);
-	sync_dev->dentry = NULL;
+	mutex_destroy(&sync_dev->table_lock);
 	kfree(sync_dev);
 	sync_dev = NULL;
 
@@ -1172,18 +1200,21 @@ static int __init cam_sync_init(void)
 	if (rc)
 		return -ENODEV;
 
-	return platform_driver_register(&cam_sync_driver);
+	rc = platform_driver_register(&cam_sync_driver);
+	if (rc)
+		goto err_driver_register;
+
+	return 0;
+
+err_driver_register:
+	platform_device_unregister(&cam_sync_device);
+	return rc;
 }
 
 static void __exit cam_sync_exit(void)
 {
-	int idx;
-
-	for (idx = 0; idx < CAM_SYNC_MAX_OBJS; idx++)
-		spin_lock_init(&sync_dev->row_spinlocks[idx]);
 	platform_driver_unregister(&cam_sync_driver);
 	platform_device_unregister(&cam_sync_device);
-	kfree(sync_dev);
 }
 
 module_init(cam_sync_init);

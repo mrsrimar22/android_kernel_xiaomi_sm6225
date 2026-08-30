@@ -229,7 +229,17 @@ static int cam_ope_top_init(struct ope_hw *ope_hw_info,
 	cam_io_w_mb(top_reg_val->irq_mask,
 		ope_hw_info->top_reg->base + top_reg->irq_mask);
 
+	if (rc)
+		mutex_destroy(&ope_top_info.ope_hw_mutex);
+
 	return rc;
+}
+
+static int cam_ope_top_deinit(struct ope_hw *ope_hw_info,
+	int32_t ctx_id, void *data)
+{
+	mutex_destroy(&ope_top_info.ope_hw_mutex);
+	return 0;
 }
 
 static int cam_ope_top_probe(struct ope_hw *ope_hw_info,
@@ -326,6 +336,7 @@ int cam_ope_top_process(struct ope_hw *ope_hw_info,
 		CAM_DBG(CAM_OPE, "OPE_HW_INIT: X");
 		break;
 	case OPE_HW_DEINIT:
+		rc = cam_ope_top_deinit(ope_hw_info, ctx_id, data);
 		break;
 	case OPE_HW_ACQUIRE:
 		CAM_DBG(CAM_OPE, "OPE_HW_ACQUIRE: E");

@@ -87,11 +87,15 @@ int cam_ife_csid_probe(struct platform_device *pdev)
 
 	if (csid_hw_intf->hw_idx < CAM_IFE_CSID_HW_NUM_MAX)
 		cam_ife_csid_hw_list[csid_hw_intf->hw_idx] = csid_hw_intf;
-	else
-		goto free_dev;
+	else {
+		rc = -EINVAL;
+		goto deinit_csid;
+	}
 
 	return 0;
 
+deinit_csid:
+	cam_ife_csid_hw_deinit(csid_dev);
 free_dev:
 	kfree(csid_dev);
 free_hw_info:

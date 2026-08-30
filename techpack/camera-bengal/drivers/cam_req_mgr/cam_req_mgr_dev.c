@@ -47,7 +47,7 @@ static int cam_media_device_setup(struct device *dev)
 
 	media_device_init(g_dev.v4l2_dev->mdev);
 	g_dev.v4l2_dev->mdev->dev = dev;
-	strlcpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
+	strscpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
 		sizeof(g_dev.v4l2_dev->mdev->model));
 
 	rc = media_device_register(g_dev.v4l2_dev->mdev);
@@ -603,7 +603,7 @@ static int cam_video_device_setup(void)
 
 	g_dev.video->v4l2_dev = g_dev.v4l2_dev;
 
-	strlcpy(g_dev.video->name, "cam-req-mgr",
+	strscpy(g_dev.video->name, "cam-req-mgr",
 		sizeof(g_dev.video->name));
 	g_dev.video->release = video_device_release;
 	g_dev.video->fops = &g_cam_fops;
@@ -768,12 +768,17 @@ EXPORT_SYMBOL(cam_unregister_subdev);
 
 static int cam_req_mgr_remove(struct platform_device *pdev)
 {
+	if (g_cam_req_mgr_timer_cachep) {
+		kmem_cache_destroy(g_cam_req_mgr_timer_cachep);
+		g_cam_req_mgr_timer_cachep = NULL;
+	}
 	cam_req_mgr_core_device_deinit();
 	cam_req_mgr_util_deinit();
-	cam_media_device_cleanup();
-	cam_video_device_cleanup();
-	cam_v4l2_device_cleanup();
 	mutex_destroy(&g_dev.dev_lock);
+	mutex_destroy(&g_dev.cam_lock);
+	cam_video_device_cleanup();
+	cam_media_device_cleanup();
+	cam_v4l2_device_cleanup();
 	g_dev.state = false;
 	g_dev.subdev_nodes_created = false;
 

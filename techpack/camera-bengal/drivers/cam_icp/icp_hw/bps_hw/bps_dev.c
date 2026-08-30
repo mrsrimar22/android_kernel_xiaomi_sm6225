@@ -157,6 +157,7 @@ int cam_bps_probe(struct platform_device *pdev)
 	rc = cam_bps_register_cpas(&bps_dev->soc_info,
 			core_info, bps_dev_intf->hw_idx);
 	if (rc < 0) {
+		cam_soc_util_release_platform_resource(&bps_dev->soc_info);
 		kfree(bps_dev->core_info);
 		kfree(bps_dev);
 		kfree(bps_dev_intf);
@@ -172,6 +173,37 @@ int cam_bps_probe(struct platform_device *pdev)
 	return rc;
 }
 
+static int cam_bps_remove(struct platform_device *pdev)
+{
+	struct cam_hw_intf *bps_dev_intf = platform_get_drvdata(pdev);
+	struct cam_hw_info *bps_dev = NULL;
+	struct cam_bps_device_core_info *core_info = NULL;
+
+	if (!bps_dev_intf) {
+		CAM_ERR(CAM_ICP, "Invalid bps_dev_intf");
+		return -EINVAL;
+	}
+
+	bps_dev = bps_dev_intf->hw_priv;
+	if (!bps_dev) {
+		CAM_ERR(CAM_ICP, "Invalid bps_dev");
+		return -EINVAL;
+	}
+
+	core_info = (struct cam_bps_device_core_info *)bps_dev->core_info;
+	if (core_info) {
+		cam_cpas_unregister_client(core_info->cpas_handle);
+		kfree(core_info);
+	}
+
+	cam_soc_util_release_platform_resource(&bps_dev->soc_info);
+	mutex_destroy(&bps_dev->hw_mutex);
+	kfree(bps_dev);
+	kfree(bps_dev_intf);
+
+	return 0;
+}
+
 static const struct of_device_id cam_bps_dt_match[] = {
 	{
 		.compatible = "qcom,cam-bps",
@@ -183,6 +215,7 @@ MODULE_DEVICE_TABLE(of, cam_bps_dt_match);
 
 static struct platform_driver cam_bps_driver = {
 	.probe = cam_bps_probe,
+	.remove = cam_bps_remove,
 	.driver = {
 		.name = "cam-bps",
 		.owner = THIS_MODULE,

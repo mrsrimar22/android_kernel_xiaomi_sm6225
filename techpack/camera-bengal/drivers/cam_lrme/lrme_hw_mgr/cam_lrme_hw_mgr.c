@@ -1149,6 +1149,9 @@ int cam_lrme_mgr_deregister_device(int device_index)
 
 int cam_lrme_hw_mgr_deinit(void)
 {
+	debugfs_remove_recursive(g_lrme_hw_mgr.debugfs_entry.dentry);
+	g_lrme_hw_mgr.debugfs_entry.dentry = NULL;
+
 	mutex_destroy(&g_lrme_hw_mgr.hw_mgr_mutex);
 	memset(&g_lrme_hw_mgr, 0x0, sizeof(g_lrme_hw_mgr));
 

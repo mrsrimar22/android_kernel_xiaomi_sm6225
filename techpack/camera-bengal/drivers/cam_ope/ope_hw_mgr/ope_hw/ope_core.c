@@ -278,6 +278,15 @@ int cam_ope_deinit_hw(void *device_priv,
 		return -EINVAL;
 	}
 
+	if (core_info->ope_hw_info && core_info->ope_hw_info->ope_hw) {
+		cam_ope_bus_wr_process(core_info->ope_hw_info->ope_hw, 0,
+			OPE_HW_DEINIT, NULL);
+		cam_ope_bus_rd_process(core_info->ope_hw_info->ope_hw, 0,
+			OPE_HW_DEINIT, NULL);
+		cam_ope_top_process(core_info->ope_hw_info->ope_hw, 0,
+			OPE_HW_DEINIT, NULL);
+	}
+
 	rc = cam_ope_disable_soc_resources(soc_info, core_info->clk_enable);
 	if (rc)
 		CAM_ERR(CAM_OPE, "soc disable is failed : %d", rc);

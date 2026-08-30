@@ -755,7 +755,7 @@ struct cam_cmd_mem_region_info {
 /**
  * struct cam_cmd_mem_regions -
  *        List of multiple memory descriptors of
- *        of different regions
+ *        different regions
  *
  * @version        : Version number
  * @num_regions    : Number of regions

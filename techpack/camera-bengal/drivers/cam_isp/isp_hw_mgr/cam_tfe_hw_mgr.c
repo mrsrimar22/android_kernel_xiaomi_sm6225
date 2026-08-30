@@ -5560,7 +5560,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 
 	if (CAM_TFE_HW_NUM_MAX != CAM_TFE_CSID_HW_NUM_MAX) {
 		CAM_ERR(CAM_ISP, "CSID num is different then TFE num");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	/* fill tfe hw intf information */
@@ -5584,7 +5585,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	}
 	if (j == 0) {
 		CAM_ERR(CAM_ISP, "no valid TFE HW");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	/* fill csid hw intf information */
@@ -5595,7 +5597,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	}
 	if (!j) {
 		CAM_ERR(CAM_ISP, "no valid TFE CSID HW");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	/* fill tpg hw intf information */
@@ -5606,7 +5609,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	}
 	if (!j) {
 		CAM_ERR(CAM_ISP, "no valid TFE TPG HW");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	cam_tfe_hw_mgr_sort_dev_with_caps(&g_tfe_hw_mgr);
@@ -5625,7 +5629,8 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	if (cam_smmu_get_handle("tfe",
 		&g_tfe_hw_mgr.mgr_common.img_iommu_hdl)) {
 		CAM_ERR(CAM_ISP, "Can not get iommu handle");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 
 	if (cam_smmu_get_handle("cam-secure",
@@ -5742,5 +5747,35 @@ end:
 secure_fail:
 	cam_smmu_destroy_handle(g_tfe_hw_mgr.mgr_common.img_iommu_hdl);
 	g_tfe_hw_mgr.mgr_common.img_iommu_hdl = -1;
+destroy_mutex:
+	mutex_destroy(&g_tfe_hw_mgr.ctx_mutex);
 	return rc;
+}
+
+void cam_tfe_hw_mgr_deinit(struct cam_hw_mgr_intf *hw_mgr_intf)
+{
+	int i;
+
+	debugfs_remove_recursive(g_tfe_hw_mgr.debug_cfg.dentry);
+	g_tfe_hw_mgr.debug_cfg.dentry = NULL;
+
+	cam_req_mgr_workq_destroy(&g_tfe_hw_mgr.workq);
+
+	for (i = 0; i < CAM_TFE_CTX_MAX; i++) {
+		cam_tasklet_deinit(
+			&g_tfe_hw_mgr.mgr_common.tasklet_pool[i]);
+		kfree(g_tfe_hw_mgr.ctx_pool[i].cdm_cmd);
+		g_tfe_hw_mgr.ctx_pool[i].cdm_cmd = NULL;
+		g_tfe_hw_mgr.ctx_pool[i].common.tasklet_info = NULL;
+	}
+
+	cam_smmu_destroy_handle(
+		g_tfe_hw_mgr.mgr_common.img_iommu_hdl_secure);
+	g_tfe_hw_mgr.mgr_common.img_iommu_hdl_secure = -1;
+
+	cam_smmu_destroy_handle(g_tfe_hw_mgr.mgr_common.img_iommu_hdl);
+	g_tfe_hw_mgr.mgr_common.img_iommu_hdl = -1;
+
+	mutex_destroy(&g_tfe_hw_mgr.ctx_mutex);
+	memset(&g_tfe_hw_mgr, 0, sizeof(g_tfe_hw_mgr));
 }

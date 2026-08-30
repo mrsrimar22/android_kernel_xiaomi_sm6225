@@ -113,7 +113,7 @@ static int cam_actuator_init_subdev(struct cam_actuator_ctrl_t *a_ctrl)
 		&cam_actuator_internal_ops;
 	a_ctrl->v4l2_dev_str.ops =
 		&cam_actuator_subdev_ops;
-	strlcpy(a_ctrl->device_name, CAMX_ACTUATOR_DEV_NAME,
+	strscpy(a_ctrl->device_name, CAMX_ACTUATOR_DEV_NAME,
 		sizeof(a_ctrl->device_name));
 	a_ctrl->v4l2_dev_str.name =
 		a_ctrl->device_name;
@@ -181,7 +181,7 @@ static int32_t cam_actuator_driver_i2c_probe(struct i2c_client *client,
 
 	rc = cam_actuator_init_subdev(a_ctrl);
 	if (rc)
-		goto free_soc;
+		goto free_subdev;
 
 	if (soc_private->i2c_info.slave_addr != 0)
 		a_ctrl->io_master_info.client->addr =
@@ -215,6 +215,8 @@ static int32_t cam_actuator_driver_i2c_probe(struct i2c_client *client,
 
 unreg_subdev:
 	cam_unregister_subdev(&(a_ctrl->v4l2_dev_str));
+free_subdev:
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 free_soc:
 	kfree(soc_private);
 free_ctrl:
@@ -253,6 +255,7 @@ static int32_t cam_actuator_platform_remove(struct platform_device *pdev)
 	a_ctrl->i2c_data.per_frame = NULL;
 	v4l2_set_subdevdata(&a_ctrl->v4l2_dev_str.sd, NULL);
 	platform_set_drvdata(pdev, NULL);
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 	devm_kfree(&pdev->dev, a_ctrl);
 
 	return rc;
@@ -285,6 +288,7 @@ static int32_t cam_actuator_driver_i2c_remove(struct i2c_client *client)
 	a_ctrl->i2c_data.per_frame = NULL;
 	a_ctrl->soc_info.soc_private = NULL;
 	v4l2_set_subdevdata(&a_ctrl->v4l2_dev_str.sd, NULL);
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 	kfree(a_ctrl);
 
 	return 0;
@@ -356,7 +360,7 @@ static int32_t cam_actuator_driver_platform_probe(
 
 	rc = cam_actuator_init_subdev(a_ctrl);
 	if (rc)
-		goto free_mem;
+		goto free_subdev;
 
 	a_ctrl->bridge_intf.device_hdl = -1;
 	a_ctrl->bridge_intf.link_hdl = -1;
@@ -375,6 +379,8 @@ static int32_t cam_actuator_driver_platform_probe(
 
 	return rc;
 
+free_subdev:
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 free_mem:
 	kfree(a_ctrl->i2c_data.per_frame);
 free_soc:

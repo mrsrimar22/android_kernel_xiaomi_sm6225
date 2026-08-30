@@ -77,6 +77,8 @@ static int cam_jpeg_enc_remove(struct platform_device *pdev)
 		goto free_jpeg_hw_intf;
 	}
 
+	mutex_destroy(&jpeg_enc_dev->hw_mutex);
+
 	core_info = (struct cam_jpeg_enc_device_core_info *)
 		jpeg_enc_dev->core_info;
 	if (!core_info) {
@@ -96,7 +98,6 @@ deinit_soc:
 	if (rc)
 		CAM_ERR(CAM_JPEG, "Failed to deinit soc rc=%d", rc);
 
-	mutex_destroy(&jpeg_enc_dev->hw_mutex);
 	kfree(jpeg_enc_dev);
 
 free_jpeg_hw_intf:

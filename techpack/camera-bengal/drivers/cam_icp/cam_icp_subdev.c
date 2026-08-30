@@ -243,11 +243,11 @@ static int cam_icp_remove(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	mutex_destroy(&g_icp_dev.icp_lock);
 	for (i = 0; i < CAM_ICP_CTX_MAX; i++)
 		cam_icp_context_deinit(&g_icp_dev.ctx_icp[i]);
 	cam_node_deinit(g_icp_dev.node);
 	cam_subdev_remove(&g_icp_dev.sd);
-	mutex_destroy(&g_icp_dev.icp_lock);
 
 	return 0;
 }

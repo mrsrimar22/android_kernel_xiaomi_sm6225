@@ -91,7 +91,7 @@ static int cam_fd_hw_dev_probe(struct platform_device *pdev)
 	if (!match_dev || !match_dev->data) {
 		CAM_ERR(CAM_FD, "No Of_match data, %pK", match_dev);
 		rc = -EINVAL;
-		goto free_memory;
+		goto destroy_mutex;
 	}
 	hw_static_info = (struct cam_fd_hw_static_info *)match_dev->data;
 	fd_core->hw_static_info = hw_static_info;
@@ -105,7 +105,7 @@ static int cam_fd_hw_dev_probe(struct platform_device *pdev)
 	rc = cam_fd_soc_init_resources(&fd_hw->soc_info, cam_fd_hw_irq, fd_hw);
 	if (rc) {
 		CAM_ERR(CAM_FD, "Failed to init soc, rc=%d", rc);
-		goto free_memory;
+		goto destroy_mutex;
 	}
 
 	memset(&init_args, 0x0, sizeof(init_args));
@@ -140,6 +140,7 @@ deinit_hw:
 deinit_platform_res:
 	if (cam_fd_soc_deinit_resources(&fd_hw->soc_info))
 		CAM_ERR(CAM_FD, "Failed in soc deinit");
+destroy_mutex:
 	mutex_destroy(&fd_hw->hw_mutex);
 free_memory:
 	kfree(fd_hw);

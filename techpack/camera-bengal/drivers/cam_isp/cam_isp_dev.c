@@ -98,6 +98,14 @@ static int cam_isp_dev_remove(struct platform_device *pdev)
 {
 	int rc = 0;
 	int i;
+	struct cam_node *node = NULL;
+	const char *compat_str = NULL;
+
+	mutex_destroy(&g_isp_dev.isp_mutex);
+
+	node = (struct cam_node *)g_isp_dev.sd.token;
+	if (node)
+		cam_node_deinit(node);
 
 	/* clean up ife/tfe resources */
 	for (i = 0; i < g_isp_dev.max_context; i++) {
@@ -106,6 +114,12 @@ static int cam_isp_dev_remove(struct platform_device *pdev)
 			CAM_ERR(CAM_ISP, "ISP context %d deinit failed",
 				i);
 	}
+
+	of_property_read_string_index(pdev->dev.of_node, "arch-compat", 0,
+		(const char **)&compat_str);
+	if (node)
+		cam_isp_hw_mgr_deinit(compat_str, &node->hw_mgr_intf);
+
 	kfree(g_isp_dev.ctx);
 	g_isp_dev.ctx = NULL;
 	kfree(g_isp_dev.ctx_isp);
@@ -192,7 +206,7 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 			g_isp_dev.isp_device_type);
 		if (rc) {
 			CAM_ERR(CAM_ISP, "ISP context init failed!");
-			goto kfree;
+			goto deinit_ctx;
 		}
 	}
 	rc = cam_node_init(node, &hw_mgr_intf, g_isp_dev.ctx,
@@ -200,7 +214,8 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 
 	if (rc) {
 		CAM_ERR(CAM_ISP, "ISP node init failed!");
-		goto kfree;
+		i = g_isp_dev.max_context;
+		goto deinit_ctx;
 	}
 
 	cam_smmu_set_client_page_fault_handler(iommu_hdl,
@@ -212,6 +227,10 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 
 	return 0;
 
+deinit_ctx:
+	for (--i; i >= 0; i--)
+		cam_isp_context_deinit(&g_isp_dev.ctx_isp[i]);
+	cam_isp_hw_mgr_deinit(compat_str, &hw_mgr_intf);
 kfree:
 	kfree(g_isp_dev.ctx);
 	g_isp_dev.ctx = NULL;

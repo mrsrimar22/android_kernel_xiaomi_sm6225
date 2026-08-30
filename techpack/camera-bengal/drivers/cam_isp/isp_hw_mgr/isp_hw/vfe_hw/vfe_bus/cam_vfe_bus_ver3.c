@@ -3810,7 +3810,7 @@ int cam_vfe_bus_ver3_init(
 		&bus_priv->common_data.bus_irq_controller, false);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Init bus_irq_controller failed");
-		goto free_bus_priv;
+		goto destroy_bus_mutex;
 	}
 
 	strlcat(rup_controller_name, drv_name, sizeof(rup_controller_name));
@@ -3822,7 +3822,7 @@ int cam_vfe_bus_ver3_init(
 		&bus_priv->common_data.rup_irq_controller, false);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Init rup_irq_controller failed");
-		goto free_bus_priv;
+		goto deinit_bus_irq_controller;
 	}
 
 	INIT_LIST_HEAD(&bus_priv->free_comp_grp);
@@ -3901,6 +3901,13 @@ deinit_wm:
 	for (--i; i >= 0; i--)
 		cam_vfe_bus_ver3_deinit_wm_resource(&bus_priv->bus_client[i]);
 
+	cam_irq_controller_deinit(
+		&bus_priv->common_data.rup_irq_controller);
+deinit_bus_irq_controller:
+	cam_irq_controller_deinit(
+		&bus_priv->common_data.bus_irq_controller);
+destroy_bus_mutex:
+	mutex_destroy(&bus_priv->common_data.bus_mutex);
 free_bus_priv:
 	kfree(vfe_bus_local->bus_priv);
 

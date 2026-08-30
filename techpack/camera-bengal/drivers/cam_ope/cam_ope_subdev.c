@@ -38,6 +38,7 @@ struct cam_ope_subdev {
 	struct cam_context ctx[OPE_CTX_MAX];
 	struct cam_ope_context ctx_ope[OPE_CTX_MAX];
 	struct mutex ope_lock;
+	struct cam_hw_mgr_intf hw_mgr_intf;
 	int32_t open_cnt;
 	int32_t reserved;
 };
@@ -166,12 +167,9 @@ static int cam_ope_subdev_probe(struct platform_device *pdev)
 	}
 
 	node = (struct cam_node *) g_ope_dev.sd.token;
+	g_ope_dev.node = node;
 
-	hw_mgr_intf = kzalloc(sizeof(*hw_mgr_intf), GFP_KERNEL);
-	if (!hw_mgr_intf) {
-		rc = -EINVAL;
-		goto hw_alloc_fail;
-	}
+	hw_mgr_intf = &g_ope_dev.hw_mgr_intf;
 
 	rc = cam_ope_hw_mgr_init(pdev->dev.of_node, (uint64_t *)hw_mgr_intf,
 		&iommu_hdl);
@@ -210,9 +208,8 @@ static int cam_ope_subdev_probe(struct platform_device *pdev)
 ctx_fail:
 	for (--i; i >= 0; i--)
 		cam_ope_context_deinit(&g_ope_dev.ctx_ope[i]);
+	cam_ope_hw_mgr_deinit();
 hw_init_fail:
-	kfree(hw_mgr_intf);
-hw_alloc_fail:
 	cam_subdev_remove(&g_ope_dev.sd);
 	return rc;
 }
@@ -222,6 +219,7 @@ static int cam_ope_subdev_remove(struct platform_device *pdev)
 	int i;
 	struct v4l2_subdev *sd;
 	struct cam_subdev *subdev;
+	struct cam_node *node;
 
 	if (!pdev) {
 		CAM_ERR(CAM_OPE, "pdev is NULL");
@@ -240,11 +238,14 @@ static int cam_ope_subdev_remove(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	node = (struct cam_node *)subdev->token;
+
+	mutex_destroy(&g_ope_dev.ope_lock);
+	cam_node_deinit(node);
 	for (i = 0; i < OPE_CTX_MAX; i++)
 		cam_ope_context_deinit(&g_ope_dev.ctx_ope[i]);
-	cam_node_deinit(g_ope_dev.node);
+	cam_ope_hw_mgr_deinit();
 	cam_subdev_remove(&g_ope_dev.sd);
-	mutex_destroy(&g_ope_dev.ope_lock);
 
 	return 0;
 }

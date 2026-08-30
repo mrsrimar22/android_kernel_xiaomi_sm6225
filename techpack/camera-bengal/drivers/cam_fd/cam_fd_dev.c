@@ -146,6 +146,9 @@ deinit_ctx:
 		if (cam_fd_context_deinit(&g_fd_dev.fd_ctx[i]))
 			CAM_ERR(CAM_FD, "FD context %d deinit failed", i);
 	}
+	rc = cam_fd_hw_mgr_deinit(pdev->dev.of_node);
+	if (rc)
+		CAM_ERR(CAM_FD, "Failed in hw mgr deinit, rc=%d", rc);
 unregister_subdev:
 	if (cam_subdev_remove(&g_fd_dev.sd))
 		CAM_ERR(CAM_FD, "Failed in subdev remove");
@@ -156,6 +159,9 @@ unregister_subdev:
 static int cam_fd_dev_remove(struct platform_device *pdev)
 {
 	int i, rc;
+
+	mutex_destroy(&g_fd_dev.lock);
+	g_fd_dev.probe_done = false;
 
 	for (i = 0; i < CAM_CTX_MAX; i++) {
 		rc = cam_fd_context_deinit(&g_fd_dev.fd_ctx[i]);
@@ -171,9 +177,6 @@ static int cam_fd_dev_remove(struct platform_device *pdev)
 	rc = cam_subdev_remove(&g_fd_dev.sd);
 	if (rc)
 		CAM_ERR(CAM_FD, "Unregister failed, rc=%d", rc);
-
-	mutex_destroy(&g_fd_dev.lock);
-	g_fd_dev.probe_done = false;
 
 	return rc;
 }
