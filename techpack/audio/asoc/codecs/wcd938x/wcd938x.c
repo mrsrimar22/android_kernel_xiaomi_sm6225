@@ -154,7 +154,7 @@ static int wcd938x_swr_slv_get_current_bank(struct swr_device *dev, u8 devnum)
 	if (ret)
 		return -EINVAL;
 
-	return ((bank & 0x40) ? 1: 0);
+	return ((bank & 0x40) ? 1 : 0);
 }
 
 static int wcd938x_get_clk_rate(int mode)
@@ -566,7 +566,7 @@ static int wcd938x_codec_hphl_dac_event(struct snd_soc_dapm_widget *w,
 			if (!wcd938x->comp2_enable ||
 				(snd_soc_component_read32(component,
 					WCD938X_DIGITAL_CDC_COMP_CTL_0) & 0x01))
-			usleep_range(5000, 5010);
+				usleep_range(5000, 5010);
 			snd_soc_component_update_bits(component,
 				WCD938X_HPH_NEW_INT_HPH_TIMER1, 0x02, 0x00);
 		} else {
@@ -1368,7 +1368,7 @@ static int wcd938x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	};
 	dev_dbg(component->dev, "%s: event %d DMIC%d dmic_clk_cnt %d\n",
-			__func__, event,  (w->shift +1), *dmic_clk_cnt);
+			__func__, event, (w->shift + 1), *dmic_clk_cnt);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1656,7 +1656,8 @@ int wcd938x_tx_channel_config(struct snd_soc_component *component,
 
 static int wcd938x_codec_enable_adc(struct snd_soc_dapm_widget *w,
 				    struct snd_kcontrol *kcontrol,
-				    int event){
+				    int event)
+{
 	struct snd_soc_component *component =
 					snd_soc_dapm_to_component(w->dapm);
 	struct wcd938x_priv *wcd938x = snd_soc_component_get_drvdata(component);
@@ -1835,7 +1836,7 @@ int wcd938x_micbias_control(struct snd_soc_component *component,
 		return -EINVAL;
 	}
 
-	if (NULL == wcd938x) {
+	if (wcd938x == NULL) {
 		dev_err(component->dev,
 			"%s: wcd938x private data is NULL\n", __func__);
 		return -EINVAL;
@@ -3294,7 +3295,6 @@ static int wcd938x_soc_codec_probe(struct snd_soc_component *component)
 	int variant;
 	int ret = -EINVAL;
 
-	dev_info(component->dev, "%s()\n", __func__);
 	wcd938x = snd_soc_component_get_drvdata(component);
 
 	if (!wcd938x)
@@ -3441,7 +3441,7 @@ static int wcd938x_soc_codec_resume(struct snd_soc_component *component)
 	return 0;
 }
 
-static struct snd_soc_component_driver soc_codec_dev_wcd938x = {
+static const struct snd_soc_component_driver soc_codec_dev_wcd938x = {
 	.name = WCD938X_DRV_NAME,
 	.probe = wcd938x_soc_codec_probe,
 	.remove = wcd938x_soc_codec_remove,
@@ -3653,7 +3653,7 @@ static int wcd938x_bind(struct device *dev)
 	/*
 	 * Add 5msec delay to provide sufficient time for
 	 * soundwire auto enumeration of slave devices as
-	 * as per HW requirement.
+	 * per HW requirement.
 	 */
 	usleep_range(5000, 5010);
 

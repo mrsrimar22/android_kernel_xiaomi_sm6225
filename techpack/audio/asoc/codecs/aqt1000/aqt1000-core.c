@@ -323,7 +323,7 @@ static void aqt1000_dt_parse_micbias_info(struct device *dev,
 	}
 
 	/* Print micbias info */
-	dev_dbg(dev, "%s: ldoh_v %u cfilt1_mv %u micb1_mv %u \n", __func__,
+	dev_dbg(dev, "%s: ldoh_v %u cfilt1_mv %u micb1_mv %u\n", __func__,
 		(u32)mb->ldoh_v, (u32)mb->cfilt1_mv, (u32)mb->micb1_mv);
 }
 

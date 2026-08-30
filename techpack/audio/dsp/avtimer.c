@@ -219,8 +219,8 @@ static int avcs_core_enable_avtimer(char *client_name)
 		payload.hdr.dest_port = TEMP_PORT;
 		payload.hdr.token = CORE_CLIENT;
 		payload.hdr.opcode = AVCS_CMD_REMOTE_AVTIMER_VOTE_REQUEST;
-		strlcpy(payload.client_name, client_name,
-			   sizeof(payload.client_name));
+		strscpy(payload.client_name, client_name,
+			sizeof(payload.client_name));
 		pr_debug("%s: enable avtimer opcode %x client name %s\n",
 			__func__, payload.hdr.opcode, payload.client_name);
 		rc = apr_send_pkt(avtimer.core_handle_q,
@@ -579,8 +579,6 @@ unmap:
 
 static int dev_avtimer_remove(struct platform_device *pdev)
 {
-	pr_debug("%s: dev_avtimer_remove\n", __func__);
-
 	if (avtimer.p_avtimer_lsw)
 		devm_iounmap(&pdev->dev, avtimer.p_avtimer_lsw);
 	if (avtimer.p_avtimer_msw)

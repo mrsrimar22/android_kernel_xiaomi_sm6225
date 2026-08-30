@@ -210,7 +210,7 @@ struct snd_dec_ddp {
 	__u32 params_length;
 	__u32 params_id[SND_DEC_DDP_MAX_PARAMS];
 	__u32 params_value[SND_DEC_DDP_MAX_PARAMS];
-} __attribute__((packed, aligned(4)));
+} __packed __aligned(4);
 
 struct msm_compr_dec_params {
 	struct snd_dec_ddp ddp_params;
@@ -226,7 +226,8 @@ static int msm_compr_send_dec_params(struct snd_compr_stream *cstream,
 				     int stream_id);
 
 static int msm_compr_set_render_mode(struct msm_compr_audio *prtd,
-				     uint32_t render_mode, int dir) {
+				     uint32_t render_mode, int dir)
+{
 	int ret = -EINVAL;
 	struct audio_client *ac = prtd->audio_client;
 
@@ -261,7 +262,8 @@ exit:
 }
 
 static int msm_compr_set_clk_rec_mode(struct audio_client *ac,
-				     uint32_t clk_rec_mode) {
+				     uint32_t clk_rec_mode)
+{
 	int ret = -EINVAL;
 
 	pr_debug("%s, got clk rec mode %u\n", __func__, clk_rec_mode);
@@ -460,7 +462,6 @@ static int msm_compr_send_ddp_cfg(struct audio_client *ac,
 {
 	int i, rc;
 
-	pr_debug("%s\n", __func__);
 	for (i = 0; i < ddp->params_length; i++) {
 		rc = q6asm_ds1_set_stream_endp_params(ac, ddp->params_id[i],
 						      ddp->params_value[i],
@@ -973,7 +974,6 @@ static int msm_compr_get_partial_drain_delay(int frame_sz, int sample_rate)
 
 static void populate_codec_list(struct msm_compr_audio *prtd)
 {
-	pr_debug("%s\n", __func__);
 	prtd->compr_cap.direction = SND_COMPRESS_PLAYBACK;
 	prtd->compr_cap.min_fragment_size =
 			COMPR_PLAYBACK_MIN_FRAGMENT_SIZE;
@@ -1010,7 +1010,7 @@ static int msm_compr_send_media_format_block(struct snd_compr_stream *cstream,
 	struct snd_compr_runtime *runtime = cstream->runtime;
 	struct msm_compr_audio *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *rtd = cstream->private_data;
-	struct snd_soc_component *component =NULL;
+	struct snd_soc_component *component = NULL;
 	struct msm_compr_pdata *pdata = NULL;
 	struct asm_aac_cfg aac_cfg;
 	struct asm_wma_cfg wma_cfg;
@@ -1580,7 +1580,7 @@ static int msm_compr_configure_dsp_for_capture(struct snd_compr_stream *cstream)
 
 	if (prtd->compr_passthr != LEGACY_PCM) {
 		ret = q6asm_open_read_compressed(prtd->audio_client,
-                                prtd->codec, prtd->compr_passthr);
+				prtd->codec, prtd->compr_passthr);
 		if (ret < 0) {
 			pr_err("%s:ASM open read err[%d] for compr_type[%d]\n",
 					__func__, ret, prtd->compr_passthr);
@@ -1709,7 +1709,6 @@ static int msm_compr_playback_open(struct snd_compr_stream *cstream)
 	struct msm_compr_pdata *pdata = NULL;
 	enum apr_subsys_state subsys_state;
 
-	pr_debug("%s\n", __func__);
 	component = snd_soc_rtdcom_lookup(rtd, DRV_NAME);
 	if (!component) {
 		pr_err("%s: component is NULL\n", __func__);
@@ -1729,10 +1728,8 @@ static int msm_compr_playback_open(struct snd_compr_stream *cstream)
 	}
 
 	prtd = kzalloc(sizeof(struct msm_compr_audio), GFP_KERNEL);
-	if (prtd == NULL) {
-		pr_err("Failed to allocate memory for msm_compr_audio\n");
+	if (!prtd)
 		return -ENOMEM;
-	}
 
 	runtime->private_data = NULL;
 	prtd->cstream = cstream;
@@ -1824,7 +1821,6 @@ static int msm_compr_capture_open(struct snd_compr_stream *cstream)
 	struct msm_compr_pdata *pdata = NULL;
 	enum apr_subsys_state subsys_state;
 
-	pr_debug("%s\n", __func__);
 	component = snd_soc_rtdcom_lookup(rtd, DRV_NAME);
 	if (!component) {
 		pr_err("%s: component is NULL\n", __func__);
@@ -1842,10 +1838,8 @@ static int msm_compr_capture_open(struct snd_compr_stream *cstream)
 		return -ENETRESET;
 	}
 	prtd = kzalloc(sizeof(struct msm_compr_audio), GFP_KERNEL);
-	if (!prtd) {
-		pr_err("Failed to allocate memory for msm_compr_audio\n");
+	if (!prtd)
 		return -ENOMEM;
-	}
 
 	runtime->private_data = NULL;
 	prtd->cstream = cstream;
@@ -1914,8 +1908,6 @@ static int msm_compr_playback_free(struct snd_compr_stream *cstream)
 	int dir = IN, ret = 0, stream_id;
 	unsigned long flags;
 	uint32_t stream_index;
-
-	pr_debug("%s\n", __func__);
 
 	if (!cstream) {
 		pr_err("%s cstream is null\n", __func__);
@@ -1998,17 +1990,12 @@ static int msm_compr_playback_free(struct snd_compr_stream *cstream)
 
 	q6asm_audio_client_free(ac);
 	msm_adsp_clean_mixer_ctl_pp_event_queue(soc_prtd);
-	if (pdata->audio_effects[soc_prtd->dai_link->id] != NULL) {
-		kfree(pdata->audio_effects[soc_prtd->dai_link->id]);
-		pdata->audio_effects[soc_prtd->dai_link->id] = NULL;
-	}
-	if (pdata->dec_params[soc_prtd->dai_link->id] != NULL) {
-		kfree(pdata->dec_params[soc_prtd->dai_link->id]);
-		pdata->dec_params[soc_prtd->dai_link->id] = NULL;
-	}
-	if (pdata->ch_map[soc_prtd->dai_link->id]) {
+	kfree(pdata->audio_effects[soc_prtd->dai_link->id]);
+	pdata->audio_effects[soc_prtd->dai_link->id] = NULL;
+	kfree(pdata->dec_params[soc_prtd->dai_link->id]);
+	pdata->dec_params[soc_prtd->dai_link->id] = NULL;
+	if (pdata->ch_map[soc_prtd->dai_link->id])
 		pdata->ch_map[soc_prtd->dai_link->id]->set_ch_map = false;
-	}
 	pdata->is_in_use[soc_prtd->dai_link->id] = false;
 	kfree(prtd);
 	runtime->private_data = NULL;
@@ -2117,8 +2104,6 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 	int i, num_rates;
 	bool is_format_gapless = false;
 
-	pr_debug("%s\n", __func__);
-
 	num_rates = sizeof(supported_sample_rates)/sizeof(unsigned int);
 	for (i = 0; i < num_rates; i++)
 		if (params->codec.sample_rate == supported_sample_rates[i])
@@ -2133,10 +2118,8 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 	pr_debug("%s: sample_rate %d\n", __func__, prtd->sample_rate);
 
 	if ((prtd->codec_param.codec.compr_passthr >= LEGACY_PCM &&
-	    prtd->codec_param.
-	    codec.compr_passthr <= COMPRESSED_PASSTHROUGH_DSD) ||
-	    (prtd->codec_param.
-	    codec.compr_passthr == COMPRESSED_PASSTHROUGH_IEC61937))
+	    prtd->codec_param.codec.compr_passthr <= COMPRESSED_PASSTHROUGH_DSD) ||
+	    (prtd->codec_param.codec.compr_passthr == COMPRESSED_PASSTHROUGH_IEC61937))
 		prtd->compr_passthr = prtd->codec_param.codec.compr_passthr;
 	else
 		prtd->compr_passthr = LEGACY_PCM;
@@ -2902,7 +2885,6 @@ static int msm_compr_pointer(struct snd_compr_stream *cstream,
 		return -EINVAL;
 	}
 
-	pr_debug("%s\n", __func__);
 	memset(&tstamp, 0x0, sizeof(struct snd_compr_tstamp));
 
 	spin_lock_irqsave(&prtd->lock, flags);
@@ -2911,8 +2893,7 @@ static int msm_compr_pointer(struct snd_compr_stream *cstream,
 	if (cstream->direction == SND_COMPRESS_PLAYBACK) {
 		runtime->total_bytes_transferred = prtd->copied_total;
 		tstamp.copied_total = prtd->copied_total;
-	}
-	else if (cstream->direction == SND_COMPRESS_CAPTURE) {
+	} else if (cstream->direction == SND_COMPRESS_CAPTURE) {
 		runtime->total_bytes_available = prtd->received_total;
 		tstamp.copied_total = prtd->received_total;
 	}
@@ -3126,7 +3107,6 @@ static int msm_compr_copy(struct snd_compr_stream *cstream,
 {
 	int ret = 0;
 
-	pr_debug(" In %s\n", __func__);
 	if (cstream->direction == SND_COMPRESS_PLAYBACK)
 		ret = msm_compr_playback_copy(cstream, buf, count);
 	else if (cstream->direction == SND_COMPRESS_CAPTURE)
@@ -3141,7 +3121,6 @@ static int msm_compr_get_caps(struct snd_compr_stream *cstream,
 	struct msm_compr_audio *prtd = runtime->private_data;
 	int ret = 0;
 
-	pr_debug("%s\n", __func__);
 	if ((arg != NULL) && (prtd != NULL)) {
 		memcpy(arg, &prtd->compr_cap, sizeof(struct snd_compr_caps));
 	} else {
@@ -3155,8 +3134,6 @@ static int msm_compr_get_caps(struct snd_compr_stream *cstream,
 static int msm_compr_get_codec_caps(struct snd_compr_stream *cstream,
 				struct snd_compr_codec_caps *codec)
 {
-	pr_debug("%s\n", __func__);
-
 	switch (codec->codec) {
 	case SND_AUDIOCODEC_MP3:
 		codec->num_descriptors = 2;
@@ -3216,7 +3193,6 @@ static int msm_compr_set_metadata(struct snd_compr_stream *cstream,
 {
 	struct msm_compr_audio *prtd;
 	struct audio_client *ac;
-	pr_debug("%s\n", __func__);
 
 	if (!metadata || !cstream)
 		return -EINVAL;
@@ -3285,8 +3261,6 @@ static int msm_compr_get_metadata(struct snd_compr_stream *cstream,
 	uint64_t *val = NULL;
 	int64_t av_offset = 0;
 	int32_t clock_id = -EINVAL;
-
-	pr_debug("%s\n", __func__);
 
 	if (!metadata || !cstream || !cstream->runtime)
 		return ret;
@@ -3467,7 +3441,6 @@ static int msm_compr_audio_effects_config_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	int effects_module;
 
-	pr_debug("%s\n", __func__);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
 		pr_err("%s Received out of bounds fe_id %lu\n",
 			__func__, fe_id);
@@ -3571,7 +3544,6 @@ static int msm_compr_audio_effects_config_get(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	struct msm_compr_audio *prtd = NULL;
 
-	pr_debug("%s\n", __func__);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
 		pr_err("%s Received out of bounds fe_id %lu\n",
 			__func__, fe_id);
@@ -3750,7 +3722,6 @@ static int msm_compr_dec_params_put(struct snd_kcontrol *kcontrol,
 	long *values = &(ucontrol->value.integer.value[0]);
 	int rc = 0;
 
-	pr_debug("%s\n", __func__);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
 		pr_err("%s Received out of bounds fe_id %lu\n",
 			__func__, fe_id);
@@ -4219,7 +4190,6 @@ static int msm_compr_probe(struct snd_soc_component *component)
 	int rc;
 	const char *qdsp_version;
 
-	pr_debug("%s\n", __func__);
 	pdata = (struct msm_compr_pdata *) dev_get_drvdata(component->dev);
 	if (!pdata) {
 		pr_err("%s platform data not set\n", __func__);
@@ -5260,7 +5230,7 @@ static int msm_compr_add_channel_mixer_output_map_controls(
 	};
 
 	mixer_ctl_name = rtd->compr->direction == SND_COMPRESS_PLAYBACK ?
-			playback_mixer_ctl_name : capture_mixer_ctl_name ;
+			playback_mixer_ctl_name : capture_mixer_ctl_name;
 	ret = msm_compr_add_platform_controls(&channel_mixer_output_map_control,
 			rtd, mixer_ctl_name, suffix, session_type, channel);
 	if (ret < 0) {
@@ -5301,7 +5271,7 @@ static int msm_compr_add_channel_mixer_input_map_controls(
 	};
 
 	mixer_ctl_name = rtd->compr->direction == SND_COMPRESS_PLAYBACK ?
-			playback_mixer_ctl_name : capture_mixer_ctl_name ;
+			playback_mixer_ctl_name : capture_mixer_ctl_name;
 	ret = msm_compr_add_platform_controls(&channel_mixer_input_map_control,
 			rtd, mixer_ctl_name, suffix, session_type, channel);
 	if (ret < 0) {
@@ -5391,7 +5361,7 @@ static int msm_compr_add_channel_mixer_weight_controls(
 	};
 
 	mixer_ctl_name = rtd->compr->direction == SND_COMPRESS_PLAYBACK ?
-			playback_mixer_ctl_name : capture_mixer_ctl_name ;
+			playback_mixer_ctl_name : capture_mixer_ctl_name;
 	ret = msm_compr_add_platform_controls(&channel_mixer_weight_control,
 			rtd, mixer_ctl_name, suffix, session_type, channel);
 	if (ret < 0) {
@@ -5550,33 +5520,48 @@ static struct snd_soc_component_driver msm_soc_component = {
 static int msm_compr_dev_probe(struct platform_device *pdev)
 {
 	struct msm_compr_pdata *pdata = NULL;
+	int rc;
 
 	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
-	pdata = (struct msm_compr_pdata *)
-			kzalloc(sizeof(*pdata), GFP_KERNEL);
+
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
+
 	mutex_init(&pdata->lock);
 	dev_set_drvdata(&pdev->dev, pdata);
 
-	return snd_soc_register_component(&pdev->dev,
+	rc = snd_soc_register_component(&pdev->dev,
 					&msm_soc_component, NULL, 0);
+	if (rc) {
+		dev_err(&pdev->dev, "%s: Failed to register component, rc = %d\n",
+			__func__, rc);
+		mutex_destroy(&pdata->lock);
+		kfree(pdata);
+		dev_set_drvdata(&pdev->dev, NULL);
+	}
+
+	return rc;
 }
 
 static int msm_compr_remove(struct platform_device *pdev)
 {
+	struct msm_compr_pdata *pdata = dev_get_drvdata(&pdev->dev);
 	int i = 0;
-	struct msm_compr_pdata *pdata = NULL;
-
-	pdata = dev_get_drvdata(&pdev->dev);
-	if (pdata) {
-		for (i = 0; i < MSM_FRONTEND_DAI_MM_SIZE; i++)
-			kfree(pdata->chmixer_pspd[i]);
-	}
-	mutex_destroy(&pdata->lock);
-	kfree(pdata);
 
 	snd_soc_unregister_component(&pdev->dev);
+	if (pdata) {
+		for (i = 0; i < MSM_FRONTEND_DAI_MAX; i++) {
+			kfree(pdata->audio_effects[i]);
+			kfree(pdata->dec_params[i]);
+			kfree(pdata->ch_map[i]);
+		}
+		for (i = 0; i < MSM_FRONTEND_DAI_MM_SIZE; i++)
+			kfree(pdata->chmixer_pspd[i]);
+		mutex_destroy(&pdata->lock);
+		kfree(pdata);
+	}
+
 	return 0;
 }
 

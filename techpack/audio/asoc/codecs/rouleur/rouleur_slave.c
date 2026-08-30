@@ -391,8 +391,8 @@ static int rouleur_swr_probe(struct swr_device *pdev)
 					rouleur_slave->debugfs_rouleur_dent,
 					(void *) pdev,
 					&codec_debug_dump_ops);
-                }
-        }
+		}
+	}
 #endif
 	return component_add(&pdev->dev, &rouleur_slave_comp_ops);
 }

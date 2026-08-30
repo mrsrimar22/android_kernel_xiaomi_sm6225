@@ -62,7 +62,7 @@ ssize_t audio_aio_debug_read(struct file *file, char __user *buf,
 				"feedback %d\n", audio->feedback);
 		mutex_unlock(&audio->lock);
 		/* Following variables are only useful for debugging when
-		 * when playback halts unexpectedly. Thus, no mutual exclusion
+		 * playback halts unexpectedly. Thus, no mutual exclusion
 		 * enforced
 		 */
 		n += scnprintf(buffer + n, debug_bufmax - n,
@@ -95,7 +95,7 @@ int insert_eos_buf(struct q6audio_aio *audio,
 {
 	struct dec_meta_out *eos_buf = buf_node->kvaddr;
 
-	pr_debug("%s[%pK]:insert_eos_buf\n", __func__, audio);
+	pr_debug("%s[%pK]\n", __func__, audio);
 	eos_buf->num_of_frames = 0xFFFFFFFF;
 	eos_buf->meta_out_dsp[0].offset_to_frame = 0x0;
 	eos_buf->meta_out_dsp[0].nflags = AUDIO_DEC_EOS_SET;
@@ -586,10 +586,27 @@ int enable_volume_ramp(struct q6audio_aio *audio)
 }
 #endif /*CONFIG_USE_DEV_CTRL_VOLUME*/
 
+void audio_aio_free_locks_and_events(struct q6audio_aio *audio)
+{
+	if (!audio || !audio->opened)
+		return;
+
+	audio->opened = 0;
+	audio_aio_reset_event_queue(audio);
+	unregister_volume_listener(audio);
+	mutex_destroy(&audio->lock);
+	mutex_destroy(&audio->read_lock);
+	mutex_destroy(&audio->write_lock);
+	mutex_destroy(&audio->get_event_lock);
+}
+
 int audio_aio_release(struct inode *inode, struct file *file)
 {
 	unsigned long flags = 0;
 	struct q6audio_aio *audio = file->private_data;
+
+	if (!audio)
+		return 0;
 
 	pr_debug("%s[%pK]\n", __func__, audio);
 	mutex_lock(&lock);
@@ -874,6 +891,7 @@ static long audio_aio_process_event_req_compat(struct q6audio_aio *audio,
 	long rc;
 	struct msm_audio_event32 usr_evt_32;
 	struct msm_audio_event usr_evt;
+
 	memset(&usr_evt, 0, sizeof(struct msm_audio_event));
 
 	if (copy_from_user(&usr_evt_32, arg,
@@ -1329,7 +1347,6 @@ int audio_aio_open(struct q6audio_aio *audio, struct file *file)
 	int rc = 0;
 	int i;
 	struct audio_aio_event *e_node = NULL;
-	struct list_head *ptr, *next;
 
 	/* Settings will be re-config at AUDIO_SET_CONFIG,
 	 * but at least we need to have initial config
@@ -1392,12 +1409,8 @@ int audio_aio_open(struct q6audio_aio *audio, struct file *file)
 
 	return 0;
 cleanup:
-	list_for_each_safe(ptr, next, &audio->free_event_queue) {
-		e_node = list_first_entry(&audio->free_event_queue,
-				   struct audio_aio_event, list);
-		list_del(&e_node->list);
-		kfree(e_node);
-	}
+	audio_aio_free_locks_and_events(audio);
+	file->private_data = NULL;
 fail:
 	return rc;
 }

@@ -290,7 +290,6 @@ done:
 	p_mem_handle = (uint32_t *)usc->port[IN].ext;
 	kfree(p_mem_handle);
 	kfree(usc);
-	pr_debug("%s:\n", __func__);
 }
 
 struct us_client *q6usm_us_client_alloc(
@@ -1468,7 +1467,6 @@ int q6usm_get_us_stream_param(int dir, struct us_client *usc,
 
 int __init q6usm_init(void)
 {
-	pr_debug("%s\n", __func__);
 	init_waitqueue_head(&this_mmap.cmd_wait);
 	memset(session, 0, sizeof(session));
 	return 0;

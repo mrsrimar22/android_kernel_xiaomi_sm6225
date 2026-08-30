@@ -234,7 +234,6 @@ int wcd9xxx_spmi_suspend(pm_message_t pmesg)
 {
 	int ret = 0;
 
-	pr_debug("%s: enter\n", __func__);
 	/*
 	 * pm_qos_update_request() can be called after this suspend chain call
 	 * started. thus suspend can be called while lock is being held
@@ -285,7 +284,6 @@ int wcd9xxx_spmi_resume(void)
 {
 	int ret = 0;
 
-	pr_debug("%s: enter\n", __func__);
 	mutex_lock(&map.pm_lock);
 	if (map.pm_state == WCD9XXX_PM_ASLEEP) {
 		pr_debug("%s: resuming system, state %d, wlock %d\n", __func__,

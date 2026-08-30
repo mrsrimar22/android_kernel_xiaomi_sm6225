@@ -83,7 +83,8 @@ struct us_client {
 	atomic_t		eos_state;
 	wait_queue_head_t	cmd_wait;
 
-	void (*cb)(uint32_t, uint32_t, uint32_t *, void *);
+	void (*cb)(uint32_t opcode, uint32_t token,
+		   uint32_t *payload, void *priv);
 	void			*priv;
 };
 

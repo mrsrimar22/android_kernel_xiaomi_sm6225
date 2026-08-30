@@ -109,7 +109,6 @@ static int msm_dtmf_rx_generate_put(struct snd_kcontrol *kcontrol,
 static int msm_dtmf_rx_generate_get(struct  snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s:\n", __func__);
 	ucontrol->value.integer.value[0] = 0;
 	return 0;
 }
@@ -182,7 +181,6 @@ static void dtmf_rx_detected_cb(uint8_t *pkt,
 	struct dtmf_drv_info *prtd = private_data;
 	unsigned long dsp_flags;
 
-	pr_debug("%s\n", __func__);
 	if (prtd->capture_substream == NULL)
 		return;
 
@@ -196,8 +194,8 @@ static void dtmf_rx_detected_cb(uint8_t *pkt,
 		buf_node->dtmf_det_pkt.high_freq = dtmf_det_pkt->high_freq;
 		buf_node->dtmf_det_pkt.low_freq = dtmf_det_pkt->low_freq;
 		if (session != NULL)
-			strlcpy(buf_node->dtmf_det_pkt.session,
-				session, MAX_SESSION_NAME_LEN);
+			strscpy(buf_node->dtmf_det_pkt.session,
+				session, sizeof(buf_node->dtmf_det_pkt.session));
 
 		buf_node->dtmf_det_pkt.dir = DTMF_IN_RX;
 		pr_debug("high =%d, low=%d session=%s\n",

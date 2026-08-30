@@ -346,7 +346,6 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	}
 	params = &soc_prtd->dpcm[substream->stream].hw_params;
 
-	pr_debug("%s\n", __func__);
 	prtd->pcm_size = snd_pcm_lib_buffer_bytes(substream);
 	prtd->pcm_count = snd_pcm_lib_period_bytes(substream);
 	prtd->pcm_irq_pos = 0;
@@ -723,6 +722,8 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 		runtime->hw = msm_pcm_hardware_capture;
 	else {
 		pr_err("Invalid Stream type %d\n", substream->stream);
+		q6asm_audio_client_free(prtd->audio_client);
+		kfree(prtd);
 		return -EINVAL;
 	}
 
@@ -969,9 +970,6 @@ static int msm_pcm_capture_copy(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct msm_audio *prtd = substream->runtime->private_data;
 
-
-	pr_debug("%s\n", __func__);
-
 	pr_debug("appl_ptr %d\n", (int)runtime->control->appl_ptr);
 	pr_debug("hw_ptr %d\n", (int)runtime->status->hw_ptr);
 	pr_debug("avail_min %d\n", (int)runtime->control->avail_min);
@@ -1063,8 +1061,6 @@ static int msm_pcm_capture_close(struct snd_pcm_substream *substream)
 			snd_soc_rtdcom_lookup(soc_prtd, DRV_NAME);
 	struct msm_plat_data *pdata;
 	int dir = OUT;
-
-	pr_debug("%s\n", __func__);
 
 	if (!component) {
 		pr_err("%s: component is NULL\n", __func__);
@@ -1541,7 +1537,6 @@ static int msm_pcm_volume_ctl_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component = NULL;
 	struct msm_audio *prtd;
 
-	pr_debug("%s\n", __func__);
 	if (!vol) {
 		pr_err("%s: vol is NULL\n", __func__);
 		return -ENODEV;
@@ -1816,7 +1811,6 @@ static int msm_pcm_chmap_ctl_put(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component = NULL;
 	u64 fe_id = 0;
 
-	pr_debug("%s", __func__);
 	substream = snd_pcm_chmap_substream(info, idx);
 	if (!substream)
 		return -ENODEV;
@@ -1887,7 +1881,6 @@ static int msm_pcm_chmap_ctl_get(struct snd_kcontrol *kcontrol,
 	struct msm_plat_data *pdata = NULL;
 	struct snd_soc_component *component = NULL;
 
-	pr_debug("%s", __func__);
 	substream = snd_pcm_chmap_substream(info, idx);
 	if (!substream)
 		return -ENODEV;
@@ -2798,7 +2791,6 @@ static int msm_pcm_add_controls(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret = 0;
 
-	pr_debug("%s\n", __func__);
 	ret = msm_pcm_add_chmap_controls(rtd);
 	if (ret)
 		pr_err("%s: pcm add controls failed:%d\n", __func__, ret);
@@ -2891,7 +2883,7 @@ static int msm_pcm_probe(struct platform_device *pdev)
 {
 	int rc;
 	int id;
-	struct msm_plat_data *pdata;
+	struct msm_plat_data *pdata = NULL;
 	const char *latency_level;
 
 	rc = of_property_read_u32(pdev->dev.of_node,
@@ -2902,7 +2894,7 @@ static int msm_pcm_probe(struct platform_device *pdev)
 		return rc;
 	}
 
-	pdata = kzalloc(sizeof(struct msm_plat_data), GFP_KERNEL);
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
 
@@ -2925,29 +2917,37 @@ static int msm_pcm_probe(struct platform_device *pdev)
 	mutex_init(&pdata->lock);
 	dev_set_drvdata(&pdev->dev, pdata);
 
-
 	dev_dbg(&pdev->dev, "%s: dev name %s\n",
-				__func__, dev_name(&pdev->dev));
-	return snd_soc_register_component(&pdev->dev,
+		__func__, dev_name(&pdev->dev));
+	rc = snd_soc_register_component(&pdev->dev,
 					&msm_soc_component,
 					NULL, 0);
+	if (rc) {
+		dev_err(&pdev->dev, "%s: snd_soc_register_component failed %d\n",
+			__func__, rc);
+		mutex_destroy(&pdata->lock);
+		kfree(pdata);
+		dev_set_drvdata(&pdev->dev, NULL);
+	}
+
+	return rc;
 }
 
 static int msm_pcm_remove(struct platform_device *pdev)
 {
-	struct msm_plat_data *pdata;
+	struct msm_plat_data *pdata = dev_get_drvdata(&pdev->dev);
 	int i = 0;
 
-	pdata = dev_get_drvdata(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	if (pdata) {
 		for (i = 0; i < MSM_FRONTEND_DAI_MM_SIZE; i++) {
 			kfree(pdata->chmixer_pspd[i][SESSION_TYPE_RX]);
 			kfree(pdata->chmixer_pspd[i][SESSION_TYPE_TX]);
 		}
+		mutex_destroy(&pdata->lock);
+		kfree(pdata);
 	}
-	mutex_destroy(&pdata->lock);
-	kfree(pdata);
-	snd_soc_unregister_component(&pdev->dev);
+
 	return 0;
 }
 static const struct of_device_id msm_pcm_dt_match[] = {

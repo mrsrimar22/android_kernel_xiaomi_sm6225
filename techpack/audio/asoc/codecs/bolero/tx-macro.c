@@ -785,7 +785,7 @@ static int tx_macro_dec_mode_put(struct snd_kcontrol *kcontrol,
 }
 
 static int tx_macro_get_bcs(struct snd_kcontrol *kcontrol,
-                            struct snd_ctl_elem_value *ucontrol)
+			    struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component =
 			snd_soc_kcontrol_component(kcontrol);
@@ -793,7 +793,7 @@ static int tx_macro_get_bcs(struct snd_kcontrol *kcontrol,
 	struct device *tx_dev = NULL;
 
 	if (!tx_macro_get_data(component, &tx_dev, &tx_priv, __func__))
-	return -EINVAL;
+		return -EINVAL;
 
 	ucontrol->value.integer.value[0] = tx_priv->bcs_enable;
 
@@ -987,8 +987,8 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 			snd_soc_component_update_bits(component,
 				hpf_gate_reg, 0x01, 0x00);
 			/*
-		 	 * Minimum 1 clk cycle delay is required as per HW spec
-		 	 */
+			 * Minimum 1 clk cycle delay is required as per HW spec
+			 */
 			usleep_range(1000, 1010);
 		}
 		hpf_cut_off_freq = (
@@ -3054,15 +3054,15 @@ static void tx_macro_add_child_devices(struct work_struct *work)
 	for_each_available_child_of_node(tx_priv->dev->of_node, node) {
 		tx_swr_master_node = false;
 		if (strnstr(node->name, "tx_swr_master",
-                                strlen("tx_swr_master")) != NULL)
+				strlen("tx_swr_master")) != NULL)
 			tx_swr_master_node = true;
 
 		if (tx_swr_master_node)
-			strlcpy(plat_dev_name, "tx_swr_ctrl",
-				(TX_MACRO_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, "tx_swr_ctrl",
+				sizeof(plat_dev_name));
 		else
-			strlcpy(plat_dev_name, node->name,
-				(TX_MACRO_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, node->name,
+				sizeof(plat_dev_name));
 
 		pdev = platform_device_alloc(plat_dev_name, -1);
 		if (!pdev) {
@@ -3293,8 +3293,8 @@ static int tx_macro_remove(struct platform_device *pdev)
 		return -EINVAL;
 
 	if (tx_priv->is_used_tx_swr_gpio) {
-		if (tx_priv->swr_ctrl_data)
-			kfree(tx_priv->swr_ctrl_data);
+		cancel_work_sync(&tx_priv->tx_macro_add_child_devices_work);
+		kfree(tx_priv->swr_ctrl_data);
 		for (count = 0; count < tx_priv->child_count &&
 			count < TX_MACRO_CHILD_DEVICES_MAX; count++)
 			platform_device_unregister(

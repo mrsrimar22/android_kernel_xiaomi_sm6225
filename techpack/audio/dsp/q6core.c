@@ -480,7 +480,7 @@ static int32_t aprv2_core_fn_q(struct apr_client_data *data, void *priv)
 		if (data->payload_size != ((sizeof(struct avcs_load_unload_modules_sec_payload)
 			* rsp_payload->num_modules) + sizeof(uint32_t))) {
 			pr_err("%s: payload size greater than expected size %d\n",
-				__func__,data->payload_size);
+				__func__, data->payload_size);
 			return -EINVAL;
 		}
 		memcpy(rsp_payload, data->payload, data->payload_size);
@@ -1165,7 +1165,6 @@ bool q6core_is_adsp_ready(void)
 	bool ret = false;
 	struct apr_hdr hdr;
 
-	pr_debug("%s: enter\n", __func__);
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
 				      APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
@@ -1225,8 +1224,8 @@ int q6core_create_lpass_npa_client(uint32_t node_id, char *client_name,
 	cmd_ptr->hdr.token = 0;
 	cmd_ptr->hdr.opcode = AVCS_CMD_CREATE_LPASS_NPA_CLIENT;
 	cmd_ptr->node_id = AVCS_SLEEP_ISLAND_CORE_DRIVER_NODE_ID;
-	strlcpy(cmd_ptr->client_name, client_name,
-			sizeof(cmd_ptr->client_name));
+	strscpy(cmd_ptr->client_name, client_name,
+		sizeof(cmd_ptr->client_name));
 
 	pr_debug("%s: create lpass npa client opcode[0x%x] node id[0x%x]\n",
 		__func__, cmd_ptr->hdr.opcode, cmd_ptr->node_id);
@@ -1719,7 +1718,7 @@ int q6core_map_mdf_shared_memory(uint32_t map_handle, uint64_t *buf_add,
 
 done:
 	kfree(mmap_region_cmd);
-        mutex_unlock(&q6core_lcl.cmd_lock);
+	mutex_unlock(&q6core_lcl.cmd_lock);
 	return ret;
 }
 
@@ -1968,8 +1967,6 @@ done:
 
 static void q6core_delete_cal_data(void)
 {
-	pr_debug("%s:\n", __func__);
-
 	cal_utils_destroy_cal_types(CORE_MAX_CAL, q6core_lcl.cal_data);
 }
 
@@ -1988,7 +1985,6 @@ static int q6core_init_cal_data(void)
 		q6core_set_cal, NULL, NULL} },
 		{NULL, NULL, cal_utils_match_buf_num} }
 	};
-	pr_debug("%s:\n", __func__);
 
 	ret = cal_utils_create_cal_types(CORE_MAX_CAL,
 		q6core_lcl.cal_data, cal_type_info);

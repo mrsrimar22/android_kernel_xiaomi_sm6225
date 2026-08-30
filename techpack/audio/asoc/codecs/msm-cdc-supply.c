@@ -33,6 +33,7 @@ static int msm_cdc_dt_parse_vreg_info(struct device *dev,
 		rc = -EINVAL;
 		goto done;
 	}
+	of_node_put(regulator_node);
 	cdc_vreg->name = name;
 	cdc_vreg->ondemand = is_ond;
 

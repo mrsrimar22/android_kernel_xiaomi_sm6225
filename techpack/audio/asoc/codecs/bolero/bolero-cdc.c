@@ -499,7 +499,7 @@ EXPORT_SYMBOL(bolero_unregister_res_clk);
 static u8 bolero_dmic_clk_div_get(struct snd_soc_component *component,
 				   int mode)
 {
-	struct bolero_priv* priv = snd_soc_component_get_drvdata(component);
+	struct bolero_priv *priv = snd_soc_component_get_drvdata(component);
 	int macro = (mode ? VA_MACRO : TX_MACRO);
 	int ret = 0;
 
@@ -515,7 +515,7 @@ static u8 bolero_dmic_clk_div_get(struct snd_soc_component *component,
 int bolero_dmic_clk_enable(struct snd_soc_component *component,
 			   u32 dmic, u32 tx_mode, bool enable)
 {
-	struct bolero_priv* priv = snd_soc_component_get_drvdata(component);
+	struct bolero_priv *priv = snd_soc_component_get_drvdata(component);
 	u8  dmic_clk_en = 0x01;
 	u16 dmic_clk_reg = 0;
 	s32 *dmic_clk_cnt = NULL;
@@ -901,7 +901,7 @@ static int bolero_ssr_enable(struct device *dev, void *data)
 	bolero_clk_rsc_enable_all_clocks(priv->clk_dev, true);
 	regcache_sync(priv->regmap);
 	/* Add a 100usec sleep to ensure last register write is done */
-	usleep_range(100,110);
+	usleep_range(100, 110);
 	bolero_clk_rsc_enable_all_clocks(priv->clk_dev, false);
 	/* call ssr event for supported macros */
 	for (macro_idx = START_MACRO; macro_idx < MAX_MACRO; macro_idx++) {
@@ -1224,8 +1224,6 @@ static void bolero_soc_codec_remove(struct snd_soc_component *component)
 	for (macro_idx = START_MACRO; macro_idx < MAX_MACRO; macro_idx++)
 		if (priv->macro_params[macro_idx].exit)
 			priv->macro_params[macro_idx].exit(component);
-
-	return;
 }
 
 static const struct snd_soc_component_driver bolero = {
@@ -1268,8 +1266,8 @@ static void bolero_add_child_devices(struct work_struct *work)
 				__func__);
 		}
 
-		strlcpy(plat_dev_name, node->name,
-				(BOLERO_CDC_STRING_LEN - 1));
+		strscpy(plat_dev_name, node->name,
+			sizeof(plat_dev_name));
 
 		pdev = platform_device_alloc(plat_dev_name, -1);
 		if (!pdev) {
@@ -1412,6 +1410,7 @@ static int bolero_remove(struct platform_device *pdev)
 	if (!priv)
 		return -EINVAL;
 
+	cancel_work_sync(&priv->bolero_add_child_devices_work);
 	of_platform_depopulate(&pdev->dev);
 	mutex_destroy(&priv->io_lock);
 	mutex_destroy(&priv->clk_lock);

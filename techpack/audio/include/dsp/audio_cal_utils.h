@@ -97,4 +97,5 @@ void cal_utils_mark_cal_used(struct cal_block_data *cal_block);
 bool cal_utils_is_cal_stale(struct cal_block_data *cal_block);
 
 int cal_utils_init(void);
+void cal_utils_exit(void);
 #endif

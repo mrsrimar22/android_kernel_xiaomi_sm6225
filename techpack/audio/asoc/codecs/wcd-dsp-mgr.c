@@ -1285,6 +1285,8 @@ static int wdsp_mgr_remove(struct platform_device *pdev)
 	struct device *mdev = &pdev->dev;
 	struct wdsp_mgr_priv *wdsp = dev_get_drvdata(mdev);
 
+	cancel_work_sync(&wdsp->load_fw_work);
+	cancel_work_sync(&wdsp->ssr_work);
 	component_master_del(mdev, &wdsp_master_ops);
 
 	mutex_destroy(&wdsp->api_mutex);

@@ -923,6 +923,18 @@ void swr_unregister_master(struct swr_master *master)
 
 	dummy = device_for_each_child(&master->dev, NULL, __unregister);
 	device_unregister(&master->dev);
+
+	mutex_destroy(&master->mlock);
+
+	if (master->port_txn) {
+		int i;
+
+		for (i = 0; i < master->last_tid; i++)
+			kfree(master->port_txn[i]);
+		kfree(master->port_txn);
+		master->port_txn = NULL;
+		master->last_tid = 0;
+	}
 }
 EXPORT_SYMBOL(swr_unregister_master);
 
@@ -962,8 +974,10 @@ int swr_register_master(struct swr_master *master)
 	master->dev.type = &swr_master_type;
 	mutex_init(&master->mlock);
 	status = device_register(&master->dev);
-	if (status < 0)
+	if (status < 0) {
+		mutex_destroy(&master->mlock);
 		goto done;
+	}
 
 	INIT_LIST_HEAD(&master->devices);
 	pr_debug("%s: SWR master registered successfully %s\n",
@@ -1104,6 +1118,8 @@ static void __exit soundwire_exit(void)
 {
 	device_unregister(&soundwire_dev);
 	bus_unregister(&soundwire_type);
+	mutex_destroy(&swr_lock);
+	mutex_destroy(&board_lock);
 }
 
 static int __init soundwire_init(void)

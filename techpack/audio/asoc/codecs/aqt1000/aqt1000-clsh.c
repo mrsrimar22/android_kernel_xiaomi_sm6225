@@ -776,7 +776,7 @@ void aqt_clsh_fsm(struct snd_soc_component *component,
 			if (new_state == old_state) {
 				dev_err(component->dev,
 					"%s: Class-H already in requested state: %s\n",
-					__func__,state_to_str[new_state]);
+					__func__, state_to_str[new_state]);
 				return;
 			}
 			(*clsh_state_fp[old_state]) (component, cdc_clsh_d,

@@ -170,7 +170,6 @@ static void pcm_afe_process_tx_pkt(uint32_t opcode,
 		return;
 	substream =  prtd->substream;
 	runtime = substream->runtime;
-	pr_debug("%s\n", __func__);
 	spin_lock_irqsave(&prtd->dsp_lock, dsp_flags);
 	switch (opcode) {
 	case AFE_EVENT_RT_PROXY_PORT_STATUS: {
@@ -265,7 +264,6 @@ static void pcm_afe_process_rx_pkt(uint32_t opcode,
 		return;
 	substream =  prtd->substream;
 	runtime = substream->runtime;
-	pr_debug("%s\n", __func__);
 	spin_lock_irqsave(&prtd->dsp_lock, dsp_flags);
 	switch (opcode) {
 	case AFE_EVENT_RT_PROXY_PORT_STATUS: {
@@ -389,8 +387,6 @@ static int msm_afe_capture_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *dai = rtd->cpu_dai;
 	int ret = 0;
 
-	pr_debug("%s\n", __func__);
-
 	pr_debug("%s: dai->id =%x\n", __func__, dai->id);
 	ret = afe_register_get_events(dai->id,
 			pcm_afe_process_rx_pkt, prtd);
@@ -442,6 +438,7 @@ static int msm_afe_open(struct snd_pcm_substream *substream)
 	if (!prtd->audio_client) {
 		pr_debug("%s: Could not allocate memory\n", __func__);
 		mutex_unlock(&prtd->lock);
+		mutex_destroy(&prtd->lock);
 		kfree(prtd);
 		return -ENOMEM;
 	}
@@ -632,7 +629,6 @@ static int msm_afe_close(struct snd_pcm_substream *substream)
 	int dir = IN;
 	int ret = 0;
 
-	pr_debug("%s\n", __func__);
 	if (substream == NULL) {
 		pr_err("substream is NULL\n");
 		return -EINVAL;
@@ -676,6 +672,7 @@ done:
 	pr_debug("%s: dai->id =%x\n", __func__, dai->id);
 	q6afe_audio_client_free(prtd->audio_client);
 	mutex_unlock(&prtd->lock);
+	mutex_destroy(&prtd->lock);
 	prtd->prepared--;
 	kfree(prtd);
 	runtime->private_data = NULL;
@@ -708,7 +705,6 @@ static int msm_afe_mmap(struct snd_pcm_substream *substream,
 	struct afe_audio_buffer *ab;
 	int dir = -1;
 
-	pr_debug("%s\n", __func__);
 	prtd->mmap_flag = 1;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -755,8 +751,6 @@ static int msm_afe_hw_params(struct snd_pcm_substream *substream,
 	struct pcm_afe_info *prtd = runtime->private_data;
 	struct afe_audio_buffer *buf;
 	int dir, rc;
-
-	pr_debug("%s:\n", __func__);
 
 	mutex_lock(&prtd->lock);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -852,7 +846,6 @@ static int msm_asoc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_card *card = rtd->card->snd_card;
 	int ret = 0;
 
-	pr_debug("%s\n", __func__);
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 	return ret;
@@ -860,7 +853,6 @@ static int msm_asoc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 
 static int msm_afe_afe_probe(struct snd_soc_component *component)
 {
-	pr_debug("%s\n", __func__);
 	return 0;
 }
 
@@ -873,7 +865,6 @@ static struct snd_soc_component_driver msm_soc_component = {
 
 static int msm_afe_probe(struct platform_device *pdev)
 {
-
 	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
 	return snd_soc_register_component(&pdev->dev,
 				   &msm_soc_component, NULL, 0);
@@ -881,7 +872,6 @@ static int msm_afe_probe(struct platform_device *pdev)
 
 static int msm_afe_remove(struct platform_device *pdev)
 {
-	pr_debug("%s\n", __func__);
 	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
@@ -904,13 +894,11 @@ static struct platform_driver msm_afe_driver = {
 
 int __init msm_pcm_afe_init(void)
 {
-	pr_debug("%s\n", __func__);
 	return platform_driver_register(&msm_afe_driver);
 }
 
 void msm_pcm_afe_exit(void)
 {
-	pr_debug("%s\n", __func__);
 	platform_driver_unregister(&msm_afe_driver);
 }
 

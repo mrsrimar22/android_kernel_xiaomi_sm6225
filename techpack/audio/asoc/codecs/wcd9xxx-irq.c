@@ -159,14 +159,22 @@ static struct irq_chip wcd9xxx_irq_chip = {
 	.irq_ack = wcd9xxx_irq_ack,
 };
 
-bool wcd9xxx_lock_sleep(
-	struct wcd9xxx_core_resource *wcd9xxx_res)
+static bool wcd9xxx_is_awake(struct wcd9xxx_core_resource *wcd9xxx_res)
 {
 	enum wcd9xxx_pm_state os;
 
+	os = wcd9xxx_pm_cmpxchg(wcd9xxx_res,
+				WCD9XXX_PM_SLEEPABLE,
+				WCD9XXX_PM_AWAKE);
+
+	return (os == WCD9XXX_PM_SLEEPABLE || os == WCD9XXX_PM_AWAKE);
+}
+
+bool wcd9xxx_lock_sleep(struct wcd9xxx_core_resource *wcd9xxx_res)
+{
 	/*
 	 * wcd9xxx_{lock/unlock}_sleep will be called by wcd9xxx_irq_thread
-	 * and its subroutines only motly.
+	 * and its subroutines only mostly.
 	 * but btn0_lpress_fn is not wcd9xxx_irq_thread's subroutine and
 	 * It can race with wcd9xxx_irq_thread.
 	 * So need to embrace wlock_holders with mutex.
@@ -186,11 +194,7 @@ bool wcd9xxx_lock_sleep(
 	mutex_unlock(&wcd9xxx_res->pm_lock);
 
 	if (!wait_event_timeout(wcd9xxx_res->pm_wq,
-				((os =  wcd9xxx_pm_cmpxchg(wcd9xxx_res,
-						  WCD9XXX_PM_SLEEPABLE,
-						  WCD9XXX_PM_AWAKE)) ==
-							WCD9XXX_PM_SLEEPABLE ||
-					(os == WCD9XXX_PM_AWAKE)),
+				wcd9xxx_is_awake(wcd9xxx_res),
 				msecs_to_jiffies(
 					WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS))) {
 		pr_warn("%s: system didn't resume within %dms, s %d, w %d\n",
@@ -205,8 +209,7 @@ bool wcd9xxx_lock_sleep(
 }
 EXPORT_SYMBOL(wcd9xxx_lock_sleep);
 
-void wcd9xxx_unlock_sleep(
-	struct wcd9xxx_core_resource *wcd9xxx_res)
+void wcd9xxx_unlock_sleep(struct wcd9xxx_core_resource *wcd9xxx_res)
 {
 	mutex_lock(&wcd9xxx_res->pm_lock);
 	if (--wcd9xxx_res->wlock_holders == 0) {
@@ -219,7 +222,7 @@ void wcd9xxx_unlock_sleep(
 		if (likely(wcd9xxx_res->pm_state == WCD9XXX_PM_AWAKE))
 			wcd9xxx_res->pm_state = WCD9XXX_PM_SLEEPABLE;
 		pm_qos_update_request(&wcd9xxx_res->pm_qos_req,
-				PM_QOS_DEFAULT_VALUE);
+				      PM_QOS_DEFAULT_VALUE);
 		pm_relax(wcd9xxx_res->dev);
 	}
 	mutex_unlock(&wcd9xxx_res->pm_lock);
@@ -316,7 +319,7 @@ static irqreturn_t wcd9xxx_irq_thread(int irq, void *data)
 		 * not up (slimbus will not be available) to
 		 * process interrupts.
 		 */
-		msleep(10);
+		usleep_range(10000, 11000);
 	}
 
 	memset(status, 0, sizeof(status));
@@ -481,8 +484,6 @@ static int wcd9xxx_irq_setup_downstream_irq(
 {
 	int irq, virq, ret;
 
-	pr_debug("%s: enter\n", __func__);
-
 	for (irq = 0; irq < wcd9xxx_res->num_irqs; irq++) {
 		/* Map OF irq */
 		virq = wcd9xxx_map_irq(wcd9xxx_res, irq);
@@ -509,8 +510,6 @@ static int wcd9xxx_irq_setup_downstream_irq(
 
 		irq_set_nested_thread(virq, 1);
 	}
-
-	pr_debug("%s: leave\n", __func__);
 
 	return 0;
 }

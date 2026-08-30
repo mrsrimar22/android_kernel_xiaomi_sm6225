@@ -4230,7 +4230,6 @@ static void msm_add_tdm_snd_controls(struct snd_soc_component *component)
 #else
 static void msm_add_tdm_snd_controls(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
@@ -4243,7 +4242,6 @@ static void msm_add_mi2s_snd_controls(struct snd_soc_component *component)
 #else
 static void msm_add_mi2s_snd_controls(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
@@ -4256,7 +4254,6 @@ static void msm_add_auxpcm_snd_controls(struct snd_soc_component *component)
 #else
 static void msm_add_auxpcm_snd_controls(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
@@ -4316,9 +4313,8 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_sync(dapm);
 
-	for (i = 0; i < rtd->card->num_aux_devs; i++)
-	{
-		if (msm_aux_dev[i].name != NULL ) {
+	for (i = 0; i < rtd->card->num_aux_devs; i++) {
+		if (msm_aux_dev[i].name != NULL) {
 			if (strstr(msm_aux_dev[i].name, "wsa"))
 				continue;
 		}
@@ -4328,7 +4324,7 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 					msm_aux_dev[i].codec_of_node);
 
 			if (pdev)
-				data = (char*) of_device_get_match_data(
+				data = (char *) of_device_get_match_data(
 								&pdev->dev);
 			if (data != NULL) {
 				if (wcd_datalane_mismatch) {
@@ -4341,7 +4337,7 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 						ARRAY_SIZE(sm_port_map),
 						sm_port_map);
 					break;
-				} else if (!strncmp( data, "rouleur",
+				} else if (!strncmp(data, "rouleur",
 							sizeof("rouleur"))) {
 					bolero_set_port_map(component,
 						ARRAY_SIZE(sm_port_map_rouleur),
@@ -5992,9 +5988,8 @@ static int msm_snd_card_bengal_late_probe(struct snd_soc_card *card)
 	int ret = 0, i = 0;
 	void *mbhc_calibration;
 
-	for (i = 0; i < card->num_aux_devs; i++)
-	{
-		if (msm_aux_dev[i].name != NULL ) {
+	for (i = 0; i < card->num_aux_devs; i++) {
+		if (msm_aux_dev[i].name != NULL) {
 			if (strstr(msm_aux_dev[i].name, "wsa"))
 				continue;
 		}
@@ -6003,7 +5998,7 @@ static int msm_snd_card_bengal_late_probe(struct snd_soc_card *card)
 			pdev = of_find_device_by_node(
 					msm_aux_dev[i].codec_of_node);
 			if (pdev) {
-				data = (char*) of_device_get_match_data(
+				data = (char *) of_device_get_match_data(
 							&pdev->dev);
 				component = soc_find_component(
 					    msm_aux_dev[i].codec_of_node,
@@ -6019,7 +6014,7 @@ static int msm_snd_card_bengal_late_probe(struct snd_soc_card *card)
 				goto err_mbhc_cal;
 			wcd_mbhc_cfg.calibration = mbhc_calibration;
 			ret = wcd937x_mbhc_hs_detect(component, &wcd_mbhc_cfg);
-		} else if (!strncmp( data, "rouleur", sizeof("rouleur"))) {
+		} else if (!strncmp(data, "rouleur", sizeof("rouleur"))) {
 			mbhc_calibration = def_rouleur_mbhc_cal();
 			if (!mbhc_calibration)
 				goto err_mbhc_cal;
@@ -6240,9 +6235,8 @@ static int msm_aux_codec_init(struct snd_soc_component *component)
 		pdata->codec_root = entry;
 	}
 
-	for (i = 0; i < component->card->num_aux_devs; i++)
-	{
-		if (msm_aux_dev[i].name != NULL ) {
+	for (i = 0; i < component->card->num_aux_devs; i++) {
+		if (msm_aux_dev[i].name != NULL) {
 			if (strstr(msm_aux_dev[i].name, "wsa"))
 				continue;
 		}
@@ -6251,7 +6245,7 @@ static int msm_aux_codec_init(struct snd_soc_component *component)
 			pdev = of_find_device_by_node(
 				msm_aux_dev[i].codec_of_node);
 			if (pdev)
-				data = (char*) of_device_get_match_data(
+				data = (char *) of_device_get_match_data(
 							&pdev->dev);
 
 			if (data != NULL) {
@@ -6848,13 +6842,13 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	/* get adsp variant idx */
 	cell = nvmem_cell_get(&pdev->dev, "adsp_variant");
 	if (IS_ERR_OR_NULL(cell)) {
-		dev_dbg(&pdev->dev, "%s: FAILED to get nvmem cell \n", __func__);
+		dev_dbg(&pdev->dev, "%s: FAILED to get nvmem cell\n", __func__);
 		goto ret;
 	}
 	buf = nvmem_cell_read(cell, &len);
 	nvmem_cell_put(cell);
 	if (IS_ERR_OR_NULL(buf)) {
-		dev_dbg(&pdev->dev, "%s: FAILED to read nvmem cell \n", __func__);
+		dev_dbg(&pdev->dev, "%s: FAILED to read nvmem cell\n", __func__);
 		goto ret;
 	}
 	if (len <= 0 || len > sizeof(u32)) {

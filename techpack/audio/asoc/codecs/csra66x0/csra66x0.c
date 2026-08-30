@@ -405,8 +405,7 @@ static ssize_t debugfs_codec_write_op(struct file *filp,
 			__func__, param[1]);
 		return -EINVAL;
 	}
-	if (rc == 0)
-	{
+	if (rc == 0) {
 		rc = cnt;
 		dev_info(component->dev, "%s: reg[0x%04X]=0x%02X\n",
 			__func__, param[0], param[1]);
@@ -916,11 +915,11 @@ static int csra66x0_soc_probe(struct snd_soc_component *component)
 		/* master slave config */
 		csra66x0_msconfig(csra66x0);
 		if (dapm->component) {
-			strlcpy(name, dapm->component->name_prefix,
+			strscpy(name, dapm->component->name_prefix,
 					sizeof(name));
 			strlcat(name, " IN", sizeof(name));
 			snd_soc_dapm_ignore_suspend(dapm, name);
-			strlcpy(name, dapm->component->name_prefix,
+			strscpy(name, dapm->component->name_prefix,
 					sizeof(name));
 			strlcat(name, " SPKR", sizeof(name));
 			snd_soc_dapm_ignore_suspend(dapm, name);
@@ -937,7 +936,6 @@ static void csra66x0_soc_remove(struct snd_soc_component *component)
 {
 	snd_soc_component_write(component, CSRA66X0_CHIP_STATE_CTRL_FA,
 				SET_STDBY_STATE);
-	return;
 }
 
 static const struct snd_soc_component_driver soc_codec_drv_csra66x0 = {
@@ -1027,7 +1025,7 @@ static const struct of_device_id csra66x0_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, csra66x0_of_match);
 
-static ssize_t csra66x0_sysfs_write2reg_addr_value(struct device *dev,
+static ssize_t write2reg_addr_value_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
@@ -1044,14 +1042,7 @@ static ssize_t csra66x0_sysfs_write2reg_addr_value(struct device *dev,
 	if (count > sizeof(lbuf) - 1)
 		return -EINVAL;
 
-	ret = strlcpy(lbuf, buf, count);
-	if (ret != count) {
-		dev_err(component->dev, "%s: copy input from user space failed. ret=%d\n",
-			__func__, ret);
-		ret = -EFAULT;
-		goto end;
-	}
-
+	memcpy(lbuf, buf, count);
 	lbuf[count] = '\0';
 	ret = sysfs_get_param(lbuf, param, 2);
 	if (ret) {
@@ -1077,14 +1068,14 @@ static ssize_t csra66x0_sysfs_write2reg_addr_value(struct device *dev,
 		goto end;
 	}
 
-	snd_soccomponent_component_write(component, param[0], param[1]);
+	snd_soc_component_write(component, param[0], param[1]);
 	ret = count;
 
 end:
 	return ret;
 }
 
-static ssize_t csra66x0_sysfs_read2reg_addr_set(struct device *dev,
+static ssize_t read2reg_addr_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
@@ -1100,14 +1091,7 @@ static ssize_t csra66x0_sysfs_read2reg_addr_set(struct device *dev,
 	if (count > sizeof(lbuf) - 1)
 		return -EINVAL;
 
-	ret = strlcpy(lbuf, buf, count);
-	if (ret != count) {
-		dev_err(dev, "%s: copy input from user space failed. ret=%d\n",
-			__func__, ret);
-		ret = -EFAULT;
-		goto end;
-	}
-
+	memcpy(lbuf, buf, count);
 	lbuf[count] = '\0';
 	ret = sysfs_get_param(lbuf, &reg_addr, 1);
 	if (ret) {
@@ -1133,7 +1117,7 @@ end:
 	return ret;
 }
 
-static ssize_t csra66x0_sysfs_read2reg_addr_get(struct device *dev,
+static ssize_t read2reg_addr_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	int ret;
@@ -1154,7 +1138,7 @@ static ssize_t csra66x0_sysfs_read2reg_addr_get(struct device *dev,
 	return ret;
 }
 
-static ssize_t csra66x0_sysfs_read2reg_value(struct device *dev,
+static ssize_t read2reg_value_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	int ret;
@@ -1189,7 +1173,7 @@ end:
 	return ret;
 }
 
-static ssize_t csra66x0_sysfs_reset(struct device *dev,
+static ssize_t reset_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int val, rc;
@@ -1248,17 +1232,15 @@ static ssize_t csra66x0_sysfs_reset(struct device *dev,
 		csra66x0_init(csra66x0);
 	}
 
-	rc = strnlen(buf, CSRA66X0_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static DEVICE_ATTR(write2reg_addr_value, 0200, NULL,
-	csra66x0_sysfs_write2reg_addr_value);
-static DEVICE_ATTR(read2reg_addr, 0644, csra66x0_sysfs_read2reg_addr_get,
-	csra66x0_sysfs_read2reg_addr_set);
-static DEVICE_ATTR(read2reg_value, 0444, csra66x0_sysfs_read2reg_value, NULL);
-static DEVICE_ATTR(reset, 0200, NULL, csra66x0_sysfs_reset);
+static DEVICE_ATTR_WO(write2reg_addr_value);
+static DEVICE_ATTR_RW(read2reg_addr);
+static DEVICE_ATTR_RO(read2reg_value);
+static DEVICE_ATTR_WO(reset);
 
 static struct attribute *csra66x0_fs_attrs[] = {
 	&dev_attr_write2reg_addr_value.attr,
@@ -1406,7 +1388,7 @@ static int csra66x0_i2c_probe(struct i2c_client *client_i2c,
 		goto err_debugfs;
 	}
 	csra66x0->debugfs_file_wo = debugfs_create_file(
-		"write_reg_val", S_IFREG | S_IRUGO, csra66x0->debugfs_dir,
+		"write_reg_val", 0444, csra66x0->debugfs_dir,
 		(void *) csra66x0,
 		&debugfs_codec_ops);
 	if (!csra66x0->debugfs_file_wo) {
@@ -1417,7 +1399,7 @@ static int csra66x0_i2c_probe(struct i2c_client *client_i2c,
 		goto err_debugfs;
 	}
 	csra66x0->debugfs_file_ro = debugfs_create_file(
-		"show_reg_dump", S_IFREG | S_IRUGO, csra66x0->debugfs_dir,
+		"show_reg_dump", 0444, csra66x0->debugfs_dir,
 		(void *) csra66x0,
 		&debugfs_codec_ops);
 	if (!csra66x0->debugfs_file_ro) {

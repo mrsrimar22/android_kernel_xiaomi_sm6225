@@ -312,7 +312,6 @@ static int adm_get_next_available_copp(int port_idx)
 {
 	int idx;
 
-	pr_debug("%s:\n", __func__);
 	for (idx = 0; idx < MAX_COPPS_PER_PORT; idx++) {
 		pr_debug("%s: copp_id:0x%x port_idx:%d idx:%d\n", __func__,
 			 atomic_read(&this_adm.copp.id[port_idx][idx]),
@@ -691,7 +690,6 @@ int adm_set_stereo_to_custom_stereo(int port_id, int copp_idx,
 	struct adm_cmd_set_pspd_mtmx_strtr_params_v5 *adm_params = NULL;
 	int sz, rc = 0, port_idx;
 
-	pr_debug("%s:\n", __func__);
 	port_id = afe_convert_virtual_to_portid(port_id);
 	port_idx = adm_validate_and_get_port_index(port_id);
 	if (port_idx < 0) {
@@ -880,8 +878,8 @@ int adm_apr_send_pkt(void *data, wait_queue_head_t *wait,
 	int ret = 0;
 	atomic_t *copp_stat = NULL;
 	int32_t time_out = msecs_to_jiffies(TIMEOUT_MS);
-	wait = &this_adm.copp.wait[port_idx][copp_idx];
 
+	wait = &this_adm.copp.wait[port_idx][copp_idx];
 	if (!wait)
 		return -EINVAL;
 
@@ -1610,8 +1608,7 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 				pr_debug("%s: ADM_CMD_SET_PP_PARAMS\n",
 					 __func__);
 				if (client_id == ADM_CLIENT_ID_SOURCE_TRACKING)
-					this_adm.sourceTrackingData.
-						apr_cmd_status = payload[1];
+					this_adm.sourceTrackingData.apr_cmd_status = payload[1];
 				else if (rtac_make_adm_callback(payload,
 						data->payload_size)) {
 					pr_debug("%s: rtac cmd response\n",
@@ -1681,8 +1678,7 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 				/* ADM_CMDRSP_GET_PP_PARAMS_V5 */
 				if (client_id ==
 					ADM_CLIENT_ID_SOURCE_TRACKING) {
-					this_adm.sourceTrackingData.
-						apr_cmd_status = payload[1];
+					this_adm.sourceTrackingData.apr_cmd_status = payload[1];
 					if (payload[1] != 0)
 						pr_err("%s: ADM get param error = %d\n",
 							__func__, payload[1]);
@@ -1732,6 +1728,7 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 		case ADM_CMDRSP_DEVICE_OPEN_V6:
 		case ADM_CMDRSP_DEVICE_OPEN_V8: {
 			struct adm_cmd_rsp_device_open_v5 *open = NULL;
+
 			if (data->payload_size <
 				sizeof(struct adm_cmd_rsp_device_open_v5)) {
 				pr_err("%s: Invalid payload size %d\n", __func__,
@@ -1849,7 +1846,6 @@ static int adm_memory_map_regions(phys_addr_t *buf_add, uint32_t mempool_id,
 	int     i = 0;
 	int     cmd_size = 0;
 
-	pr_debug("%s:\n", __func__);
 	if (this_adm.apr == NULL) {
 		this_adm.apr = apr_register("ADSP", "ADM", adm_callback,
 						0xFFFFFFFF, &this_adm);
@@ -1931,7 +1927,6 @@ static int adm_memory_unmap_regions(void)
 	struct  avs_cmd_shared_mem_unmap_regions unmap_regions;
 	int     ret = 0;
 
-	pr_debug("%s:\n", __func__);
 	if (this_adm.apr == NULL) {
 		pr_err("%s: APR handle NULL\n", __func__);
 		return -EINVAL;
@@ -1945,8 +1940,8 @@ static int adm_memory_unmap_regions(void)
 	unmap_regions.hdr.dest_port = 0;
 	unmap_regions.hdr.token = 0;
 	unmap_regions.hdr.opcode = ADM_CMD_SHARED_MEM_UNMAP_REGIONS;
-	unmap_regions.mem_map_handle = atomic_read(&this_adm.
-		mem_map_handles[atomic_read(&this_adm.mem_map_index)]);
+	unmap_regions.mem_map_handle =
+		atomic_read(&this_adm.mem_map_handles[atomic_read(&this_adm.mem_map_index)]);
 	atomic_set(&this_adm.adm_stat, -1);
 	ret = apr_send_pkt(this_adm.apr, (uint32_t *) &unmap_regions);
 	if (ret < 0) {
@@ -2005,8 +2000,8 @@ static int remap_cal_data(struct cal_block_data *cal_block, int cal_index)
 				cal_block->map_data.map_size, ret);
 			goto done;
 		}
-		cal_block->map_data.q6map_handle = atomic_read(&this_adm.
-			mem_map_handles[cal_index]);
+		cal_block->map_data.q6map_handle =
+			atomic_read(&this_adm.mem_map_handles[cal_index]);
 	}
 done:
 	return ret;
@@ -2160,8 +2155,6 @@ static struct cal_block_data *adm_find_cal_by_path(int cal_index, int path)
 	struct audio_cal_info_audproc *audproc_cal_info = NULL;
 	struct audio_cal_info_audvol *audvol_cal_info = NULL;
 
-	pr_debug("%s:\n", __func__);
-
 	list_for_each_safe(ptr, next,
 		&this_adm.cal_data[cal_index]->cal_blocks) {
 
@@ -2198,8 +2191,6 @@ static struct cal_block_data *adm_find_cal_by_app_type(int cal_index, int path,
 	struct cal_block_data *cal_block = NULL;
 	struct audio_cal_info_audproc *audproc_cal_info = NULL;
 	struct audio_cal_info_audvol *audvol_cal_info = NULL;
-
-	pr_debug("%s\n", __func__);
 
 	list_for_each_safe(ptr, next,
 		&this_adm.cal_data[cal_index]->cal_blocks) {
@@ -2242,8 +2233,6 @@ static struct cal_block_data *adm_find_cal(int cal_index, int path,
 	struct audio_cal_info_audproc *audproc_cal_info = NULL;
 	struct audio_cal_info_audvol *audvol_cal_info = NULL;
 
-	pr_debug("%s:\n", __func__);
-
 	list_for_each_safe(ptr, next,
 		&this_adm.cal_data[cal_index]->cal_blocks) {
 
@@ -2254,7 +2243,7 @@ static struct cal_block_data *adm_find_cal(int cal_index, int path,
 
 		if (cal_index == ADM_AUDPROC_CAL ||
 		    cal_index == ADM_LSM_AUDPROC_CAL ||
-		    cal_index == ADM_LSM_AUDPROC_PERSISTENT_CAL||
+		    cal_index == ADM_LSM_AUDPROC_PERSISTENT_CAL ||
 		    cal_index == ADM_AUDPROC_PERSISTENT_CAL) {
 			audproc_cal_info = cal_block->cal_info;
 			if ((audproc_cal_info->path == path) &&
@@ -2962,9 +2951,9 @@ static int adm_copp_set_ec_ref_mfc_cfg(int port_id, int copp_idx,
 
 	pr_debug("%s: chmixer param sz = %d\n", __func__, param_size);
 	chmixer_params = kzalloc(param_size, GFP_KERNEL);
-	if (!chmixer_params) {
+	if (!chmixer_params)
 		return -ENOMEM;
-	}
+
 	param_index = 2; /* param[0] and [1] represents chmixer rule(always 0) */
 	chmixer_params[param_index++] = out_channels;
 	chmixer_params[param_index++] = in_channels;
@@ -2983,9 +2972,10 @@ static int adm_copp_set_ec_ref_mfc_cfg(int port_id, int copp_idx,
 	for (i = 0; i < in_channels; i++)
 		chmixer_params[param_index++] = ep_payload.dev_channel_mapping[i];
 
-	for (i = 0; i < out_channels; i++)
+	for (i = 0; i < out_channels; i++) {
 		for (j = 0; j < in_channels; j++)
-		chmixer_params[param_index++] = this_adm.ec_ref_chmixer_weights[i][j];
+			chmixer_params[param_index++] = this_adm.ec_ref_chmixer_weights[i][j];
+	}
 
 	rc = adm_pack_and_set_one_pp_param(port_id, copp_idx,
 					   param_hdr, (uint8_t *) chmixer_params);
@@ -3685,8 +3675,7 @@ int adm_matrix_map(int path, struct route_payload payload_map, int perf_mode,
 				     passthr_mode);
 			/* ADM COPP calibration is already sent */
 			clear_bit(ADM_STATUS_CALIBRATION_REQUIRED,
-				(void *)&this_adm.copp.
-				adm_status[port_idx][copp_idx]);
+				(void *)&this_adm.copp.adm_status[port_idx][copp_idx]);
 			pr_debug("%s: copp_id: %d\n", __func__,
 				 atomic_read(&this_adm.copp.id[port_idx]
 							      [copp_idx]));
@@ -3984,8 +3973,8 @@ int send_rtac_audvol_cal(void)
 			(app_id == audvol_cal_info->app_type) &&
 			(path == audvol_cal_info->path)) {
 
-			if (adm_get_indexes_from_copp_id(rtac_adm_data.
-				device[i].copp, &copp_idx, &port_idx) != 0) {
+			if (adm_get_indexes_from_copp_id(rtac_adm_data.device[i].copp,
+				&copp_idx, &port_idx) != 0) {
 				pr_debug("%s: Copp Id %d is not active\n",
 					__func__,
 					rtac_adm_data.device[i].copp);
@@ -3995,12 +3984,10 @@ int send_rtac_audvol_cal(void)
 			ret2 = adm_remap_and_send_cal_block(ADM_RTAC_AUDVOL_CAL,
 				rtac_adm_data.device[i].afe_port,
 				copp_idx, cal_block,
-				atomic_read(&this_adm.copp.
-				mode[port_idx][copp_idx]),
+				atomic_read(&this_adm.copp.mode[port_idx][copp_idx]),
 				audvol_cal_info->app_type,
 				audvol_cal_info->acdb_id,
-				atomic_read(&this_adm.copp.
-				rate[port_idx][copp_idx]));
+				atomic_read(&this_adm.copp.rate[port_idx][copp_idx]));
 			if (ret2 < 0) {
 				pr_debug("%s: remap and send failed for copp Id %d, acdb id %d, app type %d, path %d\n",
 					__func__, rtac_adm_data.device[i].copp,
@@ -4019,8 +4006,6 @@ unlock:
 int adm_map_rtac_block(struct rtac_cal_block_data *cal_block)
 {
 	int result = 0;
-
-	pr_debug("%s:\n", __func__);
 
 	if (cal_block == NULL) {
 		pr_err("%s: cal_block is NULL!\n",
@@ -4067,8 +4052,6 @@ done:
 int adm_unmap_rtac_block(uint32_t *mem_map_handle)
 {
 	int result = 0;
-
-	pr_debug("%s:\n", __func__);
 
 	if (mem_map_handle == NULL) {
 		pr_debug("%s: Map handle is NULL, nothing to unmap\n",
@@ -4150,8 +4133,6 @@ static int adm_alloc_cal(int32_t cal_type, size_t data_size, void *data)
 	int ret = 0;
 	int cal_index;
 
-	pr_debug("%s:\n", __func__);
-
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
 		pr_err("%s: could not get cal index %d!\n",
@@ -4177,8 +4158,6 @@ static int adm_dealloc_cal(int32_t cal_type, size_t data_size, void *data)
 	int ret = 0;
 	int cal_index;
 
-	pr_debug("%s:\n", __func__);
-
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
 		pr_err("%s: could not get cal index %d!\n",
@@ -4203,8 +4182,6 @@ static int adm_set_cal(int32_t cal_type, size_t data_size, void *data)
 {
 	int ret = 0;
 	int cal_index;
-
-	pr_debug("%s:\n", __func__);
 
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
@@ -4240,8 +4217,6 @@ static int adm_map_cal_data(int32_t cal_type,
 	int ret = 0;
 	int cal_index;
 
-	pr_debug("%s:\n", __func__);
-
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
 		pr_err("%s: could not get cal index %d!\n",
@@ -4259,8 +4234,8 @@ static int adm_map_cal_data(int32_t cal_type,
 		ret = -ENODEV;
 		goto done;
 	}
-	cal_block->map_data.q6map_handle = atomic_read(&this_adm.
-		mem_map_handles[cal_index]);
+	cal_block->map_data.q6map_handle =
+		atomic_read(&this_adm.mem_map_handles[cal_index]);
 done:
 	return ret;
 }
@@ -4270,8 +4245,6 @@ static int adm_unmap_cal_data(int32_t cal_type,
 {
 	int ret = 0;
 	int cal_index;
-
-	pr_debug("%s:\n", __func__);
 
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
@@ -4310,8 +4283,6 @@ done:
 
 static void adm_delete_cal_data(void)
 {
-	pr_debug("%s:\n", __func__);
-
 	cal_utils_destroy_cal_types(ADM_MAX_CAL_TYPES, this_adm.cal_data);
 }
 
@@ -4373,7 +4344,6 @@ static int adm_init_cal_data(void)
 		 {adm_map_cal_data, adm_unmap_cal_data,
 		  cal_utils_match_buf_num} },
 	};
-	pr_debug("%s:\n", __func__);
 
 	ret = cal_utils_create_cal_types(ADM_MAX_CAL_TYPES, this_adm.cal_data,
 		cal_type_info);
@@ -4940,8 +4910,7 @@ int adm_store_cal_data(int port_id, int copp_idx, int path, int perf_mode,
 			rc = -ENOMEM;
 			goto unlock;
 		}
-	}
-	else if (cal_index == ADM_AUDVOL_CAL) {
+	} else if (cal_index == ADM_AUDVOL_CAL) {
 		if (cal_block->cal_data.size > AUD_VOL_BLOCK_SIZE) {
 			pr_err("%s:aud_vol:invalid size exp/actual[%zd, %d]\n",
 				__func__, cal_block->cal_data.size, *size);
@@ -5253,8 +5222,6 @@ EXPORT_SYMBOL(adm_get_sound_focus);
 static int adm_source_tracking_alloc_map_memory(void)
 {
 	int ret;
-
-	pr_debug("%s: Enter\n", __func__);
 
 	ret = msm_audio_ion_alloc(&this_adm.sourceTrackingData.dma_buf,
 				  AUD_PROC_BLOCK_SIZE,

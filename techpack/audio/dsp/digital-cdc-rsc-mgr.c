@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -19,7 +19,7 @@ static bool is_init_done;
  *
  * Returns 0 on success or -EINVAL/error code on failure
  */
-int digital_cdc_rsc_mgr_hw_vote_enable(struct clk* vote_handle)
+int digital_cdc_rsc_mgr_hw_vote_enable(struct clk *vote_handle)
 {
 	int ret = 0;
 
@@ -44,7 +44,7 @@ EXPORT_SYMBOL(digital_cdc_rsc_mgr_hw_vote_enable);
  * @vote_handle: vote handle for which voting needs to be disabled
  *
  */
-void digital_cdc_rsc_mgr_hw_vote_disable(struct clk* vote_handle)
+void digital_cdc_rsc_mgr_hw_vote_disable(struct clk *vote_handle)
 {
 	if (!is_init_done || vote_handle == NULL) {
 		pr_err_ratelimited("%s: init failed or vote handle NULL\n",
@@ -55,7 +55,6 @@ void digital_cdc_rsc_mgr_hw_vote_disable(struct clk* vote_handle)
 	mutex_lock(&hw_vote_lock);
 	clk_disable_unprepare(vote_handle);
 	mutex_unlock(&hw_vote_lock);
-	pr_debug("%s\n", __func__);
 }
 EXPORT_SYMBOL(digital_cdc_rsc_mgr_hw_vote_disable);
 
@@ -63,7 +62,7 @@ EXPORT_SYMBOL(digital_cdc_rsc_mgr_hw_vote_disable);
  * digital_cdc_rsc_mgr_hw_vote_reset - Resets hw vote count
  *
  */
-void digital_cdc_rsc_mgr_hw_vote_reset(struct clk* vote_handle)
+void digital_cdc_rsc_mgr_hw_vote_reset(struct clk *vote_handle)
 {
 	int count = 0;
 

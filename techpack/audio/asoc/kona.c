@@ -110,7 +110,7 @@ enum {
 
 #define TDM_MAX_SLOTS 8
 #define TDM_SLOT_WIDTH_BITS 32
-#define TDM_SLOT_WIDTH_BYTES TDM_SLOT_WIDTH_BITS/8
+#define TDM_SLOT_WIDTH_BYTES 4
 
 enum {
 	TDM_PRI = 0,
@@ -199,7 +199,7 @@ struct msm_asoc_mach_data {
 	int core_audio_vote_count;
 	u32 wsa_max_devs;
 	u32 tdm_max_slots; /* Max TDM slots used */
-	int (*get_wsa_dev_num)(struct snd_soc_component*);
+	int (*get_wsa_dev_num)(struct snd_soc_component *component);
 	struct afe_cps_hw_intf_cfg cps_config;
 };
 
@@ -698,7 +698,7 @@ static const char *const auxpcm_rate_text[] = {"KHZ_8", "KHZ_16"};
 static char const *mi2s_rate_text[] = {"KHZ_8", "KHZ_11P025", "KHZ_16",
 				      "KHZ_22P05", "KHZ_32", "KHZ_44P1",
 				      "KHZ_48", "KHZ_88P2", "KHZ_96",
-				      "KHZ_176P4", "KHZ_192","KHZ_352P8",
+				      "KHZ_176P4", "KHZ_192", "KHZ_352P8",
 				      "KHZ_384"};
 static const char *const mi2s_ch_text[] = {"One", "Two", "Three", "Four",
 					   "Five", "Six", "Seven",
@@ -4925,7 +4925,7 @@ static void set_cps_config(struct snd_soc_pcm_runtime *rtd,
 	char wsa_cdc_name[DEV_NAME_STR_LEN];
 	struct snd_soc_component *component = NULL;
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
-        struct msm_asoc_mach_data *pdata =
+	struct msm_asoc_mach_data *pdata =
 			snd_soc_card_get_drvdata(rtd->card);
 
 	if (!pdata) {
@@ -4968,11 +4968,11 @@ static void set_cps_config(struct snd_soc_pcm_runtime *rtd,
 
 		/* Use n to make sure both WSA components are retrieved */
 		/* When first WSA component is retrieved adjust looping
-		   variable such that the next time only the remaining part
-		   of the array is traversed */
-		for (j = n; j < rtd->card->num_aux_devs; j++)
-		{
-			if (msm_codec_conf[j].name_prefix != NULL ) {
+		 * variable such that the next time only the remaining part
+		 * of the array is traversed
+		 */
+		for (j = n; j < rtd->card->num_aux_devs; j++) {
+			if (msm_codec_conf[j].name_prefix != NULL) {
 				if (strstr(msm_codec_conf[j].name_prefix,
 					"Left")) {
 					component = soc_find_component_locked(
@@ -4980,8 +4980,7 @@ static void set_cps_config(struct snd_soc_pcm_runtime *rtd,
 						NULL);
 					n = j+1;
 					break;
-				}
-				else if (strstr(msm_codec_conf[j].name_prefix,
+				} else if (strstr(msm_codec_conf[j].name_prefix,
 					"Right")) {
 					component = soc_find_component_locked(
 						msm_aux_dev[j].codec_of_node,
@@ -5548,7 +5547,6 @@ static void msm_add_tdm_snd_controls(struct snd_soc_component *component)
 #else
 static void msm_add_tdm_snd_controls(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
@@ -5561,7 +5559,6 @@ static void msm_add_mi2s_snd_controls(struct snd_soc_component *component)
 #else
 static void msm_add_mi2s_snd_controls(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
@@ -5574,7 +5571,6 @@ static void msm_add_auxpcm_snd_controls(struct snd_soc_component *component)
 #else
 static void msm_add_auxpcm_snd_controls(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
@@ -5659,23 +5655,22 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 				card_aux_list) {
 			if (aux_comp->name != NULL && (
 				!strcmp(aux_comp->name, WSA8810_NAME_1) ||
-		    		!strcmp(aux_comp->name, WSA8810_NAME_2))) {
+				    !strcmp(aux_comp->name, WSA8810_NAME_2))) {
 				wsa_macro_set_spkr_mode(component,
 						WSA_MACRO_SPKR_MODE_1);
 				wsa_macro_set_spkr_gain_offset(component,
 						WSA_MACRO_GAIN_OFFSET_M1P5_DB);
 			} else if (aux_comp->name != NULL && (
 				!strcmp(aux_comp->name, WSA8815_NAME_1) ||
-		    		!strcmp(aux_comp->name, WSA8815_NAME_2))) {
+				    !strcmp(aux_comp->name, WSA8815_NAME_2))) {
 				wsa_macro_set_spkr_mode(component,
 						WSA_MACRO_SPKR_MODE_DEFAULT);
 			}
 		}
 	}
 
-	for (i = 0; i < rtd->card->num_aux_devs; i++)
-	{
-		if (msm_aux_dev[i].name != NULL ) {
+	for (i = 0; i < rtd->card->num_aux_devs; i++) {
+		if (msm_aux_dev[i].name != NULL) {
 			if (strstr(msm_aux_dev[i].name, "wsa"))
 				continue;
 		}
@@ -5685,7 +5680,7 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 					msm_aux_dev[i].codec_of_node);
 
 			if (pdev)
-				data = (char*) of_device_get_match_data(
+				data = (char *) of_device_get_match_data(
 								&pdev->dev);
 			if (data != NULL) {
 				if (!strncmp(data, "wcd937x",
@@ -7775,7 +7770,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			}
 		}
 		dailink = msm_kona_dai_links;
-	} else if(!strcmp(match->data, "stub_codec")) {
+	} else if (!strcmp(match->data, "stub_codec")) {
 		card = &snd_soc_card_stub_msm;
 		len_1 = ARRAY_SIZE(msm_stub_fe_dai_links);
 		len_2 = len_1 + ARRAY_SIZE(msm_stub_be_dai_links);
@@ -8300,7 +8295,7 @@ static int kona_ssr_enable(struct device *dev, void *data)
 
 	if (!strcmp(card->name, "kona-stub-snd-card")) {
 		/* TODO */
-		dev_dbg(dev, "%s: TODO \n", __func__);
+		dev_dbg(dev, "%s: TODO\n", __func__);
 	}
 
 	snd_soc_card_change_online_state(card, 1);
@@ -8325,7 +8320,7 @@ static void kona_ssr_disable(struct device *dev, void *data)
 
 	if (!strcmp(card->name, "kona-stub-snd-card")) {
 		/* TODO */
-		dev_dbg(dev, "%s: TODO \n", __func__);
+		dev_dbg(dev, "%s: TODO\n", __func__);
 	}
 }
 
@@ -8382,7 +8377,7 @@ static void parse_cps_configuration(struct platform_device *pdev,
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 				"qcom,cps_reg_phy_addr", dt_values,
-				sizeof(dt_values)/sizeof(dt_values[0]));
+				ARRAY_SIZE(dt_values));
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,cps_reg_phy_addr");
@@ -8397,7 +8392,7 @@ static void parse_cps_configuration(struct platform_device *pdev,
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 				"qcom,cps_threshold_levels", dt_values,
-				sizeof(dt_values)/sizeof(dt_values[0]) - 1);
+				ARRAY_SIZE(dt_values) - 1);
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,cps_threshold_levels");
@@ -8417,7 +8412,7 @@ static void parse_cps_configuration(struct platform_device *pdev,
 	}
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 				"qcom,cps_wsa_vbatt_temp_reg_addr", dt_values,
-				sizeof(dt_values)/sizeof(dt_values[0]) - 1);
+				ARRAY_SIZE(dt_values) - 1);
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,cps_wsa_vbatt_temp_reg_addr");
@@ -8432,45 +8427,45 @@ static void parse_cps_configuration(struct platform_device *pdev,
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 				"qcom,cps_normal_values", dt_values,
-				sizeof(dt_values)/sizeof(dt_values[0]));
+				ARRAY_SIZE(dt_values));
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,cps_normal_values");
 	} else {
 		for (i = 0; i < pdata->wsa_max_devs; i++) {
 			for (j = 0; j < MAX_CPS_LEVELS; j++) {
-				pdata->cps_config.spkr_dep_cfg[i].
-					value_normal_thrsd[j] = dt_values[j];
+				pdata->cps_config.spkr_dep_cfg[i].value_normal_thrsd[j] =
+							dt_values[j];
 			}
 		}
 	}
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 				"qcom,cps_lower1_values", dt_values,
-				sizeof(dt_values)/sizeof(dt_values[0]));
+				ARRAY_SIZE(dt_values));
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,cps_lower1_values");
 	} else {
 		for (i = 0; i < pdata->wsa_max_devs; i++) {
 			for (j = 0; j < MAX_CPS_LEVELS; j++) {
-				pdata->cps_config.spkr_dep_cfg[i].
-					value_low1_thrsd[j] = dt_values[j];
+				pdata->cps_config.spkr_dep_cfg[i].value_low1_thrsd[j] =
+							dt_values[j];
 			}
 		}
 	}
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 				"qcom,cps_lower2_values", dt_values,
-				sizeof(dt_values)/sizeof(dt_values[0]));
+				ARRAY_SIZE(dt_values));
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,cps_lower2_values");
 	} else {
 		for (i = 0; i < pdata->wsa_max_devs; i++) {
 			for (j = 0; j < MAX_CPS_LEVELS; j++) {
-				pdata->cps_config.spkr_dep_cfg[i].
-					value_low2_thrsd[j] = dt_values[j];
+				pdata->cps_config.spkr_dep_cfg[i].value_low2_thrsd[j] =
+							dt_values[j];
 			}
 		}
 	}

@@ -243,7 +243,7 @@ static bool wcd937x_mbhc_lock_sleep(struct wcd_mbhc *mbhc, bool lock)
 	struct snd_soc_component *component = mbhc->component;
 	struct wcd937x_priv *wcd937x = dev_get_drvdata(component->dev);
 
-	wcd937x->wakeup((void*)wcd937x, lock);
+	wcd937x->wakeup((void *)wcd937x, lock);
 	return true;
 }
 
@@ -1002,7 +1002,7 @@ EXPORT_SYMBOL(wcd937x_mbhc_hs_detect_exit);
  * @component: handle to snd_soc_component *
  */
 void wcd937x_mbhc_ssr_down(struct wcd937x_mbhc *mbhc,
-		         struct snd_soc_component *component)
+			 struct snd_soc_component *component)
 {
 	struct wcd_mbhc *wcd_mbhc = NULL;
 

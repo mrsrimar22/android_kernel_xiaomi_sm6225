@@ -274,7 +274,7 @@ static int wcd_spi_read_single(struct spi_device *spi,
 		dev_err(&spi->dev, "%s: spi_sync failed, err %d\n",
 			__func__, ret);
 	else
-		memcpy((u8*) val, rx_buf, sizeof(*val));
+		memcpy((u8 *) val, rx_buf, sizeof(*val));
 
 	return ret;
 }
@@ -557,7 +557,7 @@ static int wcd_spi_cmd_rdsr(struct spi_device *spi,
 		goto done;
 	}
 
-	*rdsr_status = be32_to_cpu(*((u32*)rx_buf));
+	*rdsr_status = be32_to_cpu(*((u32 *)rx_buf));
 
 	dev_dbg(&spi->dev, "%s: RDSR success, value = 0x%x\n",
 		__func__, *rdsr_status);
@@ -1536,8 +1536,8 @@ static void arch_setup_spi_archdata(struct spi_device *spi)
 {
 	if (spi->dev.coherent_dma_mask == DMA_MASK_NONE &&
 		spi->dev.dma_mask == NULL) {
-			spi->dev.coherent_dma_mask = DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
-			spi->dev.dma_mask = &spi->dev.coherent_dma_mask;
+		spi->dev.coherent_dma_mask = DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+		spi->dev.dma_mask = &spi->dev.coherent_dma_mask;
 	}
 }
 #endif

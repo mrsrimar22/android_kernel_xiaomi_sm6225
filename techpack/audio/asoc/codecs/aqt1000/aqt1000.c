@@ -42,7 +42,7 @@
 #define  CF_MIN_3DB_150HZ   0x2
 
 #define AQT_VERSION_ENTRY_SIZE 17
-#define AQT_VOUT_CTL_TO_MICB(x) (1000 + x *50)
+#define AQT_VOUT_CTL_TO_MICB(x) (1000 + x * 50)
 
 static struct interp_sample_rate sr_val_tbl[] = {
 	{8000, 0x0}, {16000, 0x1}, {32000, 0x3}, {48000, 0x4}, {96000, 0x5},
@@ -730,8 +730,8 @@ int aqt_mbhc_micb_adjust_voltage(struct snd_soc_component *component,
 
 	if (micb_num != MIC_BIAS_1)
 		return -EINVAL;
-	else
-		micb_reg = AQT1000_ANA_MICB1;
+
+	micb_reg = AQT1000_ANA_MICB1;
 
 	aqt = snd_soc_component_get_drvdata(component);
 	mutex_lock(&aqt->micb_lock);
@@ -3456,7 +3456,6 @@ static int aqt_soc_codec_probe(struct snd_soc_component *component)
 				snd_soc_component_get_dapm(component);
 	int i, ret = 0;
 
-	dev_dbg(component->dev, "%s()\n", __func__);
 	aqt = snd_soc_component_get_drvdata(component);
 
 	snd_soc_component_init_regmap(component, aqt->regmap);
@@ -3581,8 +3580,6 @@ static void aqt_soc_codec_remove(struct snd_soc_component *component)
 	mutex_destroy(&aqt->i2s_lock);
 	mutex_destroy(&aqt->codec_mutex);
 	clk_put(aqt->ext_clk);
-
-	return;
 }
 
 static const struct snd_soc_component_driver snd_cdc_dev_aqt = {

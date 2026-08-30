@@ -817,7 +817,6 @@ static int ep92_probe(struct snd_soc_component *component)
 
 static void ep92_remove(struct snd_soc_component *component)
 {
-	return;
 }
 
 static const struct snd_soc_component_driver soc_codec_drv_ep92 = {
@@ -947,7 +946,7 @@ static const struct of_device_id ep92_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, ep92_of_match);
 
-static ssize_t ep92_sysfs_rda_chipid(struct device *dev,
+static ssize_t chipid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
@@ -974,7 +973,7 @@ static ssize_t ep92_sysfs_rda_chipid(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_version(struct device *dev,
+static ssize_t version_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
@@ -1005,7 +1004,7 @@ static ssize_t ep92_sysfs_rda_version(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_state(struct device *dev,
+static ssize_t audio_state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1026,7 +1025,7 @@ static ssize_t ep92_sysfs_rda_audio_state(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_format(struct device *dev,
+static ssize_t audio_format_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1046,7 +1045,7 @@ static ssize_t ep92_sysfs_rda_audio_format(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_dsd_rate(struct device *dev,
+static ssize_t dsd_rate_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
@@ -1067,7 +1066,7 @@ static ssize_t ep92_sysfs_rda_dsd_rate(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_rate(struct device *dev,
+static ssize_t audio_rate_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1087,7 +1086,7 @@ static ssize_t ep92_sysfs_rda_audio_rate(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_layout(struct device *dev,
+static ssize_t audio_layout_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1108,7 +1107,7 @@ static ssize_t ep92_sysfs_rda_audio_layout(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_ch_count(struct device *dev,
+static ssize_t audio_ch_count_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1131,7 +1130,7 @@ static ssize_t ep92_sysfs_rda_audio_ch_count(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_ch_alloc(struct device *dev,
+static ssize_t audio_ch_alloc_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1151,7 +1150,7 @@ static ssize_t ep92_sysfs_rda_audio_ch_alloc(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_audio_preemph(struct device *dev,
+static ssize_t audio_preemph_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1172,7 +1171,7 @@ static ssize_t ep92_sysfs_rda_audio_preemph(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_avmute(struct device *dev,
+static ssize_t audio_avmute_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1193,7 +1192,7 @@ static ssize_t ep92_sysfs_rda_avmute(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_link_on0(struct device *dev,
+static ssize_t link_on0_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1213,7 +1212,7 @@ static ssize_t ep92_sysfs_rda_link_on0(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_link_on1(struct device *dev,
+static ssize_t link_on1_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1233,7 +1232,7 @@ static ssize_t ep92_sysfs_rda_link_on1(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_link_on2(struct device *dev,
+static ssize_t link_on2_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1253,7 +1252,7 @@ static ssize_t ep92_sysfs_rda_link_on2(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_out_plug(struct device *dev,
+static ssize_t out_plug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1273,7 +1272,7 @@ static ssize_t ep92_sysfs_rda_out_plug(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_video_latency(struct device *dev,
+static ssize_t video_latency_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1295,7 +1294,7 @@ static ssize_t ep92_sysfs_rda_video_latency(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_arc_disable(struct device *dev,
+static ssize_t arc_disable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1316,7 +1315,7 @@ static ssize_t ep92_sysfs_rda_arc_disable(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_arc_disable(struct device *dev,
+static ssize_t arc_disable_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1346,12 +1345,12 @@ static ssize_t ep92_sysfs_wta_arc_disable(struct device *dev,
 	ep92->gc.ctl2 &= ~EP92_GC_ARC_DIS_MASK;
 	ep92->gc.ctl2 |= (val << EP92_GC_ARC_DIS_SHIFT) & EP92_GC_ARC_DIS_MASK;
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_power(struct device *dev,
+static ssize_t power_on_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1371,7 +1370,7 @@ static ssize_t ep92_sysfs_rda_power(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_power(struct device *dev,
+static ssize_t power_on_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1405,12 +1404,12 @@ static ssize_t ep92_sysfs_wta_power(struct device *dev,
 		mod_timer(&ep92->timer, jiffies +
 			msecs_to_jiffies(EP92_POLL_INTERVAL_ON_MSEC));
 	}
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_audio_path(struct device *dev,
+static ssize_t audio_path_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1430,7 +1429,7 @@ static ssize_t ep92_sysfs_rda_audio_path(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_audio_path(struct device *dev,
+static ssize_t audio_path_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1461,12 +1460,12 @@ static ssize_t ep92_sysfs_wta_audio_path(struct device *dev,
 	ep92->gc.ctl |= (val << EP92_GC_AUDIO_PATH_SHIFT) &
 		EP92_GC_AUDIO_PATH_MASK;
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_src_sel(struct device *dev,
+static ssize_t src_sel_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1486,7 +1485,7 @@ static ssize_t ep92_sysfs_rda_src_sel(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_src_sel(struct device *dev,
+static ssize_t src_sel_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1516,12 +1515,12 @@ static ssize_t ep92_sysfs_wta_src_sel(struct device *dev,
 	ep92->gc.rx_sel &= ~EP92_GC_RX_SEL_MASK;
 	ep92->gc.rx_sel |= (val << EP92_GC_RX_SEL_SHIFT) & EP92_GC_RX_SEL_MASK;
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_arc_enable(struct device *dev,
+static ssize_t arc_enable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1541,7 +1540,7 @@ static ssize_t ep92_sysfs_rda_arc_enable(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_arc_enable(struct device *dev,
+static ssize_t arc_enable_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1571,12 +1570,12 @@ static ssize_t ep92_sysfs_wta_arc_enable(struct device *dev,
 	ep92->gc.ctl |= (val << EP92_GC_ARC_EN_SHIFT) &
 		EP92_GC_ARC_EN_MASK;
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_cec_mute(struct device *dev,
+static ssize_t cec_mute_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1596,7 +1595,7 @@ static ssize_t ep92_sysfs_rda_cec_mute(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_cec_mute(struct device *dev,
+static ssize_t cec_mute_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1626,12 +1625,12 @@ static ssize_t ep92_sysfs_wta_cec_mute(struct device *dev,
 	ep92->gc.ctl |= (val << EP92_GC_CEC_MUTE_SHIFT) &
 		EP92_GC_CEC_MUTE_MASK;
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_cec_volume(struct device *dev,
+static ssize_t cec_volume_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1652,7 +1651,7 @@ static ssize_t ep92_sysfs_rda_cec_volume(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_cec_volume(struct device *dev,
+static ssize_t cec_volume_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int reg, val, rc;
@@ -1678,12 +1677,12 @@ static ssize_t ep92_sysfs_wta_cec_volume(struct device *dev,
 	snd_soc_component_write(ep92->component, EP92_GENERAL_CONTROL_3, reg);
 	ep92->gc.cec_volume = val & EP92_GC_CEC_VOLUME_MASK;
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static ssize_t ep92_sysfs_rda_runout(struct device *dev,
+static ssize_t runout_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1703,7 +1702,7 @@ static ssize_t ep92_sysfs_rda_runout(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_rda_force_inactive(struct device *dev,
+static ssize_t force_inactive_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1723,7 +1722,7 @@ static ssize_t ep92_sysfs_rda_force_inactive(struct device *dev,
 	return ret;
 }
 
-static ssize_t ep92_sysfs_wta_force_inactive(struct device *dev,
+static ssize_t force_inactive_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int val, rc;
@@ -1755,43 +1754,36 @@ static ssize_t ep92_sysfs_wta_force_inactive(struct device *dev,
 		ep92->poll_rem = 0;
 	}
 
-	rc = strnlen(buf, EP92_SYSFS_ENTRY_MAX_LEN);
+	rc = count;
 end:
 	return rc;
 }
 
-static DEVICE_ATTR(chipid, 0444, ep92_sysfs_rda_chipid, NULL);
-static DEVICE_ATTR(version, 0444, ep92_sysfs_rda_version, NULL);
-static DEVICE_ATTR(audio_state, 0444, ep92_sysfs_rda_audio_state, NULL);
-static DEVICE_ATTR(audio_format, 0444, ep92_sysfs_rda_audio_format, NULL);
-static DEVICE_ATTR(audio_rate, 0444, ep92_sysfs_rda_audio_rate, NULL);
-static DEVICE_ATTR(audio_layout, 0444, ep92_sysfs_rda_audio_layout, NULL);
-static DEVICE_ATTR(audio_ch_count, 0444, ep92_sysfs_rda_audio_ch_count, NULL);
-static DEVICE_ATTR(audio_ch_alloc, 0444, ep92_sysfs_rda_audio_ch_alloc, NULL);
-static DEVICE_ATTR(audio_preemph, 0444, ep92_sysfs_rda_audio_preemph, NULL);
-static DEVICE_ATTR(audio_avmute, 0444, ep92_sysfs_rda_avmute, NULL);
-static DEVICE_ATTR(link_on0, 0444, ep92_sysfs_rda_link_on0, NULL);
-static DEVICE_ATTR(link_on1, 0444, ep92_sysfs_rda_link_on1, NULL);
-static DEVICE_ATTR(link_on2, 0444, ep92_sysfs_rda_link_on2, NULL);
-static DEVICE_ATTR(out_plug, 0444, ep92_sysfs_rda_out_plug, NULL);
-static DEVICE_ATTR(video_latency, 0444, ep92_sysfs_rda_video_latency, NULL);
-static DEVICE_ATTR(arc_disable, 0644, ep92_sysfs_rda_arc_disable,
-	ep92_sysfs_wta_arc_disable);
-static DEVICE_ATTR(power_on, 0644, ep92_sysfs_rda_power, ep92_sysfs_wta_power);
-static DEVICE_ATTR(audio_path, 0644, ep92_sysfs_rda_audio_path,
-	ep92_sysfs_wta_audio_path);
-static DEVICE_ATTR(src_sel, 0644, ep92_sysfs_rda_src_sel,
-	ep92_sysfs_wta_src_sel);
-static DEVICE_ATTR(arc_enable, 0644, ep92_sysfs_rda_arc_enable,
-	ep92_sysfs_wta_arc_enable);
-static DEVICE_ATTR(cec_mute, 0644, ep92_sysfs_rda_cec_mute,
-	ep92_sysfs_wta_cec_mute);
-static DEVICE_ATTR(cec_volume, 0644, ep92_sysfs_rda_cec_volume,
-	ep92_sysfs_wta_cec_volume);
-static DEVICE_ATTR(runout, 0444, ep92_sysfs_rda_runout, NULL);
-static DEVICE_ATTR(force_inactive, 0644, ep92_sysfs_rda_force_inactive,
-	ep92_sysfs_wta_force_inactive);
-static DEVICE_ATTR(dsd_rate, 0444, ep92_sysfs_rda_dsd_rate, NULL);
+static DEVICE_ATTR_RO(chipid);
+static DEVICE_ATTR_RO(version);
+static DEVICE_ATTR_RO(audio_state);
+static DEVICE_ATTR_RO(audio_format);
+static DEVICE_ATTR_RO(audio_rate);
+static DEVICE_ATTR_RO(audio_layout);
+static DEVICE_ATTR_RO(audio_ch_count);
+static DEVICE_ATTR_RO(audio_ch_alloc);
+static DEVICE_ATTR_RO(audio_preemph);
+static DEVICE_ATTR_RO(audio_avmute);
+static DEVICE_ATTR_RO(link_on0);
+static DEVICE_ATTR_RO(link_on1);
+static DEVICE_ATTR_RO(link_on2);
+static DEVICE_ATTR_RO(out_plug);
+static DEVICE_ATTR_RO(video_latency);
+static DEVICE_ATTR_RW(arc_disable);
+static DEVICE_ATTR_RW(power_on);
+static DEVICE_ATTR_RW(audio_path);
+static DEVICE_ATTR_RW(src_sel);
+static DEVICE_ATTR_RW(arc_enable);
+static DEVICE_ATTR_RW(cec_mute);
+static DEVICE_ATTR_RW(cec_volume);
+static DEVICE_ATTR_RO(runout);
+static DEVICE_ATTR_RW(force_inactive);
+static DEVICE_ATTR_RO(dsd_rate);
 
 static struct attribute *ep92_fs_attrs[] = {
 	&dev_attr_chipid.attr,

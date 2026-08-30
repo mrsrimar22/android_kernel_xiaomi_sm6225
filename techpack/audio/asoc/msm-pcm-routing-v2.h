@@ -559,7 +559,7 @@ enum {
 };
 
 struct msm_pcm_routing_evt {
-	void (*event_func)(enum msm_pcm_routing_event, void *);
+	void (*event_func)(enum msm_pcm_routing_event, void *priv_data);
 	void *priv_data;
 };
 

@@ -65,8 +65,6 @@ static int wcd_measure_adc_continuous(struct wcd_mbhc *mbhc)
 	int retry = 3;
 	u8 adc_en = 0;
 
-	pr_debug("%s: enter\n", __func__);
-
 	/* Pre-requisites for ADC continuous measurement */
 	/* Read legacy electircal detection and disable */
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ELECT_SCHMT_ISRC, 0x00);
@@ -128,8 +126,6 @@ static int wcd_measure_adc_once(struct wcd_mbhc *mbhc, int mux_ctl)
 	int output_mv = 0;
 	u8 adc_en = 0;
 
-	pr_debug("%s: enter\n", __func__);
-
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_MODE, 0);
 	/* Read ADC Enable bit to restore after adc measurement */
 	WCD_MBHC_REG_READ(WCD_MBHC_ADC_EN, adc_en);
@@ -190,8 +186,6 @@ static int wcd_measure_adc_once(struct wcd_mbhc *mbhc, int mux_ctl)
 			__func__, adc_complete, adc_timeout, output_mv);
 		ret = output_mv;
 	}
-
-	pr_debug("%s: leave\n", __func__);
 
 	return ret;
 }
@@ -305,7 +299,6 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 	u8 elect_ctl = 0;
 	u8 adc_en = 0;
 
-	pr_debug("%s: enter\n", __func__);
 	/* Check for button press and plug detection */
 	if (wcd_swch_level_remove(mbhc)) {
 		pr_debug("%s: Switch level is low\n", __func__);
@@ -460,7 +453,6 @@ static bool wcd_mbhc_adc_check_for_spl_headset(struct wcd_mbhc *mbhc,
 	int output_mv = 0;
 	int adc_threshold = 0, adc_hph_threshold = 0;
 
-	pr_debug("%s: enter\n", __func__);
 	if (!mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic)
 		goto exit;
 
@@ -497,7 +489,6 @@ static bool wcd_mbhc_adc_check_for_spl_headset(struct wcd_mbhc *mbhc,
 		pr_debug("%s: Detected special HS (%d)\n", __func__, spl_hs);
 
 exit:
-	pr_debug("%s: leave\n", __func__);
 	return spl_hs;
 }
 
@@ -621,7 +612,6 @@ static void wcd_mbhc_adc_detect_plug_type(struct wcd_mbhc *mbhc)
 {
 	struct snd_soc_component *component = mbhc->component;
 
-	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	if (mbhc->mbhc_cb->hph_pull_down_ctrl)
@@ -640,7 +630,6 @@ static void wcd_mbhc_adc_detect_plug_type(struct wcd_mbhc *mbhc)
 	/* Re-initialize button press completion object */
 	reinit_completion(&mbhc->btn_press_compl);
 	wcd_schedule_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
-	pr_debug("%s: leave\n", __func__);
 }
 
 static void wcd_micbias_disable(struct wcd_mbhc *mbhc)
@@ -691,8 +680,6 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	int cross_conn;
 	int try = 0;
 	int hs_threshold, micbias_mv;
-
-	pr_debug("%s: enter\n", __func__);
 
 	mbhc = container_of(work, struct wcd_mbhc, correct_plug_swch);
 	component = mbhc->component;
@@ -1010,7 +997,6 @@ exit:
 		mbhc->mbhc_cb->hph_pull_down_ctrl(component, true);
 
 	mbhc->mbhc_cb->lock_sleep(mbhc, false);
-	pr_debug("%s: leave\n", __func__);
 }
 
 static irqreturn_t wcd_mbhc_adc_hs_rem_irq(int irq, void *data)
@@ -1021,7 +1007,6 @@ static irqreturn_t wcd_mbhc_adc_hs_rem_irq(int irq, void *data)
 	bool hphpa_on = false;
 	u8  moisture_status = 0;
 
-	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_LOCK(mbhc);
 
 	timeout = jiffies +
@@ -1105,7 +1090,6 @@ static irqreturn_t wcd_mbhc_adc_hs_rem_irq(int irq, void *data)
 	}
 exit:
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return IRQ_HANDLED;
 }
 
@@ -1115,8 +1099,6 @@ static irqreturn_t wcd_mbhc_adc_hs_ins_irq(int irq, void *data)
 	u8 clamp_state = 0;
 	u8 clamp_retry = WCD_MBHC_FAKE_INS_RETRY;
 
-	pr_debug("%s: enter\n", __func__);
-
 	/*
 	 * ADC COMPLETE and ELEC_REM interrupts are both enabled for HEADPHONE,
 	 * need to reject the ADC COMPLETE interrupt which follows ELEC_REM one
@@ -1124,7 +1106,6 @@ static irqreturn_t wcd_mbhc_adc_hs_ins_irq(int irq, void *data)
 	 */
 	if (mbhc->extn_cable_hph_rem == true) {
 		mbhc->extn_cable_hph_rem = false;
-		pr_debug("%s: leave\n", __func__);
 		return IRQ_HANDLED;
 	}
 
@@ -1172,7 +1153,6 @@ static irqreturn_t wcd_mbhc_adc_hs_ins_irq(int irq, void *data)
 	mbhc->force_linein = false;
 	wcd_mbhc_adc_detect_plug_type(mbhc);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return IRQ_HANDLED;
 }
 

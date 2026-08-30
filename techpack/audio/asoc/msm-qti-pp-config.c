@@ -961,8 +961,8 @@ static int msm_qti_pp_asphere_send_params(int port_id, int copp_idx, bool force)
 					      (u8 *) &asphere_state.strength,
 					      &param_size);
 		if (ret) {
-			pr_err("%s: Failed to pack params for audio sphere"
-				" strength, error %d\n", __func__, ret);
+			pr_err("%s: Failed to pack params for audio sphere strength, error %d\n",
+				__func__, ret);
 			goto done;
 		}
 		packed_params_size += param_size;
@@ -976,8 +976,8 @@ static int msm_qti_pp_asphere_send_params(int port_id, int copp_idx, bool force)
 					(u8 *) &asphere_state.enabled,
 					&param_size);
 		if (ret) {
-			pr_err("%s: Failed to pack params for audio sphere"
-				" enable, error %d\n", __func__, ret);
+			pr_err("%s: Failed to pack params for audio sphere enable, error %d\n",
+				__func__, ret);
 			goto done;
 		}
 		packed_params_size += param_size;
