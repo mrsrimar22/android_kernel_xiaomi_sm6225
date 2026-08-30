@@ -87,7 +87,7 @@ int msm_vidc_querycap(void *instance, struct v4l2_capability *cap)
 	if (!inst || !cap)
 		return -EINVAL;
 
-	strlcpy(cap->driver, MSM_VIDC_DRV_NAME, sizeof(cap->driver));
+	strscpy(cap->driver, MSM_VIDC_DRV_NAME, sizeof(cap->driver));
 	cap->bus_info[0] = 0;
 	cap->version = MSM_VIDC_VERSION;
 	cap->device_caps = V4L2_CAP_VIDEO_CAPTURE_MPLANE |
@@ -98,9 +98,9 @@ int msm_vidc_querycap(void *instance, struct v4l2_capability *cap)
 	memset(cap->reserved, 0, sizeof(cap->reserved));
 
 	if (inst->session_type == MSM_VIDC_DECODER)
-		strlcpy(cap->card, MSM_VDEC_DVC_NAME, sizeof(cap->card));
+		strscpy(cap->card, MSM_VDEC_DVC_NAME, sizeof(cap->card));
 	else if (inst->session_type == MSM_VIDC_ENCODER)
-		strlcpy(cap->card, MSM_VENC_DVC_NAME, sizeof(cap->card));
+		strscpy(cap->card, MSM_VENC_DVC_NAME, sizeof(cap->card));
 	else
 		return -EINVAL;
 
@@ -1025,9 +1025,8 @@ static inline int stop_streaming(struct msm_vidc_inst *inst)
 		s_vpr_e(inst->sid, "Failed to move inst: %pK to state %d\n",
 				inst, MSM_VIDC_RELEASE_RESOURCES_DONE);
 
-	if (is_encode_session(inst)) {
+	if (is_encode_session(inst))
 		inst->all_intra = false;
-	}
 
 	msm_clock_data_reset(inst);
 
@@ -1572,22 +1571,24 @@ fail_bufq_output:
 	vb2_queue_release(&inst->bufq[OUTPUT_PORT].vb2_bufq);
 fail_bufq_capture:
 	msm_comm_ctrl_deinit(inst);
-	mutex_destroy(&inst->sync_lock);
-	mutex_destroy(&inst->bufq[OUTPUT_PORT].lock);
-	mutex_destroy(&inst->bufq[INPUT_PORT].lock);
-	mutex_destroy(&inst->lock);
 
-	DEINIT_MSM_VIDC_LIST(&inst->scratchbufs);
-	DEINIT_MSM_VIDC_LIST(&inst->persistbufs);
-	DEINIT_MSM_VIDC_LIST(&inst->pending_getpropq);
-	DEINIT_MSM_VIDC_LIST(&inst->outputbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->window_data);
+	DEINIT_MSM_VIDC_LIST(&inst->fbd_data);
+	DEINIT_MSM_VIDC_LIST(&inst->etb_data);
+	DEINIT_MSM_VIDC_LIST(&inst->eosbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->refbufs);
 	DEINIT_MSM_VIDC_LIST(&inst->cvpbufs);
 	DEINIT_MSM_VIDC_LIST(&inst->registeredbufs);
-	DEINIT_MSM_VIDC_LIST(&inst->eosbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->outputbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->pending_getpropq);
+	DEINIT_MSM_VIDC_LIST(&inst->persistbufs);
 	DEINIT_MSM_VIDC_LIST(&inst->input_crs);
-	DEINIT_MSM_VIDC_LIST(&inst->etb_data);
-	DEINIT_MSM_VIDC_LIST(&inst->fbd_data);
-	DEINIT_MSM_VIDC_LIST(&inst->window_data);
+	DEINIT_MSM_VIDC_LIST(&inst->scratchbufs);
+
+	mutex_destroy(&inst->lock);
+	mutex_destroy(&inst->bufq[INPUT_PORT].lock);
+	mutex_destroy(&inst->bufq[OUTPUT_PORT].lock);
+	mutex_destroy(&inst->sync_lock);
 
 err_invalid_sid:
 	put_sid(inst->sid);
@@ -1701,24 +1702,25 @@ int msm_vidc_destroy(struct msm_vidc_inst *inst)
 	v4l2_fh_del(&inst->event_handler);
 	v4l2_fh_exit(&inst->event_handler);
 
-	DEINIT_MSM_VIDC_LIST(&inst->scratchbufs);
-	DEINIT_MSM_VIDC_LIST(&inst->persistbufs);
-	DEINIT_MSM_VIDC_LIST(&inst->pending_getpropq);
-	DEINIT_MSM_VIDC_LIST(&inst->outputbufs);
+	msm_vidc_debugfs_deinit_inst(inst);
+
+	DEINIT_MSM_VIDC_LIST(&inst->window_data);
+	DEINIT_MSM_VIDC_LIST(&inst->fbd_data);
+	DEINIT_MSM_VIDC_LIST(&inst->etb_data);
+	DEINIT_MSM_VIDC_LIST(&inst->eosbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->refbufs);
 	DEINIT_MSM_VIDC_LIST(&inst->cvpbufs);
 	DEINIT_MSM_VIDC_LIST(&inst->registeredbufs);
-	DEINIT_MSM_VIDC_LIST(&inst->eosbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->outputbufs);
+	DEINIT_MSM_VIDC_LIST(&inst->pending_getpropq);
+	DEINIT_MSM_VIDC_LIST(&inst->persistbufs);
 	DEINIT_MSM_VIDC_LIST(&inst->input_crs);
-	DEINIT_MSM_VIDC_LIST(&inst->etb_data);
-	DEINIT_MSM_VIDC_LIST(&inst->fbd_data);
-	DEINIT_MSM_VIDC_LIST(&inst->window_data);
+	DEINIT_MSM_VIDC_LIST(&inst->scratchbufs);
 
-	mutex_destroy(&inst->sync_lock);
-	mutex_destroy(&inst->bufq[OUTPUT_PORT].lock);
-	mutex_destroy(&inst->bufq[INPUT_PORT].lock);
 	mutex_destroy(&inst->lock);
-
-	msm_vidc_debugfs_deinit_inst(inst);
+	mutex_destroy(&inst->bufq[INPUT_PORT].lock);
+	mutex_destroy(&inst->bufq[OUTPUT_PORT].lock);
+	mutex_destroy(&inst->sync_lock);
 
 	pr_info(VIDC_DBG_TAG "Closed video instance: %pK\n",
 			"high", inst->sid, get_codec_name(inst->sid),
