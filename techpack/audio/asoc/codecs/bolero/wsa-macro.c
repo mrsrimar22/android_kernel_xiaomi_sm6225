@@ -1066,16 +1066,16 @@ static int wsa_macro_enable_vi_feedback(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 
 	switch (wsa_priv->pcm_rate_vi) {
-		case 48000:
-			val = 0x04;
-			break;
-		case 24000:
-			val = 0x02;
-			break;
-		case 8000:
-		default:
-			val = 0x00;
-			break;
+	case 48000:
+		val = 0x04;
+		break;
+	case 24000:
+		val = 0x02;
+		break;
+	case 8000:
+	default:
+		val = 0x00;
+		break;
 	}
 
 	switch (event) {
@@ -3042,12 +3042,12 @@ static void wsa_macro_add_child_devices(struct work_struct *work)
 	for_each_available_child_of_node(wsa_priv->dev->of_node, node) {
 		if (strnstr(node->name, "wsa_swr_master",
 				strlen("wsa_swr_master")) != NULL)
-			strlcpy(plat_dev_name, "wsa_swr_ctrl",
-				(WSA_MACRO_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, "wsa_swr_ctrl",
+				sizeof(plat_dev_name));
 		else if (strnstr(node->name, "msm_cdc_pinctrl",
 				 strlen("msm_cdc_pinctrl")) != NULL)
-			strlcpy(plat_dev_name, node->name,
-				(WSA_MACRO_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, node->name,
+				sizeof(plat_dev_name));
 		else
 			continue;
 
@@ -3256,6 +3256,8 @@ static int wsa_macro_remove(struct platform_device *pdev)
 
 	if (!wsa_priv)
 		return -EINVAL;
+
+	cancel_work_sync(&wsa_priv->wsa_macro_add_child_devices_work);
 
 	for (count = 0; count < wsa_priv->child_count &&
 		count < WSA_MACRO_CHILD_DEVICES_MAX; count++)

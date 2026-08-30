@@ -459,7 +459,7 @@ static int va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 			bolero_register_event_listener(component, false);
 		}
 		if (bolero_tx_clk_switch(component, CLK_SRC_TX_RCG))
-			dev_dbg(va_dev, "%s: clock switch failed\n",__func__);
+			dev_dbg(va_dev, "%s: clock switch failed\n", __func__);
 		if (va_priv->lpass_audio_hw_vote)
 			digital_cdc_rsc_mgr_hw_vote_disable(
 				va_priv->lpass_audio_hw_vote);
@@ -519,11 +519,10 @@ static int va_macro_mclk_event(struct snd_soc_dapm_widget *w,
 			ret = bolero_tx_mclk_enable(component, 1);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (va_priv->lpi_enable) {
+		if (va_priv->lpi_enable)
 			va_macro_mclk_enable(va_priv, 0, true);
-		} else {
+		else
 			bolero_tx_mclk_enable(component, 0);
-		}
 
 		if (va_priv->tx_clk_status > 0) {
 			bolero_clk_rsc_request_clock(va_priv->dev,
@@ -1159,8 +1158,8 @@ static int va_macro_enable_dec(struct snd_soc_dapm_widget *w,
 			snd_soc_component_update_bits(component,
 				hpf_gate_reg, 0x01, 0x00);
 			/*
-		 	 * Minimum 1 clk cycle delay is required as per HW spec
-		 	 */
+			 * Minimum 1 clk cycle delay is required as per HW spec
+			 */
 			usleep_range(1000, 1010);
 		}
 		hpf_cut_off_freq = (snd_soc_component_read32(
@@ -2882,15 +2881,15 @@ static void va_macro_add_child_devices(struct work_struct *work)
 	for_each_available_child_of_node(va_priv->dev->of_node, node) {
 		va_swr_master_node = false;
 		if (strnstr(node->name, "va_swr_master",
-                                strlen("va_swr_master")) != NULL)
+				strlen("va_swr_master")) != NULL)
 			va_swr_master_node = true;
 
 		if (va_swr_master_node)
-			strlcpy(plat_dev_name, "va_swr_ctrl",
-				(VA_MACRO_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, "va_swr_ctrl",
+				sizeof(plat_dev_name));
 		else
-			strlcpy(plat_dev_name, node->name,
-				(VA_MACRO_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, node->name,
+				sizeof(plat_dev_name));
 
 		pdev = platform_device_alloc(plat_dev_name, -1);
 		if (!pdev) {
@@ -3198,8 +3197,8 @@ static int va_macro_remove(struct platform_device *pdev)
 	if (!va_priv)
 		return -EINVAL;
 	if (va_priv->is_used_va_swr_gpio) {
-		if (va_priv->swr_ctrl_data)
-			kfree(va_priv->swr_ctrl_data);
+		cancel_work_sync(&va_priv->va_macro_add_child_devices_work);
+		kfree(va_priv->swr_ctrl_data);
 		for (count = 0; count < va_priv->child_count &&
 			count < VA_MACRO_CHILD_DEVICES_MAX; count++)
 			platform_device_unregister(

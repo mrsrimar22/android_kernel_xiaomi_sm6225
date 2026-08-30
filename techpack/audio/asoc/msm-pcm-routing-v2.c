@@ -1173,7 +1173,6 @@ static struct cal_block_data *msm_routing_find_topology_by_path(int path,
 	struct list_head		*ptr, *next;
 	struct cal_block_data		*cal_block = NULL;
 	struct audio_cal_info_adm_top *cal_info;
-	pr_debug("%s\n", __func__);
 
 	list_for_each_safe(ptr, next,
 		&cal_data[cal_index]->cal_blocks) {
@@ -1183,9 +1182,8 @@ static struct cal_block_data *msm_routing_find_topology_by_path(int path,
 
 		if (cal_utils_is_cal_stale(cal_block))
 			continue;
-		cal_info = (struct audio_cal_info_adm_top *)
-                      	 	 cal_block->cal_info;
-		if ((cal_info->path == path)  &&
+		cal_info = (struct audio_cal_info_adm_top *)cal_block->cal_info;
+		if ((cal_info->path == path) &&
 			(cal_info->app_type == app_type) &&
 			(cal_info->acdb_id == acdb_id)) {
 			return cal_block;
@@ -1205,8 +1203,6 @@ static struct cal_block_data *msm_routing_find_topology(int path,
 	struct cal_block_data *cal_block = NULL;
 	struct audio_cal_info_adm_top *cal_info;
 
-	pr_debug("%s\n", __func__);
-
 	list_for_each_safe(ptr, next,
 		&cal_data[cal_index]->cal_blocks) {
 
@@ -1224,8 +1220,8 @@ static struct cal_block_data *msm_routing_find_topology(int path,
 			return cal_block;
 		}
 	}
-	pr_debug("%s: Can't find topology for path %d, app %d, "
-		 "acdb_id %d %s\n",  __func__, path, app_type, acdb_id,
+	pr_debug("%s: Can't find topology for path %d, app %d, acdb_id %d %s\n",
+		 __func__, path, app_type, acdb_id,
 		 exact ? "fail" : "defaulting to search by path");
 	return exact ? NULL : msm_routing_find_topology_by_path(path,
 								cal_index,
@@ -1317,6 +1313,7 @@ static void msm_pcm_routing_build_matrix(int fedai_id, int sess_type,
 		   (msm_bedais[i].active) &&
 		   (test_bit(fedai_id, &msm_bedais[i].fe_sessions[0]))) {
 			int port_id = get_port_id(msm_bedais[i].port_id);
+
 			for (j = 0; j < MAX_COPPS_PER_PORT; j++) {
 				unsigned long copp =
 				      session_copp_map[fedai_id][sess_type][i];
@@ -1551,8 +1548,7 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 			pr_debug("%s: Before adm open topology %d\n", __func__,
 				topology);
 
-			be_bit_width = msm_routing_get_bit_width(
-                                                msm_bedais[i].format);
+			be_bit_width = msm_routing_get_bit_width(msm_bedais[i].format);
 			if (hifi_filter_enabled && (msm_bedais[i].sample_rate
 				== 384000 || msm_bedais[i].sample_rate ==
 				352800) && be_bit_width == 32)
@@ -1913,11 +1909,10 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 			topology = msm_routing_get_adm_topology(fedai_id,
 								session_type,
 								i);
-			be_bit_width = msm_routing_get_bit_width(
-                                                msm_bedais[i].format);
+			be_bit_width = msm_routing_get_bit_width(msm_bedais[i].format);
 
-			if (hifi_filter_enabled && (msm_bedais[i].sample_rate ==
-                                384000 ||msm_bedais[i].sample_rate == 352800)
+			if (hifi_filter_enabled && (msm_bedais[i].sample_rate == 384000 ||
+					msm_bedais[i].sample_rate == 352800)
 				&& be_bit_width == 32)
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
@@ -2195,11 +2190,10 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			acdb_dev_id =
 			fe_dai_app_type_cfg[val][session_type][reg].acdb_dev_id;
 
-			be_bit_width = msm_routing_get_bit_width(
-                                                msm_bedais[reg].format);
-			if (hifi_filter_enabled && (msm_bedais[reg].sample_rate
-				== 384000 ||msm_bedais[reg].sample_rate ==
-				352800) && be_bit_width == 32)
+			be_bit_width = msm_routing_get_bit_width(msm_bedais[reg].format);
+			if (hifi_filter_enabled && (msm_bedais[reg].sample_rate == 384000 ||
+					msm_bedais[reg].sample_rate == 352800)
+				&& be_bit_width == 32)
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
 			copp_idx = adm_open(port_id, path_type,
@@ -3120,8 +3114,8 @@ static int msm_routing_lsm_port_put(struct snd_kcontrol *kcontrol,
 	set_lsm_port(lsm_port);
 	msm_routing_get_lsm_fe_idx(kcontrol, &fe_idx);
 	lsm_port_index[fe_idx] = ucontrol->value.integer.value[0];
-        /* Set the default AFE LSM Port to 0xffff */
-	if(lsm_port_idx <= 0 || lsm_port_idx >= ARRAY_SIZE(lsm_port_text))
+	/* Set the default AFE LSM Port to 0xffff */
+	if (lsm_port_idx <= 0 || lsm_port_idx >= ARRAY_SIZE(lsm_port_text))
 		lsm_port = 0xffff;
 	afe_set_lsm_afe_port_id(fe_idx, lsm_port);
 
@@ -3564,7 +3558,7 @@ static const char *const be_name[] = {
 "INT2_MI2S_TX", "INT3_MI2S_RX", "INT3_MI2S_TX", "INT4_MI2S_RX",
 "INT4_MI2S_TX", "INT5_MI2S_RX", "INT5_MI2S_TX", "INT6_MI2S_RX",
 "INT6_MI2S_TX", "SEN_AUXPCM_RX", "SEN_AUXPCM_TX", "SENARY_MI2S_RX",
-"WSA_CDC_DMA_RX_0", "WSA_CDC_DMA_TX_0", "WSA_CDC_DMA_RX_1","WSA_CDC_DMA_TX_1",
+"WSA_CDC_DMA_RX_0", "WSA_CDC_DMA_TX_0", "WSA_CDC_DMA_RX_1", "WSA_CDC_DMA_TX_1",
 "WSA_CDC_DMA_TX_2", "VA_CDC_DMA_TX_0", "VA_CDC_DMA_TX_1", "VA_CDC_DMA_TX_2",
 "RX_CDC_DMA_RX_0", "TX_CDC_DMA_TX_0", "RX_CDC_DMA_RX_1", "TX_CDC_DMA_TX_1",
 "RX_CDC_DMA_RX_2", "TX_CDC_DMA_TX_2", "RX_CDC_DMA_RX_3", "TX_CDC_DMA_TX_3",
@@ -3642,7 +3636,7 @@ static int msm_pcm_get_ctl_enum_info(struct snd_ctl_elem_info *uinfo,
 		sizeof(uinfo->value.enumerated.name),
 		"ALSA: too long item name '%s'\n",
 		names[uinfo->value.enumerated.item]);
-	strlcpy(uinfo->value.enumerated.name,
+	strscpy(uinfo->value.enumerated.name,
 		names[uinfo->value.enumerated.item],
 		sizeof(uinfo->value.enumerated.name));
 	return 0;
@@ -23088,8 +23082,6 @@ static int msm_routing_put_app_type_cfg_control(struct snd_kcontrol *kcontrol,
 	int i = 0, j;
 	int num_app_types = ucontrol->value.integer.value[i++];
 
-	pr_debug("%s\n", __func__);
-
 	memset(app_type_cfg, 0, MAX_APP_TYPES*
 				sizeof(struct msm_pcm_routing_app_type_data));
 	if (num_app_types > MAX_APP_TYPES || num_app_types < 0) {
@@ -23410,7 +23402,8 @@ static const struct snd_kcontrol_new use_ffecns_freeze_event_controls[] = {
 };
 
 int msm_routing_get_rms_value_control(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol) {
+				struct snd_ctl_elem_value *ucontrol)
+{
 	int rc = 0;
 	int be_idx = 0;
 	char *param_value;
@@ -24130,14 +24123,12 @@ static int spkr_prot_put_vi_rch_port(struct snd_kcontrol *kcontrol,
 static int spkr_prot_get_vi_lch_port(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s\n", __func__);
 	return 0;
 }
 
 static int spkr_prot_get_vi_rch_port(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s\n", __func__);
 	ucontrol->value.enumerated.item[0] = 0;
 	return 0;
 }
@@ -30764,8 +30755,7 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				|| (fdai->passthr_mode == COMPRESSED_PASSTHROUGH_IEC61937))
 				topology = COMPRESSED_PASSTHROUGH_NONE_TOPOLOGY;
 
-			be_bit_width = msm_routing_get_bit_width(
-                                                bedai->format);
+			be_bit_width = msm_routing_get_bit_width(bedai->format);
 
 			if (hifi_filter_enabled && (bedai->sample_rate == 384000
 				|| bedai->sample_rate == 352800) &&
@@ -31090,7 +31080,6 @@ static int msm_routing_put_device_pp_params_mixer(struct snd_kcontrol *kcontrol,
 static int msm_routing_get_device_pp_params_mixer(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s:msm_routing_get_device_pp_params_mixer", __func__);
 	return 0;
 }
 
@@ -31231,9 +31220,9 @@ static int msm_routing_be_dai_name_table_tlv_get(struct snd_kcontrol *kcontrol,
 	 */
 	for (i = 0; i < MSM_BACKEND_DAI_MAX; i++) {
 		be_dai_name_table[i].be_id = i;
-		strlcpy(be_dai_name_table[i].be_name,
+		strscpy(be_dai_name_table[i].be_name,
 			msm_bedais[i].name,
-			LPASS_BE_NAME_MAX_LENGTH);
+			sizeof(be_dai_name_table[i].be_name));
 	}
 
 	ret = copy_to_user(bytes, &be_dai_name_table,
@@ -31423,31 +31412,28 @@ void msm_routing_add_doa_control(struct snd_soc_component *component)
 #else
 void msm_routing_add_doa_control(struct snd_soc_component *component)
 {
-	return;
 }
 #endif
 
 #ifndef CONFIG_TDM_DISABLE
 static void snd_soc_dapm_new_controls_tdm(struct snd_soc_component *component)
 {
-        snd_soc_dapm_new_controls(&component->dapm,
-                                msm_qdsp6_widgets_tdm,
-                                ARRAY_SIZE(msm_qdsp6_widgets_tdm));
+	snd_soc_dapm_new_controls(&component->dapm,
+				msm_qdsp6_widgets_tdm,
+				ARRAY_SIZE(msm_qdsp6_widgets_tdm));
 }
 static void snd_soc_dapm_add_routes_tdm(struct snd_soc_component *component)
 {
-        snd_soc_dapm_add_routes(&component->dapm, intercon_tdm,
-                ARRAY_SIZE(intercon_tdm));
+	snd_soc_dapm_add_routes(&component->dapm,
+				intercon_tdm,
+				ARRAY_SIZE(intercon_tdm));
 }
 #else
 static void snd_soc_dapm_new_controls_tdm(struct snd_soc_component *component)
 {
-        return;
 }
-
 static void snd_soc_dapm_add_routes_tdm(struct snd_soc_component *component)
 {
-        return;
 }
 #endif
 
@@ -31455,46 +31441,44 @@ static void snd_soc_dapm_add_routes_tdm(struct snd_soc_component *component)
 #ifndef CONFIG_MI2S_DISABLE
 static void snd_soc_dapm_new_controls_mi2s(struct snd_soc_component *component)
 {
-        snd_soc_dapm_new_controls(&component->dapm,
-                                msm_qdsp6_widgets_mi2s,
-                                ARRAY_SIZE(msm_qdsp6_widgets_mi2s));
+	snd_soc_dapm_new_controls(&component->dapm,
+				msm_qdsp6_widgets_mi2s,
+				ARRAY_SIZE(msm_qdsp6_widgets_mi2s));
 }
 static void snd_soc_dapm_add_routes_mi2s(struct snd_soc_component *component)
 {
-        snd_soc_dapm_add_routes(&component->dapm, intercon_mi2s,
-                ARRAY_SIZE(intercon_mi2s));
+	snd_soc_dapm_add_routes(&component->dapm,
+				intercon_mi2s,
+				ARRAY_SIZE(intercon_mi2s));
 }
 #else
 static void snd_soc_dapm_new_controls_mi2s(struct snd_soc_component *component)
 {
-        return;
 }
 static void snd_soc_dapm_add_routes_mi2s(struct snd_soc_component *component)
 {
-        return;
 }
 #endif
 
 #ifndef CONFIG_AUXPCM_DISABLE
 static void snd_soc_dapm_new_controls_aux_pcm(struct snd_soc_component *component)
 {
-        snd_soc_dapm_new_controls(&component->dapm,
-                                msm_qdsp6_widgets_aux_pcm,
-                                ARRAY_SIZE(msm_qdsp6_widgets_aux_pcm));
+	snd_soc_dapm_new_controls(&component->dapm,
+				msm_qdsp6_widgets_aux_pcm,
+				ARRAY_SIZE(msm_qdsp6_widgets_aux_pcm));
 }
 static void snd_soc_dapm_add_routes_aux_pcm(struct snd_soc_component *component)
 {
-        snd_soc_dapm_add_routes(&component->dapm, intercon_aux_pcm,
-                ARRAY_SIZE(intercon_aux_pcm));
+	snd_soc_dapm_add_routes(&component->dapm,
+				intercon_aux_pcm,
+				ARRAY_SIZE(intercon_aux_pcm));
 }
 #else
 static void snd_soc_dapm_new_controls_aux_pcm(struct snd_soc_component *component)
 {
-        return;
 }
 static void snd_soc_dapm_add_routes_aux_pcm(struct snd_soc_component *component)
 {
-        return;
 }
 #endif
 
@@ -31691,7 +31675,6 @@ static int msm_routing_set_cal(int32_t cal_type,
 {
 	int ret = 0;
 	int cal_index;
-	pr_debug("%s\n", __func__);
 
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
@@ -31719,8 +31702,6 @@ done:
 
 static void msm_routing_delete_cal_data(void)
 {
-	pr_debug("%s\n", __func__);
-
 	cal_utils_destroy_cal_types(MAX_ROUTING_CAL_TYPES, &cal_data[0]);
 }
 
@@ -31738,7 +31719,6 @@ static int msm_routing_init_cal_data(void)
 		msm_routing_set_cal, NULL, NULL} },
 		{NULL, NULL, cal_utils_match_buf_num} },
 	};
-	pr_debug("%s\n", __func__);
 
 	ret = cal_utils_create_cal_types(MAX_ROUTING_CAL_TYPES, &cal_data[0],
 		&cal_type_info[0]);
@@ -31757,6 +31737,8 @@ err:
 
 int __init msm_soc_routing_platform_init(void)
 {
+	int ret;
+
 	mutex_init(&routing_lock);
 	if (msm_routing_init_cal_data())
 		pr_err("%s: could not init cal data!\n", __func__);
@@ -31767,15 +31749,23 @@ int __init msm_soc_routing_platform_init(void)
 	memset(&be_dai_name_table, 0, sizeof(be_dai_name_table));
 	memset(&last_be_id_configured, 0, sizeof(last_be_id_configured));
 
-	return platform_driver_register(&msm_routing_pcm_driver);
+	ret = platform_driver_register(&msm_routing_pcm_driver);
+	if (ret) {
+		afe_set_routing_callback(NULL);
+		msm_routing_delete_cal_data();
+		mutex_destroy(&routing_lock);
+	}
+	return ret;
 }
 
 void msm_soc_routing_platform_exit(void)
 {
-	msm_routing_delete_cal_data();
-	memset(&be_dai_name_table, 0, sizeof(be_dai_name_table));
-	mutex_destroy(&routing_lock);
 	platform_driver_unregister(&msm_routing_pcm_driver);
+	memset(&last_be_id_configured, 0, sizeof(last_be_id_configured));
+	memset(&be_dai_name_table, 0, sizeof(be_dai_name_table));
+	afe_set_routing_callback(NULL);
+	msm_routing_delete_cal_data();
+	mutex_destroy(&routing_lock);
 }
 
 MODULE_DESCRIPTION("MSM routing platform driver");

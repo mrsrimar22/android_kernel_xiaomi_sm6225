@@ -115,7 +115,7 @@ enum {
 };
 
 static const struct comp_coeff_val
-			comp_coeff_table [HPH_MODE_MAX][COMP_MAX_COEFF] = {
+			comp_coeff_table[HPH_MODE_MAX][COMP_MAX_COEFF] = {
 	{
 		{0x40, 0x00},
 		{0x4C, 0x00},
@@ -1449,8 +1449,7 @@ static int rx_macro_event_handler(struct snd_soc_component *component,
 					BOLERO_CDC_RX_RX1_RX_VOL_CTL, 0xFF,
 					(rx_priv->rx1_gain_val -
 					 RX_MACRO_MOD_GAIN));
-		}
-		else {
+		} else {
 			/* Reset gain value to default */
 			if ((rx_priv->rx0_gain_val >=
 			    (RX_MACRO_GAIN_VAL_UNITY - RX_MACRO_MOD_GAIN)) &&
@@ -3954,7 +3953,7 @@ static void rx_macro_add_child_devices(struct work_struct *work)
 		return;
 	}
 
-	if(!rx_priv->dev->of_node) {
+	if (!rx_priv->dev->of_node) {
 		dev_err(rx_priv->dev,
 			"%s: DT node for RX dev does not exist\n", __func__);
 		return;
@@ -3969,12 +3968,12 @@ static void rx_macro_add_child_devices(struct work_struct *work)
 				strlen("rx_swr_master")) != NULL)
 			rx_swr_master_node = true;
 
-		if(rx_swr_master_node)
-			strlcpy(plat_dev_name, "rx_swr_ctrl",
-				(RX_SWR_STRING_LEN - 1));
+		if (rx_swr_master_node)
+			strscpy(plat_dev_name, "rx_swr_ctrl",
+				sizeof(plat_dev_name));
 		else
-			strlcpy(plat_dev_name, node->name,
-				(RX_SWR_STRING_LEN - 1));
+			strscpy(plat_dev_name, node->name,
+				sizeof(plat_dev_name));
 
 		pdev = platform_device_alloc(plat_dev_name, -1);
 		if (!pdev) {
@@ -4196,6 +4195,8 @@ static int rx_macro_remove(struct platform_device *pdev)
 
 	if (!rx_priv)
 		return -EINVAL;
+
+	cancel_work_sync(&rx_priv->rx_macro_add_child_devices_work);
 
 	for (count = 0; count < rx_priv->child_count &&
 		count < RX_MACRO_CHILD_DEVICES_MAX; count++)

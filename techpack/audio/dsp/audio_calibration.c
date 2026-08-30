@@ -35,8 +35,6 @@ static bool callbacks_are_equal(struct audio_cal_callbacks *callback1,
 	struct audio_cal_callbacks *call1 = callback1;
 	struct audio_cal_callbacks *call2 = callback2;
 
-	pr_debug("%s\n", __func__);
-
 	if ((call1 == NULL) && (call2 == NULL))
 		ret = true;
 	else if ((call1 == NULL) || (call2 == NULL))
@@ -58,8 +56,6 @@ int audio_cal_deregister(int num_cal_types,
 	int i = 0;
 	struct list_head *ptr, *next;
 	struct audio_cal_client_info *client_info_node = NULL;
-
-	pr_debug("%s\n", __func__);
 
 	if (reg_data == NULL) {
 		pr_err("%s: reg_data is NULL!\n", __func__);
@@ -112,8 +108,6 @@ int audio_cal_register(int num_cal_types,
 	int i = 0;
 	struct audio_cal_client_info *client_info_node = NULL;
 	struct audio_cal_callbacks *callback_node = NULL;
-
-	pr_debug("%s\n", __func__);
 
 	if (reg_data == NULL) {
 		pr_err("%s: callbacks are NULL!\n", __func__);
@@ -176,8 +170,6 @@ static int call_allocs(int32_t cal_type,
 	struct list_head *ptr, *next;
 	struct audio_cal_client_info *client_info_node = NULL;
 
-	pr_debug("%s\n", __func__);
-
 	list_for_each_safe(ptr, next,
 			&audio_cal.client_info[cal_type]) {
 
@@ -187,8 +179,7 @@ static int call_allocs(int32_t cal_type,
 		if (client_info_node->callbacks->alloc == NULL)
 			continue;
 
-		ret2 = client_info_node->callbacks->
-			alloc(cal_type, cal_type_size, data);
+		ret2 = client_info_node->callbacks->alloc(cal_type, cal_type_size, data);
 		if (ret2 < 0) {
 			pr_err("%s: alloc failed!\n", __func__);
 			ret = ret2;
@@ -216,8 +207,7 @@ static int call_deallocs(int32_t cal_type,
 		if (client_info_node->callbacks->dealloc == NULL)
 			continue;
 
-		ret2 = client_info_node->callbacks->
-			dealloc(cal_type, cal_type_size, data);
+		ret2 = client_info_node->callbacks->dealloc(cal_type, cal_type_size, data);
 		if (ret2 < 0) {
 			pr_err("%s: dealloc failed!\n", __func__);
 			ret = ret2;
@@ -245,8 +235,7 @@ static int call_pre_cals(int32_t cal_type,
 		if (client_info_node->callbacks->pre_cal == NULL)
 			continue;
 
-		ret2 = client_info_node->callbacks->
-			pre_cal(cal_type, cal_type_size, data);
+		ret2 = client_info_node->callbacks->pre_cal(cal_type, cal_type_size, data);
 		if (ret2 < 0) {
 			pr_err("%s: pre_cal failed!\n", __func__);
 			ret = ret2;
@@ -274,8 +263,7 @@ static int call_post_cals(int32_t cal_type,
 		if (client_info_node->callbacks->post_cal == NULL)
 			continue;
 
-		ret2 = client_info_node->callbacks->
-			post_cal(cal_type, cal_type_size, data);
+		ret2 = client_info_node->callbacks->post_cal(cal_type, cal_type_size, data);
 		if (ret2 < 0) {
 			pr_err("%s: post_cal failed!\n", __func__);
 			ret = ret2;
@@ -303,8 +291,7 @@ static int call_set_cals(int32_t cal_type,
 		if (client_info_node->callbacks->set_cal == NULL)
 			continue;
 
-		ret2 = client_info_node->callbacks->
-			set_cal(cal_type, cal_type_size, data);
+		ret2 = client_info_node->callbacks->set_cal(cal_type, cal_type_size, data);
 		if (ret2 < 0) {
 			pr_err("%s: set_cal failed!\n", __func__);
 			ret = ret2;
@@ -332,8 +319,7 @@ static int call_get_cals(int32_t cal_type,
 		if (client_info_node->callbacks->get_cal == NULL)
 			continue;
 
-		ret2 = client_info_node->callbacks->
-			get_cal(cal_type, cal_type_size, data);
+		ret2 = client_info_node->callbacks->get_cal(cal_type, cal_type_size, data);
 		if (ret2 < 0) {
 			pr_err("%s: get_cal failed!\n", __func__);
 			ret = ret2;
@@ -345,8 +331,6 @@ static int call_get_cals(int32_t cal_type,
 static int audio_cal_open(struct inode *inode, struct file *f)
 {
 	int ret = 0;
-
-	pr_debug("%s\n", __func__);
 
 	mutex_lock(&audio_cal.common_lock);
 	audio_cal.ref_count++;
@@ -360,8 +344,6 @@ static void dealloc_all_clients(void)
 	int i = 0;
 	struct audio_cal_type_dealloc dealloc_data;
 
-	pr_debug("%s\n", __func__);
-
 	dealloc_data.cal_hdr.version = VERSION_0_0;
 	dealloc_data.cal_hdr.buffer_number = ALL_CAL_BLOCKS;
 	dealloc_data.cal_data.mem_handle = -1;
@@ -373,8 +355,6 @@ static void dealloc_all_clients(void)
 static int audio_cal_release(struct inode *inode, struct file *f)
 {
 	int ret = 0;
-
-	pr_debug("%s\n", __func__);
 
 	mutex_lock(&audio_cal.common_lock);
 	audio_cal.ref_count--;
@@ -393,8 +373,6 @@ static long audio_cal_shared_ioctl(struct file *file, unsigned int cmd,
 	int ret = 0;
 	int32_t size;
 	struct audio_cal_basic *data = NULL;
-
-	pr_debug("%s\n", __func__);
 
 	switch (cmd) {
 	case AUDIO_ALLOCATE_CALIBRATION:
@@ -590,8 +568,6 @@ int __init audio_cal_init(void)
 {
 	int i = 0;
 
-	pr_debug("%s\n", __func__);
-
 	cal_utils_init();
 	memset(&audio_cal, 0, sizeof(audio_cal));
 	mutex_init(&audio_cal.common_lock);
@@ -620,8 +596,11 @@ void audio_cal_exit(void)
 			kfree(client_info_node);
 			client_info_node = NULL;
 		}
+		mutex_destroy(&audio_cal.cal_mutex[i]);
 	}
+	mutex_destroy(&audio_cal.common_lock);
 	misc_deregister(&audio_cal_misc);
+	cal_utils_exit();
 }
 
 

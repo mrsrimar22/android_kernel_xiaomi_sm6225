@@ -8,7 +8,6 @@
 #include <linux/debugfs.h>
 #include <dsp/apr_audio-v2.h>
 
-
 /* ERROR STRING */
 /* Success. The operation completed with no errors. */
 #define ADSP_EOK_STR          "ADSP_EOK"
@@ -88,7 +87,6 @@ struct adsp_err_code {
 	char	*adsp_err_str;
 };
 
-
 static struct adsp_err_code adsp_err_code_info[ADSP_ERR_MAX+1] = {
 	{ 0, ADSP_EOK_STR},
 	{ -ENOTRECOVERABLE, ADSP_EFAILED_STR},
@@ -146,8 +144,6 @@ char *adsp_err_get_err_str(u32 adsp_error)
 #if IS_ENABLED(CONFIG_SND_SOC_QDSP_DEBUG) && defined(CONFIG_DEBUG_FS)
 int __init adsp_err_init(void)
 {
-
-
 	debugfs_adsp_err = debugfs_create_file("msm_adsp_audio_debug",
 					       S_IFREG | 0444, NULL, NULL,
 					       &adsp_err_debug_ops);
@@ -161,5 +157,4 @@ int __init adsp_err_init(void) { return 0; }
 
 void adsp_err_exit(void)
 {
-	return;
 }

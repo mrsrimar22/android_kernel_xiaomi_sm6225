@@ -98,9 +98,9 @@ static int msm_digcdc_clock_control(bool flag)
 				 */
 				msm_dig_cdc->regmap->cache_only = true;
 				return ret;
-			} else {
-				msm_dig_cdc->regmap->cache_only = false;
 			}
+
+			msm_dig_cdc->regmap->cache_only = false;
 			pr_debug("enabled digital codec core clk\n");
 			atomic_set(&pdata->int_mclk0_enabled, true);
 			schedule_delayed_work(&pdata->disable_int_mclk0_work,
@@ -328,7 +328,6 @@ void msm_dig_cdc_hph_comp_cb(
 	struct msm_dig_priv *dig_cdc =
 			snd_soc_component_get_drvdata(component);
 
-	pr_debug("%s: Enter\n", __func__);
 	dig_cdc->codec_hph_comp_gpio = codec_hph_comp_gpio;
 }
 EXPORT_SYMBOL(msm_dig_cdc_hph_comp_cb);
@@ -1160,7 +1159,7 @@ static int msm_dig_cdc_event_notify(struct notifier_block *block,
 		mutex_unlock(&pdata->cdc_int_mclk0_mutex);
 
 		if ((msm_dig_cdc->regmap) != NULL && (msm_dig_cdc->regmap->lock) != NULL &&
-                        (msm_dig_cdc->regmap->lock_arg) != NULL) {
+			(msm_dig_cdc->regmap->lock_arg) != NULL) {
 			regcache_sync(msm_dig_cdc->regmap);
 		}
 

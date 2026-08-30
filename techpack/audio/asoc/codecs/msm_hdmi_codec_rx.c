@@ -26,13 +26,15 @@
 			    SND_SOC_NOPM, index, ext_disp_audio_ack_text)
 
 #define SWITCH_DP_CODEC(codec_info, codec_data, dai_id, type) \
-	codec_info.type = type; \
-	codec_info.ctrl_id = codec_data->ctl[dai_id]; \
-	codec_info.stream_id = codec_data->stream[dai_id]; \
+do { \
+	(codec_info).type = (type); \
+	(codec_info).ctrl_id = (codec_data)->ctl[(dai_id)]; \
+	(codec_info).stream_id = (codec_data)->stream[(dai_id)]; \
+} while (0)
 
 enum {
-        DP_CONTROLLER0 = 0,
-        DP_CONTROLLER_MAX,
+	DP_CONTROLLER0 = 0,
+	DP_CONTROLLER_MAX,
 };
 
 enum {
@@ -127,7 +129,8 @@ static int msm_ext_disp_edid_ctl_info(struct snd_kcontrol *kcontrol,
 }
 
 static int msm_ext_disp_edid_get(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol) {
+				struct snd_ctl_elem_value *ucontrol)
+{
 	struct snd_soc_component *component =
 			snd_soc_kcontrol_component(kcontrol);
 	struct msm_ext_disp_audio_codec_rx_data *codec_data;
@@ -782,8 +785,7 @@ static int msm_ext_disp_audio_codec_rx_probe(
 	mutex_lock(&codec_data->dp_ops_lock);
 
 	/*Find a connected ext device to notify DisPlay*/
-	for (dai_id = DP_DAI1; dai_id < DP_DAI_MAX; dai_id++)
-	{
+	for (dai_id = DP_DAI1; dai_id < DP_DAI_MAX; dai_id++) {
 		if (dai_id == HDMI_MS_DAI)
 			type = EXT_DISPLAY_TYPE_HDMI;
 		else
@@ -794,9 +796,9 @@ static int msm_ext_disp_audio_codec_rx_probe(
 		rc = msm_ext_disp_select_audio_codec(codec_data->ext_disp_core_pdev,
 						&codec_info);
 		if (!rc) {
-			if(codec_data->ext_disp_ops.ready) {
+			if (codec_data->ext_disp_ops.ready) {
 				rc = codec_data->ext_disp_ops.ready(codec_data->ext_disp_core_pdev);
-				if(!rc)
+				if (!rc)
 					break;
 			}
 		}
@@ -815,8 +817,6 @@ static void msm_ext_disp_audio_codec_rx_remove(
 	codec_data = dev_get_drvdata(component->dev);
 	mutex_destroy(&codec_data->dp_ops_lock);
 	kfree(codec_data);
-
-	return;
 }
 
 static struct snd_soc_dai_ops msm_ext_disp_audio_codec_rx_dai_ops = {

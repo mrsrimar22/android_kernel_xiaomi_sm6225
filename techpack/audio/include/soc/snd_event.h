@@ -68,7 +68,6 @@ static inline void snd_event_mstr_add_client(struct snd_event_clients **snd_clie
 			    int (*compare)(struct device *, void *),
 			    void *data)
 {
-	return;
 }
 static inline bool is_snd_event_fwk_enabled(void)
 {

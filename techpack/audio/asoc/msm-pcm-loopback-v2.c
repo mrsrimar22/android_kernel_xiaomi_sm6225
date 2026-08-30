@@ -96,7 +96,6 @@ static void msm_pcm_route_event_handler(enum msm_pcm_routing_event event,
 static void msm_pcm_loopback_event_handler(uint32_t opcode, uint32_t token,
 					   uint32_t *payload, void *priv)
 {
-	pr_debug("%s:\n", __func__);
 	switch (opcode) {
 	case APR_BASIC_RSP_RESULT: {
 		switch (payload[0]) {
@@ -231,7 +230,7 @@ static int msm_pcm_loopback_get_session(struct snd_soc_pcm_runtime *rtd,
 		goto exit;
 	}
 
-	strlcpy(session_map[index].stream_name,
+	strscpy(session_map[index].stream_name,
 		rtd->dai_link->stream_name,
 		sizeof(session_map[index].stream_name));
 	dev_dbg(component->dev, "%s: stream %s index %d\n",
@@ -573,7 +572,6 @@ static int msm_pcm_volume_ctl_get(struct snd_kcontrol *kcontrol,
 	struct snd_pcm_substream *substream = NULL;
 	struct msm_pcm_loopback *prtd;
 
-	pr_debug("%s\n", __func__);
 	if (!vol) {
 		pr_err("%s: vol is NULL\n", __func__);
 		return -ENODEV;
@@ -1459,7 +1457,6 @@ static int msm_pcm_add_controls(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret = 0;
 
-	pr_debug("%s\n", __func__);
 	ret = msm_pcm_add_volume_controls(rtd);
 	if (ret)
 		pr_err("%s: pcm add volume controls failed:%d\n",
@@ -1500,11 +1497,12 @@ static struct snd_soc_component_driver msm_soc_component = {
 static int msm_pcm_probe(struct platform_device *pdev)
 {
 	struct msm_pcm_pdata *pdata;
+	int rc;
 
 	dev_dbg(&pdev->dev, "%s: dev name %s\n",
 		__func__, dev_name(&pdev->dev));
 
-	pdata = kzalloc(sizeof(struct msm_pcm_pdata), GFP_KERNEL);
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
 
@@ -1516,25 +1514,33 @@ static int msm_pcm_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, pdata);
 
-	return snd_soc_register_component(&pdev->dev,
+	rc = snd_soc_register_component(&pdev->dev,
 				&msm_soc_component,
 				NULL, 0);
+	if (rc) {
+		dev_err(&pdev->dev, "%s: snd_soc_register_component failed %d\n",
+			__func__, rc);
+		kfree(pdata);
+		dev_set_drvdata(&pdev->dev, NULL);
+	}
+
+	return rc;
 }
 
 static int msm_pcm_remove(struct platform_device *pdev)
 {
-	struct msm_pcm_pdata *pdata;
+	struct msm_pcm_pdata *pdata = dev_get_drvdata(&pdev->dev);
 	int i = 0;
 
-	pdata = dev_get_drvdata(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	if (pdata) {
 		for (i = 0; i < MSM_FRONTEND_DAI_MM_SIZE; i++) {
 			kfree(pdata->chmixer_pspd[i][SESSION_TYPE_RX]);
 			kfree(pdata->chmixer_pspd[i][SESSION_TYPE_TX]);
 		}
+		kfree(pdata);
 	}
-	kfree(pdata);
-	snd_soc_unregister_component(&pdev->dev);
+
 	return 0;
 }
 

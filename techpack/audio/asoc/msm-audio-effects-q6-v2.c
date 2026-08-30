@@ -68,7 +68,6 @@ int msm_audio_effects_enable_extn(struct audio_client *ac,
 	struct param_hdr_v3 param_hdr;
 	int rc = 0;
 
-	pr_debug("%s\n", __func__);
 	memset(&param_hdr, 0, sizeof(param_hdr));
 	param_hdr.module_id = AUDPROC_MODULE_ID_VIRTUALIZER;
 	param_hdr.instance_id = INSTANCE_ID_0;
@@ -124,16 +123,14 @@ int msm_audio_effects_virtualizer_handler(struct audio_client *ac,
 	u8 *param_data = NULL;
 	u32 packed_data_size = 0;
 
-	pr_debug("%s\n", __func__);
 	if (!ac || (devices == -EINVAL) || (num_commands == -EINVAL)) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
 	}
 	params = kzalloc(MAX_INBAND_PARAM_SZ, GFP_KERNEL);
-	if (!params) {
-		pr_err("%s, params memory alloc failed\n", __func__);
+	if (!params)
 		return -ENOMEM;
-	}
+
 	pr_debug("%s: device: %d\n", __func__, devices);
 	updt_params = (u8 *) params;
 	/* Set MID and IID once at top and only update param specific fields*/
@@ -303,16 +300,14 @@ int msm_audio_effects_reverb_handler(struct audio_client *ac,
 	u8 *param_data = NULL;
 	u32 packed_data_size = 0;
 
-	pr_debug("%s\n", __func__);
 	if (!ac || (devices == -EINVAL) || (num_commands == -EINVAL)) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
 	}
 	params = kzalloc(MAX_INBAND_PARAM_SZ, GFP_KERNEL);
-	if (!params) {
-		pr_err("%s, params memory alloc failed\n", __func__);
+	if (!params)
 		return -ENOMEM;
-	}
+
 	pr_debug("%s: device: %d\n", __func__, devices);
 	updt_params = (u8 *) params;
 	/* Set MID and IID once at top and only update param specific fields*/
@@ -738,16 +733,14 @@ int msm_audio_effects_bass_boost_handler(struct audio_client *ac,
 	u8 *param_data = NULL;
 	u32 packed_data_size = 0;
 
-	pr_debug("%s\n", __func__);
 	if (!ac || (devices == -EINVAL) || (num_commands == -EINVAL)) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
 	}
 	params = kzalloc(MAX_INBAND_PARAM_SZ, GFP_KERNEL);
-	if (!params) {
-		pr_err("%s, params memory alloc failed\n", __func__);
+	if (!params)
 		return -ENOMEM;
-	}
+
 	pr_debug("%s: device: %d\n", __func__, devices);
 	updt_params = (u8 *) params;
 	/* Set MID and IID once at top and only update param specific fields*/
@@ -895,16 +888,14 @@ int msm_audio_effects_pbe_handler(struct audio_client *ac,
 	uint32_t lpf_len = 0, hpf_len = 0, bpf_len = 0;
 	uint32_t bsf_len = 0, tsf_len = 0, total_coeffs_len = 0;
 
-	pr_debug("%s\n", __func__);
 	if (!ac || (devices == -EINVAL) || (num_commands == -EINVAL)) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
 	}
 	params = kzalloc(MAX_INBAND_PARAM_SZ, GFP_KERNEL);
-	if (!params) {
-		pr_err("%s, params memory alloc failed\n", __func__);
+	if (!params)
 		return -ENOMEM;
-	}
+
 	pr_debug("%s: device: %d\n", __func__, devices);
 	updt_params = (u8 *) params;
 	/* Set MID and IID once at top and only update param specific fields*/
@@ -1019,9 +1010,8 @@ int msm_audio_effects_pbe_handler(struct audio_client *ac,
 			tsf_len = 5;
 			total_coeffs_len = lpf_len + hpf_len + bpf_len + bsf_len + tsf_len;
 
-			for (i = 0; i < total_coeffs_len; i++) {
+			for (i = 0; i < total_coeffs_len; i++)
 				*p_coeffs++ = GET_NEXT(values, param_max_offset, rc);
-			}
 
 			if (command_config_state != CONFIG_SET)
 				break;
@@ -1093,16 +1083,14 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 	u32 *updt_config_data = NULL;
 	int config_param_length, prev_config_param_length = 0;
 
-	pr_debug("%s\n", __func__);
 	if (!ac || (devices == -EINVAL) || (num_commands == -EINVAL)) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
 	}
 	params = kzalloc(MAX_INBAND_PARAM_SZ, GFP_KERNEL);
-	if (!params) {
-		pr_err("%s, params memory alloc failed\n", __func__);
+	if (!params)
 		return -ENOMEM;
-	}
+
 	pr_debug("%s: device: %d\n", __func__, devices);
 	updt_params = (u8 *) params;
 	/* Set MID and IID once at top and only update param specific fields*/
@@ -1212,8 +1200,7 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 				eq_config_data = kzalloc(config_param_length,
 							 GFP_KERNEL);
 			else if (config_param_length != prev_config_param_length) {
-				if (eq_config_data)
-					kfree(eq_config_data);
+				kfree(eq_config_data);
 				eq_config_data = kzalloc(config_param_length,
 							GFP_KERNEL);
 			} else
@@ -1326,8 +1313,7 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 		pr_debug("%s: did not send pp params\n", __func__);
 invalid_config:
 	kfree(params);
-	if (eq_config_data)
-		kfree(eq_config_data);
+	kfree(eq_config_data);
 	return rc;
 }
 EXPORT_SYMBOL(msm_audio_effects_popless_eq_handler);
@@ -1364,10 +1350,9 @@ static int __msm_audio_effects_volume_handler(struct audio_client *ac,
 		return -EINVAL;
 	}
 	params = kzalloc(MAX_INBAND_PARAM_SZ, GFP_KERNEL);
-	if (!params) {
-		pr_err("%s, params memory alloc failed\n", __func__);
+	if (!params)
 		return -ENOMEM;
-	}
+
 	updt_params = (u8 *) params;
 	/* Set MID and IID once at top and only update param specific fields*/
 	memset(&param_hdr, 0, sizeof(param_hdr));

@@ -187,6 +187,7 @@ static int audio_open(struct inode *inode, struct file *file)
 						audio->ac->session);
 	return 0;
 fail:
+	audio_aio_free_locks_and_events(audio);
 	q6asm_audio_client_free(audio->ac);
 	kfree(audio);
 	return rc;

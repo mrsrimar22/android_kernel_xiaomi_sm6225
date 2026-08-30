@@ -175,8 +175,6 @@ static void populate_codec_list(struct msm_transcode_loopback *trans,
 {
 	struct snd_compr_caps compr_cap;
 
-	pr_debug("%s\n", __func__);
-
 	memset(&compr_cap, 0, sizeof(struct snd_compr_caps));
 
 	if (cstream->direction == SND_COMPRESS_CAPTURE) {
@@ -602,7 +600,6 @@ static int msm_transcode_loopback_get_caps(struct snd_compr_stream *cstream,
 
 	runtime = cstream->runtime;
 	trans = runtime->private_data;
-	pr_debug("%s\n", __func__);
 	if (cstream->direction == SND_COMPRESS_CAPTURE)
 		memcpy(arg, &trans->source_compr_cap,
 		       sizeof(struct snd_compr_caps));
@@ -1700,7 +1697,6 @@ static int msm_transcode_loopback_probe(struct snd_soc_component *component)
 	struct trans_loopback_pdata *pdata = NULL;
 	int i;
 
-	pr_debug("%s\n", __func__);
 	pdata = (struct trans_loopback_pdata *)
 			kzalloc(sizeof(struct trans_loopback_pdata),
 			GFP_KERNEL);
@@ -1723,7 +1719,6 @@ static void msm_transcode_loopback_remove(struct snd_soc_component *component)
 	pdata = (struct trans_loopback_pdata *)
 			snd_soc_component_get_drvdata(component);
 	kfree(pdata);
-	return;
 }
 
 static struct snd_soc_component_driver msm_soc_component = {
@@ -1768,15 +1763,21 @@ static struct platform_driver msm_transcode_loopback_driver = {
 
 int __init msm_transcode_loopback_init(void)
 {
+	int rc;
+
 	memset(&transcode_info, 0, sizeof(struct msm_transcode_loopback));
 	mutex_init(&transcode_info.lock);
-	return platform_driver_register(&msm_transcode_loopback_driver);
+	rc = platform_driver_register(&msm_transcode_loopback_driver);
+	if (rc)
+		mutex_destroy(&transcode_info.lock);
+	return rc;
 }
 
 void msm_transcode_loopback_exit(void)
 {
-	mutex_destroy(&transcode_info.lock);
 	platform_driver_unregister(&msm_transcode_loopback_driver);
+	memset(&transcode_info, 0, sizeof(struct msm_transcode_loopback));
+	mutex_destroy(&transcode_info.lock);
 }
 
 MODULE_DESCRIPTION("Transcode loopback platform driver");

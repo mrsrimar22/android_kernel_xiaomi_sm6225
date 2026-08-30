@@ -209,13 +209,13 @@ struct adm_cmd_matrix_map_routings_v5 {
 #define ADM_CMD_DEVICE_OPEN_V6                      0x00010356
 
 /* This command allows a client to open a COPP/Voice Proc the
-*	way as ADM_CMD_DEVICE_OPEN_V8 but supports any number channel
-*	of configuration.
-*
-*	@return
-*	#ADM_CMDRSP_DEVICE_OPEN_V8 with the resulting status and
-*	COPP ID.
-*/
+ *	way as ADM_CMD_DEVICE_OPEN_V8 but supports any number channel
+ *	of configuration.
+ *
+ *	@return
+ *	#ADM_CMDRSP_DEVICE_OPEN_V8 with the resulting status and
+ *	COPP ID.
+ */
 #define ADM_CMD_DEVICE_OPEN_V8                      0x0001036A
 
 
@@ -541,14 +541,14 @@ struct adm_cmd_device_open_v8 {
 	struct apr_hdr       hdr;
 	u16                  flags;
 /* Bit width Native mode enabled : 11th bit of flag parameter
-*  If 11th bit of flag is set then that means matrix mixer will be
-*  running in native mode for bit width for this device session.
-*
-*  Channel Native mode enabled : 12th bit of flag parameter
-*  If 12th bit of flag is set then that means matrix mixer will be
-*  running in native mode for channel configuration for this device session.
-*  All other bits are reserved; clients must set them to 0.
-*/
+ *  If 11th bit of flag is set then that means matrix mixer will be
+ *  running in native mode for bit width for this device session.
+ *
+ *  Channel Native mode enabled : 12th bit of flag parameter
+ *  If 12th bit of flag is set then that means matrix mixer will be
+ *  running in native mode for channel configuration for this device session.
+ *  All other bits are reserved; clients must set them to 0.
+ */
 	u16                  mode_of_operation;
 /* Specifies whether the COPP must be opened on the Tx or Rx
  * path. Use the ADM_CMD_COPP_OPEN_MODE_OF_OPERATION_* macros for
@@ -1060,7 +1060,7 @@ struct adm_cmd_matrix_ramp_gains_v7 {
 /* Specifies whether the matrix ID is Audio Rx (0) or Audio Tx (1).
  * Use the ADM_MATRIX_ID_AUDIO_RX or  ADM_MATRIX_ID_AUDIOX
  * macros to set this field.
-*/
+ */
 
 	u16                  num_gains;
 	/* Number of gains being applied. */
@@ -3787,8 +3787,8 @@ struct afe_param_id_tdm_cfg {
 #define AFE_API_VERSION_SLOT_MAPPING_CONFIG	0x1
 
 /** Version information used to handle future additions to slot mapping
-*	configuration support 32 channels.
-*/
+ *	configuration support 32 channels.
+ */
 #define AFE_API_VERSION_SLOT_MAPPING_CONFIG_V2	0x2
 /* Data align type  */
 #define AFE_SLOT_MAPPING_DATA_ALIGN_MSB		0
@@ -3840,8 +3840,8 @@ struct afe_param_id_slot_mapping_cfg {
 } __packed;
 
 /* Payload of the AFE_PARAM_ID_PORT_SLOT_MAPPING_CONFIG_V2
-*  command's TDM configuration parameter.
-*/
+ *  command's TDM configuration parameter.
+ */
 struct afe_param_id_slot_mapping_cfg_v2 {
 	u32	minor_version;
 	/**< Minor version used for tracking TDM slot configuration.
@@ -3850,41 +3850,41 @@ struct afe_param_id_slot_mapping_cfg_v2 {
 
 	u16	num_channel;
 	/**< number of channel of the audio sample.
-	* @values 1, 2, 4, 6, 8, 16, 32 @tablebulletend
-	*/
+	 * @values 1, 2, 4, 6, 8, 16, 32 @tablebulletend
+	 */
 
 	u16	bitwidth;
 	/**< Slot bit width for each channel
-	* @values 16, 24, 32
-	*/
+	 * @values 16, 24, 32
+	 */
 
 	u32	data_align_type;
 	/**< indicate how data packed from slot_offset for 32 slot bit width
-	* in case of sample bit width is 24.
-	* @values
-	* #AFE_SLOT_MAPPING_DATA_ALIGN_MSB
-	* #AFE_SLOT_MAPPING_DATA_ALIGN_LSB
-	*/
+	 * in case of sample bit width is 24.
+	 * @values
+	 * #AFE_SLOT_MAPPING_DATA_ALIGN_MSB
+	 * #AFE_SLOT_MAPPING_DATA_ALIGN_LSB
+	 */
 
 	u16	offset[AFE_PORT_MAX_AUDIO_CHAN_CNT_V2];
 	/**< Array of the slot mapping start offset in bytes for this frame.
-	* The bytes is counted from 0. The 0 is mapped to the 1st byte
-	* in or out of the digital serial data line this sub-frame belong to.
-	* slot_offset[] setting is per-channel based.
-	* The max num of channel supported is 8.
-	* The valid offset value must always be continuly placed in
-	* from index 0.
-	* Set offset as AFE_SLOT_MAPPING_OFFSET_INVALID for not used arrays.
-	* If "slot_bitwidth_per_channel" is 32 and "sample_bitwidth" is 24,
-	* "data_align_type" is used to indicate how 24 bit sample data in
-	* aligning with 32 bit slot width per-channel.
-	* @values, in byte
-	*/
+	 * The bytes is counted from 0. The 0 is mapped to the 1st byte
+	 * in or out of the digital serial data line this sub-frame belong to.
+	 * slot_offset[] setting is per-channel based.
+	 * The max num of channel supported is 8.
+	 * The valid offset value must always be continuly placed in
+	 * from index 0.
+	 * Set offset as AFE_SLOT_MAPPING_OFFSET_INVALID for not used arrays.
+	 * If "slot_bitwidth_per_channel" is 32 and "sample_bitwidth" is 24,
+	 * "data_align_type" is used to indicate how 24 bit sample data in
+	 * aligning with 32 bit slot width per-channel.
+	 * @values, in byte
+	 */
 } __packed;
 
 /** ID of the parameter used by #AFE_MODULE_TDM to configure
-    the customer TDM header. #AFE_PORT_CMD_SET_PARAM can use this parameter ID.
-*/
+ *  the customer TDM header. #AFE_PORT_CMD_SET_PARAM can use this parameter ID.
+ */
 #define AFE_PARAM_ID_CUSTOM_TDM_HEADER_CONFIG		0x00010298
 
 /* Version information used to handle future additions to custom TDM header
@@ -4065,8 +4065,7 @@ struct afe_param_id_aptx_sync_mode {
 
 #define AFE_ID_APTX_ADAPTIVE_ENC_INIT 0x00013324
 
-struct afe_id_aptx_adaptive_enc_init
-{
+struct afe_id_aptx_adaptive_enc_init {
 	uint32_t  sampling_freq;
 	uint32_t  mtu;
 	uint32_t  channel_mode;
@@ -4080,7 +4079,7 @@ struct afe_id_aptx_adaptive_enc_init
 	uint32_t  input_mode;
 	uint32_t  fade_duration;
 	uint8_t   sink_cap[11];
-} __attribute__ ((packed));
+} __packed;
 
 /*
  * Generic encoder module ID.
@@ -4420,15 +4419,14 @@ struct asm_custom_enc_cfg_t {
 	uint32_t    custom_size;
 } __packed;
 
-struct asm_aptx_ad_speech_mode_cfg_t
-{
+struct asm_aptx_ad_speech_mode_cfg_t {
 	uint32_t speech_mode;
 	/*
 	 * speech mode of codec.
 	 *
 	 * @values 0x0(swb), 0x4(sswb)
 	 */
-	 uint32_t swapping;
+	uint32_t swapping;
 	/*
 	 * byte swapping of codec.
 	 *
@@ -4450,25 +4448,22 @@ struct asm_aptx_enc_cfg_t {
 	struct asm_aptx_v2_enc_cfg_ext_t aptx_v2_cfg;
 } __packed;
 
-struct asm_aptx_ad_enc_cfg_t
-{
+struct asm_aptx_ad_enc_cfg_t {
 	struct asm_custom_enc_cfg_t  custom_cfg;
 	struct afe_id_aptx_adaptive_enc_init aptx_ad_cfg;
 	struct afe_abr_enc_cfg_t abr_cfg;
-} __attribute__ ((packed));
+} __packed;
 
-struct asm_aptx_ad_speech_enc_cfg_t
-{
+struct asm_aptx_ad_speech_enc_cfg_t {
 	struct asm_custom_enc_cfg_t  custom_cfg;
 	struct afe_imc_dec_enc_info imc_info;
 	struct asm_aptx_ad_speech_mode_cfg_t speech_mode;
-} __attribute__ ((packed));
+} __packed;
 
-struct afe_matched_port_t
-{
+struct afe_matched_port_t {
 	uint32_t  minor_version;
 	uint32_t  enable;
-} __attribute__ ((packed));
+} __packed;
 
 #define ASM_MEDIA_FMT_CELT 0x00013221
 struct asm_celt_specific_enc_cfg_t {
@@ -7947,25 +7942,25 @@ struct asm_stream_cmd_open_write_v3 {
 #define ASM_DATA_EVENT_WATERMARK 0x00010DDB
 
 struct asm_shared_position_buffer {
-	volatile uint32_t               frame_counter;
+	uint32_t               frame_counter;
 /* Counter used to handle interprocessor synchronization issues.
  * When frame_counter is 0: read_index, wall_clock_us_lsw, and
  * wall_clock_us_msw are invalid.
  * Supported values: >= 0.
  */
 
-	volatile uint32_t               index;
+	uint32_t               index;
 /* Index in bytes from where the aDSP is reading/writing.
  * Supported values: 0 to circular buffer size - 1
  */
 
-	volatile uint32_t               wall_clock_us_lsw;
+	uint32_t               wall_clock_us_lsw;
 /* Lower 32 bits of the 64-bit wall clock time in microseconds when the
  * read index was updated.
  * Supported values: >= 0
  */
 
-	volatile uint32_t               wall_clock_us_msw;
+	uint32_t               wall_clock_us_msw;
 /* Upper 32 bits of the 64 bit wall clock time in microseconds when the
  * read index was updated
  * Supported values: >= 0
@@ -9523,7 +9518,7 @@ struct adm_hpfx_iir_filter_cfg_params {
  */
 #define ADM_MODULE_ID_LEFT_IIRUNING_FILTER      0x00010705
 
-/* ID of the the Rx path IIR Tuning Filter module for the right
+/* ID of the Rx path IIR Tuning Filter module for the right
  * channel.
  * The parameter IDs of the IIR tuning filter module
  * (#ASM_MODULE_ID_IIRUNING_FILTER) are used for the right IIR Rx
@@ -13240,8 +13235,8 @@ struct afe_doa_tracking_mon_get_param_resp {
 #define AUDPROC_PARAM_ID_FFV_DOA_TRACKING_PARAM 0x0001097C
 
 /*
-* ID of the DTMF Detection Module.
-*/
+ * ID of the DTMF Detection Module.
+ */
 #define AUDPROC_MODULE_ID_DTMF_DETECTION        0x00010940
 
 #define AUDPROC_PARAM_ID_FFV_DOA_TRACKING_MONITOR 0x0001097D
