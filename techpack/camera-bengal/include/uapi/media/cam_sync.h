@@ -26,7 +26,7 @@
 #define CAM_SYNC_DEVICE_TYPE                     (MEDIA_ENT_F_OLD_BASE)
 
 #define CAM_SYNC_GET_PAYLOAD_PTR(ev, type)       \
-	(type *)((char *)ev.u.data + sizeof(struct cam_sync_ev_header))
+	((type *)((char *)ev.u.data + sizeof(struct cam_sync_ev_header)))
 
 #define CAM_SYNC_GET_HEADER_PTR(ev)              \
 	((struct cam_sync_ev_header *)ev.u.data)

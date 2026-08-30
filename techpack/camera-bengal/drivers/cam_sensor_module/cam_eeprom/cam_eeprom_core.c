@@ -498,11 +498,9 @@ static int32_t cam_eeprom_parse_memory_map(
 		map[*num_map].mem.addr = i2c_cont_rd->reg_addr;
 		map[*num_map].mem.addr_type = i2c_cont_rd->header.addr_type;
 		map[*num_map].mem.data_type = i2c_cont_rd->header.data_type;
-		map[*num_map].mem.valid_size =
-		        payload_count;
+		map[*num_map].mem.valid_size = payload_count;
 		cmd_buf += cmd_length_in_bytes / sizeof(int32_t);
-		processed_size +=
-			cmd_length_in_bytes;
+		processed_size += cmd_length_in_bytes;
 		data->num_data += map[*num_map].mem.valid_size;
 		break;
 	case CAMERA_SENSOR_CMD_TYPE_WAIT:

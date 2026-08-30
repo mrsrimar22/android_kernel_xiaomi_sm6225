@@ -657,6 +657,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	int rc = 0, pkt_opcode = 0;
 	struct cam_control *cmd = (struct cam_control *)arg;
 	struct cam_sensor_power_ctrl_t *power_info = NULL;
+
 	if (!s_ctrl || !arg) {
 		CAM_ERR(CAM_SENSOR, "s_ctrl is NULL");
 		return -EINVAL;
@@ -1062,7 +1063,7 @@ int cam_sensor_publish_dev_info(struct cam_req_mgr_device_info *info)
 	}
 
 	info->dev_id = CAM_REQ_MGR_DEVICE_SENSOR;
-	strlcpy(info->name, CAM_SENSOR_NAME, sizeof(info->name));
+	strscpy(info->name, CAM_SENSOR_NAME, sizeof(info->name));
 	if (s_ctrl->pipeline_delay >= 1 && s_ctrl->pipeline_delay <= 3)
 		info->p_delay = s_ctrl->pipeline_delay;
 	else

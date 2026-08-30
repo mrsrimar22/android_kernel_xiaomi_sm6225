@@ -3404,9 +3404,8 @@ EXPORT_SYMBOL(cam_smmu_destroy_handle);
 
 static void cam_smmu_deinit_cb(struct cam_context_bank_info *cb)
 {
-	if (cb->io_support && cb->domain) {
+	if (cb->io_support && cb->domain)
 		cb->domain = NULL;
-	}
 
 	if (cb->shared_support) {
 		gen_pool_destroy(cb->shared_mem_pool);

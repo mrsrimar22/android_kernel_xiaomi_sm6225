@@ -2660,18 +2660,17 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 		CAM_ERR(CAM_ISP, "Out of memory");
 		goto end;
 	}
-	strlcpy(cdm_acquire->identifier, "ope", sizeof("ope"));
+	strscpy(cdm_acquire->identifier, "ope", sizeof(cdm_acquire->identifier));
 	if (ctx->ope_acquire.dev_type == OPE_DEV_TYPE_OPE_RT) {
 		cdm_acquire->priority = CAM_CDM_BL_FIFO_3;
 		ctx->req_timer_timeout = OPE_REQUEST_RT_TIMEOUT;
-	}
-	else if (ctx->ope_acquire.dev_type ==
+	} else if (ctx->ope_acquire.dev_type ==
 		OPE_DEV_TYPE_OPE_NRT) {
 		cdm_acquire->priority = CAM_CDM_BL_FIFO_0;
 		ctx->req_timer_timeout = OPE_REQUEST_NRT_TIMEOUT;
-	}
-	else
+	} else {
 		goto free_cdm_acquire;
+	}
 
 	cdm_acquire->cell_index = 0;
 	cdm_acquire->handle = 0;

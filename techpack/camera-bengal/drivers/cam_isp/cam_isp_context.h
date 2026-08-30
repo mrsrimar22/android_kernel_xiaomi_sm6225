@@ -164,8 +164,7 @@ struct cam_isp_ctx_req {
 	uint32_t                              num_acked;
 	int32_t                               bubble_report;
 	struct cam_isp_prepare_hw_update_data hw_update_data;
-	ktime_t                               event_timestamp
-		[CAM_ISP_CTX_EVENT_MAX];
+	ktime_t                               event_timestamp[CAM_ISP_CTX_EVENT_MAX];
 	bool                                  bubble_detected;
 	bool                                  reapply;
 };

@@ -219,7 +219,7 @@ struct csiphy_ctrl_t {
  * @settle_time_combo_sensor   :  Settling time in ms
  * @data_rate     :  Data rate in mbps
  * @data_rate_combo_sensor: data rate of combo sensor
- *                          in the the same phy
+ *                          in the same phy
  *
  */
 struct cam_csiphy_param {

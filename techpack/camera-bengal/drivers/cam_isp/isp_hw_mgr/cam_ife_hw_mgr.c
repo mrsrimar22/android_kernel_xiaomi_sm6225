@@ -1980,6 +1980,7 @@ static enum cam_ife_pix_path_res_id
 	uint32_t                 out_port_type)
 {
 	enum cam_ife_pix_path_res_id path_id;
+
 	CAM_DBG(CAM_ISP, "out_port_type %x", out_port_type);
 
 	switch (out_port_type) {

@@ -285,7 +285,7 @@ struct cam_req_mgr_notify_stop {
 /**
  * struct cam_req_mgr_device_info
  * @dev_hdl : Input_param : device handle for reference
- * @name    : link link or unlink
+ * @name    : device name
  * @dev_id  : device id info
  * @p_delay : delay between time settings applied and take effect
  * @trigger : Trigger point for the client
@@ -301,7 +301,7 @@ struct cam_req_mgr_device_info {
 
 /**
  * struct cam_req_mgr_core_dev_link_setup
- * @link_enable     : link link or unlink
+ * @link_enable     : link or unlink
  * @link_hdl        : link identifier
  * @dev_hdl         : device handle for reference
  * @max_delay       : max pipeline delay on this link
