@@ -480,8 +480,6 @@ static int voice_mhi_probe(struct platform_device *pdev)
 	dma_addr_t phys_addr, iova;
 	const __be32 *cell;
 
-	pr_debug("%s:\n", __func__);
-
 	INIT_WORK(&voice_mhi_lcl.voice_mhi_work_pcie,
 				voice_mhi_map_pcie_and_send);
 	INIT_WORK(&voice_mhi_lcl.voice_mhi_work_adsp,
@@ -575,7 +573,7 @@ err_free:
 static int voice_mhi_remove(struct platform_device *pdev)
 {
 	if (voice_mhi_lcl.apr_mvm_handle)
-			apr_reset(voice_mhi_lcl.apr_mvm_handle);
+		apr_reset(voice_mhi_lcl.apr_mvm_handle);
 	mhi_driver_unregister(&voice_mhi_driver);
 	memset(&voice_mhi_lcl, 0, sizeof(voice_mhi_lcl));
 	return 0;

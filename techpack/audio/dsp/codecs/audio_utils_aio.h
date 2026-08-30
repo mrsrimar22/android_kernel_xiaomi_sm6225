@@ -136,8 +136,8 @@ struct audio_aio_buffer_node {
 
 struct q6audio_aio;
 struct audio_aio_drv_operations {
-	void (*out_flush)(struct q6audio_aio *);
-	void (*in_flush)(struct q6audio_aio *);
+	void (*out_flush)(struct q6audio_aio *audio);
+	void (*in_flush)(struct q6audio_aio *audio);
 };
 
 struct q6audio_aio {
@@ -188,8 +188,10 @@ struct q6audio_aio {
 	int rflush;             /* Read  flush */
 	int wflush;             /* Write flush */
 	bool reset_event;
-	long (*codec_ioctl)(struct file *, unsigned int, unsigned long);
-	long (*codec_compat_ioctl)(struct file *, unsigned int, unsigned long);
+	long (*codec_ioctl)(struct file *file, unsigned int cmd,
+			    unsigned long arg);
+	long (*codec_compat_ioctl)(struct file *file, unsigned int cmd,
+				   unsigned long arg);
 };
 
 void audio_aio_async_write_ack(struct q6audio_aio *audio, uint32_t token,
@@ -209,6 +211,7 @@ int audio_aio_enable(struct q6audio_aio  *audio);
 void audio_aio_post_event(struct q6audio_aio *audio, int type,
 		union msm_audio_event_payload payload);
 int audio_aio_release(struct inode *inode, struct file *file);
+void audio_aio_free_locks_and_events(struct q6audio_aio *audio);
 int audio_aio_fsync(struct file *file, loff_t start, loff_t end, int datasync);
 void audio_aio_async_out_flush(struct q6audio_aio *audio);
 void audio_aio_async_in_flush(struct q6audio_aio *audio);

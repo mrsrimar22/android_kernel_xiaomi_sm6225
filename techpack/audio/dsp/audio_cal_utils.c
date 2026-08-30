@@ -388,8 +388,6 @@ int cal_utils_create_cal_types(int num_cal_types,
 	int ret = 0;
 	int i;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type == NULL) {
 		pr_err("%s: cal_type is NULL!\n", __func__);
 		ret = -EINVAL;
@@ -440,10 +438,8 @@ EXPORT_SYMBOL(cal_utils_create_cal_types);
 
 static void delete_cal_block(struct cal_block_data *cal_block)
 {
-	pr_debug("%s\n", __func__);
-
 	if (cal_block == NULL)
-		goto done;
+		return;
 
 	list_del(&cal_block->list);
 	kfree(cal_block->client_info);
@@ -455,8 +451,6 @@ static void delete_cal_block(struct cal_block_data *cal_block)
 		cal_block->map_data.dma_buf = NULL;
 	}
 	kfree(cal_block);
-done:
-	return;
 }
 
 static void destroy_all_cal_blocks(struct cal_type_data *cal_type)
@@ -508,16 +502,14 @@ void cal_utils_destroy_cal_types(int num_cal_types,
 {
 	int i;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type == NULL) {
 		pr_err("%s: cal_type is NULL!\n", __func__);
-		goto done;
+		return;
 	} else if ((num_cal_types <= 0) ||
 		(num_cal_types > MAX_CAL_TYPES)) {
 		pr_err("%s: num_cal_types of %d is Invalid!\n",
 			__func__, num_cal_types);
-		goto done;
+		return;
 	}
 
 	for (i = 0; i < num_cal_types; i++) {
@@ -525,8 +517,6 @@ void cal_utils_destroy_cal_types(int num_cal_types,
 		destroy_cal_type_data(cal_type[i]);
 		cal_type[i] = NULL;
 	}
-done:
-	return;
 }
 EXPORT_SYMBOL(cal_utils_destroy_cal_types);
 
@@ -592,8 +582,7 @@ static struct cal_block_data *get_matching_cal_block(
 		cal_block = list_entry(ptr,
 			struct cal_block_data, list);
 
-		if (cal_type->info.cal_util_callbacks.
-			match_block(cal_block, data))
+		if (cal_type->info.cal_util_callbacks.match_block(cal_block, data))
 			return cal_block;
 	}
 
@@ -703,16 +692,14 @@ void cal_utils_clear_cal_block_q6maps(int num_cal_types,
 	struct list_head *ptr, *next;
 	struct cal_block_data *cal_block;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type == NULL) {
 		pr_err("%s: cal_type is NULL!\n", __func__);
-		goto done;
+		return;
 	} else if ((num_cal_types <= 0) ||
 		(num_cal_types > MAX_CAL_TYPES)) {
 		pr_err("%s: num_cal_types of %d is Invalid!\n",
 			__func__, num_cal_types);
-		goto done;
+		return;
 	}
 
 	for (; i < num_cal_types; i++) {
@@ -730,8 +717,6 @@ void cal_utils_clear_cal_block_q6maps(int num_cal_types,
 		}
 		mutex_unlock(&cal_type[i]->lock);
 	}
-done:
-	return;
 }
 
 
@@ -746,8 +731,7 @@ static int realloc_memory(struct cal_block_data *cal_block)
 
 	ret = cal_block_ion_alloc(cal_block);
 	if (ret < 0)
-		pr_err("%s: realloc_memory failed!\n",
-			__func__);
+		pr_err("%s: failed!\n", __func__);
 	return ret;
 }
 
@@ -766,8 +750,8 @@ static int map_memory(struct cal_type_data *cal_type,
 
 		pr_debug("%s: cal type %d call map\n",
 			__func__, cal_type->info.reg.cal_type);
-		ret = cal_type->info.cal_util_callbacks.
-			map_cal(cal_type->info.reg.cal_type, cal_block);
+		ret = cal_type->info.cal_util_callbacks.map_cal(cal_type->info.reg.cal_type,
+						cal_block);
 		if (ret < 0) {
 			pr_err("%s: map_cal failed, cal type %d, ret = %d!\n",
 				__func__, cal_type->info.reg.cal_type,
@@ -792,8 +776,8 @@ static int unmap_memory(struct cal_type_data *cal_type,
 		}
 		pr_debug("%s: cal type %d call unmap\n",
 			__func__, cal_type->info.reg.cal_type);
-		ret = cal_type->info.cal_util_callbacks.
-			unmap_cal(cal_type->info.reg.cal_type, cal_block);
+		ret = cal_type->info.cal_util_callbacks.unmap_cal(cal_type->info.reg.cal_type,
+						cal_block);
 		if (ret < 0) {
 			pr_err("%s: unmap_cal failed, cal type %d, ret = %d!\n",
 				__func__, cal_type->info.reg.cal_type,
@@ -823,8 +807,6 @@ int cal_utils_alloc_cal(size_t data_size, void *data,
 	int ret = 0;
 	struct cal_block_data *cal_block;
 	struct audio_cal_type_alloc *alloc_data = data;
-
-	pr_debug("%s\n", __func__);
 
 	if (cal_type == NULL) {
 		pr_err("%s: cal_type is NULL!\n",
@@ -902,9 +884,6 @@ int cal_utils_dealloc_cal(size_t data_size, void *data,
 	struct cal_block_data *cal_block;
 	struct audio_cal_type_dealloc *dealloc_data = data;
 
-	pr_debug("%s\n", __func__);
-
-
 	if (cal_type == NULL) {
 		pr_err("%s: cal_type is NULL!\n",
 			__func__);
@@ -977,8 +956,6 @@ int cal_utils_set_cal(size_t data_size, void *data,
 	struct cal_block_data *cal_block;
 	struct audio_cal_type_basic *basic_data = data;
 
-	pr_debug("%s\n", __func__);
-
 	if (cal_type == NULL) {
 		pr_err("%s: cal_type is NULL!\n",
 			__func__);
@@ -1019,8 +996,7 @@ int cal_utils_set_cal(size_t data_size, void *data,
 				client_info_size, client_info);
 			if (cal_block == NULL) {
 				pr_err("%s: create_cal_block failed for cal type %d!\n",
-					__func__,
-				       cal_type->info.reg.cal_type);
+					__func__, cal_type->info.reg.cal_type);
 				ret = -EINVAL;
 				goto err;
 			}
@@ -1070,6 +1046,11 @@ int __init cal_utils_init(void)
 	mutex_init(&cal_lock);
 	return 0;
 }
+
+void cal_utils_exit(void)
+{
+	mutex_destroy(&cal_lock);
+}
 /**
  * cal_utils_is_cal_stale
  *
@@ -1088,7 +1069,7 @@ bool cal_utils_is_cal_stale(struct cal_block_data *cal_block)
 	}
 
 	if (cal_block->cal_stale)
-	    ret = true;
+		ret = true;
 
 unlock:
 	mutex_unlock(&cal_lock);

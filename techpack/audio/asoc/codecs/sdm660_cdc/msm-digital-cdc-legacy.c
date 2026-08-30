@@ -356,7 +356,6 @@ void msm_dig_cdc_hph_comp_cb(int (*codec_hph_comp_gpio)(bool enable,
 {
 	struct msm_dig_priv *dig_cdc = snd_soc_component_get_drvdata(component);
 
-	pr_debug("%s: Enter\n", __func__);
 	dig_cdc->codec_hph_comp_gpio = codec_hph_comp_gpio;
 }
 EXPORT_SYMBOL(msm_dig_cdc_hph_comp_cb);

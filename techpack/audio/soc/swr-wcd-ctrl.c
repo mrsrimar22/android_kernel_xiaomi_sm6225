@@ -1547,8 +1547,9 @@ static int swrm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev,
 			"%s: Error in master Initializaiton, err %d\n",
 			__func__, ret);
+		swrm_clk_request(swrm, false);
 		mutex_unlock(&swrm->mlock);
-		goto err_mstr_fail;
+		goto err_mstr_init_fail;
 	}
 	swrm->version = swrm->read(swrm->handle, SWRM_COMP_HW_VERSION);
 
@@ -1584,6 +1585,8 @@ static int swrm_probe(struct platform_device *pdev)
 	msm_aud_evt_register_client(&swrm->event_notifier);
 
 	return 0;
+err_mstr_init_fail:
+	swr_unregister_master(&swrm->master);
 err_mstr_fail:
 	swrm->reg_irq(swrm->handle, swr_mstr_interrupt,
 			swrm, SWR_IRQ_FREE);

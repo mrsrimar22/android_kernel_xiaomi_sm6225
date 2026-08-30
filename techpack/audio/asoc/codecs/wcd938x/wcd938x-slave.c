@@ -377,8 +377,8 @@ static int wcd938x_swr_probe(struct swr_device *pdev)
 					wcd938x_slave->debugfs_wcd938x_dent,
 					(void *) pdev,
 					&codec_debug_dump_ops);
-                }
-        }
+		}
+	}
 #endif
 
 	return component_add(&pdev->dev, &wcd938x_slave_comp_ops);

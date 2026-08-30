@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef _WCD_DSP_GLINK_H
 #define _WCD_DSP_GLINK_H
 

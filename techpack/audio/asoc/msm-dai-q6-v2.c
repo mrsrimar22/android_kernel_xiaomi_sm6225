@@ -1869,7 +1869,7 @@ static int msm_dai_q6_spdif_prepare(struct snd_pcm_substream *substream,
 	return rc;
 }
 
-static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_state(struct device *dev,
+static ssize_t audio_state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1887,7 +1887,7 @@ static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_state(struct device *dev,
 	return ret;
 }
 
-static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_format(struct device *dev,
+static ssize_t audio_format_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1905,7 +1905,7 @@ static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_format(struct device *dev,
 	return ret;
 }
 
-static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_rate(struct device *dev,
+static ssize_t audio_rate_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1923,7 +1923,7 @@ static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_rate(struct device *dev,
 	return ret;
 }
 
-static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_preemph(struct device *dev,
+static ssize_t audio_preemph_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t ret;
@@ -1943,14 +1943,10 @@ static ssize_t msm_dai_q6_spdif_sysfs_rda_audio_preemph(struct device *dev,
 	return ret;
 }
 
-static DEVICE_ATTR(audio_state, 0444, msm_dai_q6_spdif_sysfs_rda_audio_state,
-	NULL);
-static DEVICE_ATTR(audio_format, 0444, msm_dai_q6_spdif_sysfs_rda_audio_format,
-	NULL);
-static DEVICE_ATTR(audio_rate, 0444, msm_dai_q6_spdif_sysfs_rda_audio_rate,
-	NULL);
-static DEVICE_ATTR(audio_preemph, 0444,
-	msm_dai_q6_spdif_sysfs_rda_audio_preemph, NULL);
+static DEVICE_ATTR_RO(audio_state);
+static DEVICE_ATTR_RO(audio_format);
+static DEVICE_ATTR_RO(audio_rate);
+static DEVICE_ATTR_RO(audio_preemph);
 
 static struct attribute *msm_dai_q6_spdif_fs_attrs[] = {
 	&dev_attr_audio_state.attr,
@@ -2009,8 +2005,8 @@ static int msm_dai_q6_spdif_dai_probe(struct snd_soc_dai *dai)
 
 	if (!dai_data)
 		return -ENOMEM;
-	else
-		dev_set_drvdata(dai->dev, dai_data);
+
+	dev_set_drvdata(dai->dev, dai_data);
 
 	msm_dai_q6_set_dai_id(dai);
 	dai_data->port_id = dai->id;
@@ -2442,9 +2438,9 @@ static int msm_dai_q6_slim_bus_hw_params(struct snd_pcm_hw_params *params,
 	dai_data->port_config.slim_sch.sample_rate = dai_data->rate;
 	dai_data->port_config.slim_sch.num_channels = dai_data->channels;
 
-	dev_dbg(dai->dev, "%s:slimbus_dev_id[%hu] bit_wd[%hu] format[%hu]\n"
-		"num_channel %hu  shared_ch_mapping[0]  %hu\n"
-		"slave_port_mapping[1]  %hu slave_port_mapping[2]  %hu\n"
+	dev_dbg(dai->dev, "%s:slimbus_dev_id[%u] bit_wd[%u] format[%u]\n"
+		"num_channel %u  shared_ch_mapping[0]  %u\n"
+		"slave_port_mapping[1]  %u slave_port_mapping[2]  %u\n"
 		"sample_rate %d\n", __func__,
 		dai_data->port_config.slim_sch.slimbus_dev_id,
 		dai_data->port_config.slim_sch.bit_width,
@@ -2489,8 +2485,8 @@ static int msm_dai_q6_usb_audio_hw_params(struct snd_pcm_hw_params *params,
 	dai_data->port_config.usb_audio.num_channels = dai_data->channels;
 	dai_data->port_config.usb_audio.sample_rate = dai_data->rate;
 
-	dev_dbg(dai->dev, "%s: dev_id[0x%x] bit_wd[%hu] format[%hu]\n"
-		"num_channel %hu  sample_rate %d\n", __func__,
+	dev_dbg(dai->dev, "%s: dev_id[0x%x] bit_wd[%u] format[%u]\n"
+		"num_channel %u  sample_rate %d\n", __func__,
 		dai_data->port_config.usb_audio.dev_token,
 		dai_data->port_config.usb_audio.bit_width,
 		dai_data->port_config.usb_audio.data_format,
@@ -2568,8 +2564,8 @@ static int msm_dai_q6_pseudo_port_hw_params(struct snd_pcm_hw_params *params,
 				AFE_PSEUDOPORT_TIMING_MODE_TIMER;
 	dai_data->port_config.pseudo_port.sample_rate = params_rate(params);
 
-	dev_dbg(dai->dev, "%s: bit_wd[%hu] num_channels [%hu] format[%hu]\n"
-		"timing Mode %hu sample_rate %d\n", __func__,
+	dev_dbg(dai->dev, "%s: bit_wd[%u] num_channels [%u] format[%u]\n"
+		"timing Mode %u sample_rate %d\n", __func__,
 		dai_data->port_config.pseudo_port.bit_width,
 		dai_data->port_config.pseudo_port.num_channels,
 		dai_data->port_config.pseudo_port.data_format,
@@ -3697,7 +3693,6 @@ static int msm_dai_q6_afe_enable_ttp_get(struct snd_kcontrol *kcontrol,
 {
 	struct msm_dai_q6_dai_data *dai_data = kcontrol->private_data;
 
-	pr_debug("%s:\n", __func__);
 	if (!dai_data) {
 		pr_err("%s: Invalid dai data\n", __func__);
 		return -EINVAL;
@@ -3714,7 +3709,6 @@ static int msm_dai_q6_afe_enable_ttp_put(struct snd_kcontrol *kcontrol,
 {
 	struct msm_dai_q6_dai_data *dai_data = kcontrol->private_data;
 
-	pr_debug("%s:\n", __func__);
 	if (!dai_data) {
 		pr_err("%s: Invalid dai data\n", __func__);
 		return -EINVAL;
@@ -3740,7 +3734,6 @@ static int msm_dai_q6_afe_ttp_cfg_get(struct snd_kcontrol *kcontrol,
 {
 	struct msm_dai_q6_dai_data *dai_data = kcontrol->private_data;
 
-	pr_debug("%s:\n", __func__);
 	if (!dai_data) {
 		pr_err("%s: Invalid dai data\n", __func__);
 		return -EINVAL;
@@ -3979,8 +3972,8 @@ static int msm_dai_q6_dai_probe(struct snd_soc_dai *dai)
 
 	if (!dai_data)
 		return -ENOMEM;
-	else
-		dev_set_drvdata(dai->dev, dai_data);
+
+	dev_set_drvdata(dai->dev, dai_data);
 
 	msm_dai_q6_set_dai_id(dai);
 
@@ -4167,7 +4160,7 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_lb_tx_dai[] = {
 			 SNDRV_PCM_RATE_192000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE |
-			SNDRV_PCM_FMTBIT_S32_LE ),
+			SNDRV_PCM_FMTBIT_S32_LE),
 			.channels_min = 1,
 			.channels_max = 8,
 			.rate_min =     8000,
@@ -4605,9 +4598,9 @@ static int msm_auxpcm_dev_probe(struct platform_device *pdev)
 				(u16)be32_to_cpu(slot_mapping_array[i]);
 
 	auxpcm_pdata->mode_16k.slot_mapping =
-					kzalloc(sizeof(uint16_t) *
-					     auxpcm_pdata->mode_16k.num_slots,
-					     GFP_KERNEL);
+					kcalloc(auxpcm_pdata->mode_16k.num_slots,
+						sizeof(uint16_t),
+						GFP_KERNEL);
 
 	if (!auxpcm_pdata->mode_16k.slot_mapping) {
 		dev_err(&pdev->dev, "%s No mem for mode_16k slot mapping\n",
@@ -5596,7 +5589,6 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		case AFE_PORT_I2S_SD6:
 		case AFE_PORT_I2S_SD7:
 			goto error_invalid_data;
-			break;
 		case AFE_PORT_I2S_QUAD01:
 		case AFE_PORT_I2S_QUAD23:
 		case AFE_PORT_I2S_QUAD45:
@@ -5707,8 +5699,8 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		   (mi2s_dai_data->rx_dai.mi2s_dai_data.bitwidth !=
 		    mi2s_dai_data->tx_dai.mi2s_dai_data.bitwidth)) {
 			dev_err(dai->dev, "%s: Error mismatch in HW params\n"
-				"Tx sample_rate = %u bit_width = %hu\n"
-				"Rx sample_rate = %u bit_width = %hu\n"
+				"Tx sample_rate = %u bit_width = %u\n"
+				"Rx sample_rate = %u bit_width = %u\n"
 				, __func__,
 				mi2s_dai_data->tx_dai.mi2s_dai_data.rate,
 				mi2s_dai_data->tx_dai.mi2s_dai_data.bitwidth,
@@ -5794,7 +5786,7 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 		(substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
 		 &mi2s_dai_data->rx_dai.mi2s_dai_data :
 		 &mi2s_dai_data->tx_dai.mi2s_dai_data);
-	 u16 port_id = 0;
+	u16 port_id = 0;
 	int rc = 0;
 
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
@@ -6545,7 +6537,7 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	return 0;
 
 err_register:
-	dev_err(&pdev->dev, "fail to msm_dai_q6_mi2s_dev_probe\n");
+	dev_err(&pdev->dev, "%s: failed\n", __func__);
 free_dai_data:
 	kfree(dai_data);
 free_pdata:
@@ -6890,7 +6882,7 @@ static int msm_dai_q6_meta_mi2s_hw_params(struct snd_pcm_substream *substream,
 	port_cfg->data_format = AFE_LINEAR_PCM_DATA;
 
 	dev_dbg(dai->dev, "%s: dai id %d dai_data->channels = %d\n"
-		"bit_width = %hu ws_src = 0x%x sample_rate = %u\n"
+		"bit_width = %u ws_src = 0x%x sample_rate = %u\n"
 		"member_ports 0x%x 0x%x 0x%x 0x%x\n"
 		"sd_lines 0x%x 0x%x 0x%x 0x%x\n",
 		__func__, dai->id, dai_data->channels,
@@ -7239,38 +7231,38 @@ static int msm_dai_q6_dev_probe(struct platform_device *pdev)
 
 	switch (id) {
 	case SLIMBUS_0_RX:
-		strlcpy(stream_name, "Slimbus Playback", 80);
+		strscpy(stream_name, "Slimbus Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_2_RX:
-		strlcpy(stream_name, "Slimbus2 Playback", 80);
+		strscpy(stream_name, "Slimbus2 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_1_RX:
-		strlcpy(stream_name, "Slimbus1 Playback", 80);
+		strscpy(stream_name, "Slimbus1 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_3_RX:
-		strlcpy(stream_name, "Slimbus3 Playback", 80);
+		strscpy(stream_name, "Slimbus3 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_4_RX:
-		strlcpy(stream_name, "Slimbus4 Playback", 80);
+		strscpy(stream_name, "Slimbus4 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_5_RX:
-		strlcpy(stream_name, "Slimbus5 Playback", 80);
+		strscpy(stream_name, "Slimbus5 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_6_RX:
-		strlcpy(stream_name, "Slimbus6 Playback", 80);
+		strscpy(stream_name, "Slimbus6 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_7_RX:
-		strlcpy(stream_name, "Slimbus7 Playback", sizeof(stream_name));
+		strscpy(stream_name, "Slimbus7 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_8_RX:
-		strlcpy(stream_name, "Slimbus8 Playback", sizeof(stream_name));
+		strscpy(stream_name, "Slimbus8 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 	case SLIMBUS_9_RX:
-		strlcpy(stream_name, "Slimbus9 Playback", sizeof(stream_name));
+		strscpy(stream_name, "Slimbus9 Playback", sizeof(stream_name));
 		goto register_slim_playback;
 register_slim_playback:
 		rc = -ENODEV;
-		len = strnlen(stream_name, 80);
+		len = strnlen(stream_name, sizeof(stream_name));
 		for (i = 0; i < ARRAY_SIZE(msm_dai_q6_slimbus_rx_dai); i++) {
 			if (msm_dai_q6_slimbus_rx_dai[i].playback.stream_name &&
 				!strcmp(stream_name,
@@ -7287,38 +7279,38 @@ register_slim_playback:
 				__func__, stream_name);
 		break;
 	case SLIMBUS_0_TX:
-		strlcpy(stream_name, "Slimbus Capture", 80);
+		strscpy(stream_name, "Slimbus Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_1_TX:
-		strlcpy(stream_name, "Slimbus1 Capture", 80);
+		strscpy(stream_name, "Slimbus1 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_2_TX:
-		strlcpy(stream_name, "Slimbus2 Capture", 80);
+		strscpy(stream_name, "Slimbus2 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_3_TX:
-		strlcpy(stream_name, "Slimbus3 Capture", 80);
+		strscpy(stream_name, "Slimbus3 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_4_TX:
-		strlcpy(stream_name, "Slimbus4 Capture", 80);
+		strscpy(stream_name, "Slimbus4 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_5_TX:
-		strlcpy(stream_name, "Slimbus5 Capture", 80);
+		strscpy(stream_name, "Slimbus5 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_6_TX:
-		strlcpy(stream_name, "Slimbus6 Capture", 80);
+		strscpy(stream_name, "Slimbus6 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_7_TX:
-		strlcpy(stream_name, "Slimbus7 Capture", sizeof(stream_name));
+		strscpy(stream_name, "Slimbus7 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_8_TX:
-		strlcpy(stream_name, "Slimbus8 Capture", sizeof(stream_name));
+		strscpy(stream_name, "Slimbus8 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 	case SLIMBUS_9_TX:
-		strlcpy(stream_name, "Slimbus9 Capture", sizeof(stream_name));
+		strscpy(stream_name, "Slimbus9 Capture", sizeof(stream_name));
 		goto register_slim_capture;
 register_slim_capture:
 		rc = -ENODEV;
-		len = strnlen(stream_name, 80);
+		len = strnlen(stream_name, sizeof(stream_name));
 		for (i = 0; i < ARRAY_SIZE(msm_dai_q6_slimbus_tx_dai); i++) {
 			if (msm_dai_q6_slimbus_tx_dai[i].capture.stream_name &&
 				!strcmp(stream_name,
@@ -7369,13 +7361,13 @@ register_slim_capture:
 			&msm_dai_q6_component, &msm_dai_q6_usb_tx_dai, 1);
 		break;
 	case RT_PROXY_DAI_001_RX:
-		strlcpy(stream_name, "AFE Playback", 80);
+		strscpy(stream_name, "AFE Playback", sizeof(stream_name));
 		goto register_afe_playback;
 	case RT_PROXY_DAI_002_RX:
-		strlcpy(stream_name, "AFE-PROXY RX", 80);
+		strscpy(stream_name, "AFE-PROXY RX", sizeof(stream_name));
 register_afe_playback:
 		rc = -ENODEV;
-		len = strnlen(stream_name, 80);
+		len = strnlen(stream_name, sizeof(stream_name));
 		for (i = 0; i < ARRAY_SIZE(msm_dai_q6_afe_rx_dai); i++) {
 			if (msm_dai_q6_afe_rx_dai[i].playback.stream_name &&
 			    !strcmp(stream_name,
@@ -7391,13 +7383,13 @@ register_afe_playback:
 			__func__, stream_name);
 		break;
 	case RT_PROXY_DAI_001_TX:
-		strlcpy(stream_name, "AFE-PROXY TX", 80);
+		strscpy(stream_name, "AFE-PROXY TX", sizeof(stream_name));
 		goto register_afe_capture;
 	case RT_PROXY_DAI_002_TX:
-		strlcpy(stream_name, "AFE Capture", 80);
+		strscpy(stream_name, "AFE Capture", sizeof(stream_name));
 register_afe_capture:
 		rc = -ENODEV;
-		len = strnlen(stream_name, 80);
+		len = strnlen(stream_name, sizeof(stream_name));
 		for (i = 0; i < ARRAY_SIZE(msm_dai_q6_afe_tx_dai); i++) {
 			if (msm_dai_q6_afe_tx_dai[i].capture.stream_name &&
 				!strcmp(stream_name,
@@ -7413,13 +7405,13 @@ register_afe_capture:
 			__func__, stream_name);
 		break;
 	case VOICE_PLAYBACK_TX:
-		strlcpy(stream_name, "Voice Farend Playback", 80);
+		strscpy(stream_name, "Voice Farend Playback", sizeof(stream_name));
 		goto register_voice_playback;
 	case VOICE2_PLAYBACK_TX:
-		strlcpy(stream_name, "Voice2 Farend Playback", 80);
+		strscpy(stream_name, "Voice2 Farend Playback", sizeof(stream_name));
 register_voice_playback:
 		rc = -ENODEV;
-		len = strnlen(stream_name, 80);
+		len = strnlen(stream_name, sizeof(stream_name));
 		for (i = 0; i < ARRAY_SIZE(msm_dai_q6_voc_playback_dai); i++) {
 			if (msm_dai_q6_voc_playback_dai[i].playback.stream_name
 			    && !strcmp(stream_name,
@@ -7435,18 +7427,17 @@ register_voice_playback:
 			       __func__, stream_name);
 		break;
 	case VOICE_RECORD_RX:
-		strlcpy(stream_name, "Voice Downlink Capture", 80);
+		strscpy(stream_name, "Voice Downlink Capture", sizeof(stream_name));
 		goto register_uplink_capture;
 	case VOICE_RECORD_TX:
-		strlcpy(stream_name, "Voice Uplink Capture", 80);
+		strscpy(stream_name, "Voice Uplink Capture", sizeof(stream_name));
 register_uplink_capture:
 		rc = -ENODEV;
-		len = strnlen(stream_name, 80);
+		len = strnlen(stream_name, sizeof(stream_name));
 		for (i = 0; i < ARRAY_SIZE(msm_dai_q6_incall_record_dai); i++) {
 			if (msm_dai_q6_incall_record_dai[i].capture.stream_name
 			    && !strcmp(stream_name,
-			    msm_dai_q6_incall_record_dai[i].
-			    capture.stream_name)) {
+			    msm_dai_q6_incall_record_dai[i].capture.stream_name)) {
 				rc = snd_soc_register_component(&pdev->dev,
 					&msm_dai_q6_component,
 					&msm_dai_q6_incall_record_dai[i], 1);
@@ -9834,7 +9825,8 @@ static int msm_dai_q6_tdm_prepare(struct snd_pcm_substream *substream,
 
 		if (msm_dai_q6_get_tdm_clk_ref(group_idx) == 0) {
 			/* TX and RX share the same clk. So enable the clk
-			 * per TDM interface. */
+			 * per TDM interface.
+			 */
 			rc = msm_dai_q6_tdm_set_clk(dai_data,
 				dai->id, true);
 			if (rc < 0) {
@@ -12428,8 +12420,8 @@ static int msm_dai_q6_cdc_dma_hw_params(
 				AFE_API_VERSION_CODEC_DMA_CONFIG;
 	dai_data->port_config.cdc_dma.sample_rate = dai_data->rate;
 	dai_data->port_config.cdc_dma.num_channels = dai_data->channels;
-	dev_dbg(dai->dev, "%s: bit_wd[%hu] format[%hu]\n"
-		"num_channel %hu sample_rate %d\n", __func__,
+	dev_dbg(dai->dev, "%s: bit_wd[%u] format[%u]\n"
+		"num_channel %u sample_rate %d\n", __func__,
 		dai_data->port_config.cdc_dma.bit_width,
 		dai_data->port_config.cdc_dma.data_format,
 		dai_data->port_config.cdc_dma.num_channels,

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef _UAPI_MSM_AUDIO_SBC_H
 #define _UAPI_MSM_AUDIO_SBC_H
 

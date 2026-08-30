@@ -31,6 +31,7 @@ struct msm_cdc_pinctrl_info {
 	u32 wakeup_reg_count;
 	bool wakeup_capable;
 	bool chip_wakeup_reg;
+	struct platform_device *pdev;
 };
 
 static struct msm_cdc_pinctrl_info *msm_cdc_pinctrl_get_gpiodata(
@@ -51,11 +52,20 @@ static struct msm_cdc_pinctrl_info *msm_cdc_pinctrl_get_gpiodata(
 	}
 
 	gpio_data = dev_get_drvdata(&pdev->dev);
-	if (!gpio_data)
+	if (!gpio_data) {
 		dev_err(&pdev->dev, "%s: cannot find cdc gpio info\n",
 			__func__);
+		put_device(&pdev->dev);
+		return NULL;
+	}
 
 	return gpio_data;
+}
+
+static void msm_cdc_pinctrl_put_gpiodata(struct msm_cdc_pinctrl_info *gpio_data)
+{
+	if (gpio_data && gpio_data->pdev)
+		put_device(&gpio_data->pdev->dev);
 }
 
 /*
@@ -76,6 +86,7 @@ int msm_cdc_get_gpio_state(struct device_node *np)
 	if (gpio_is_valid(gpio_data->gpio))
 		value = gpio_get_value_cansleep(gpio_data->gpio);
 
+	msm_cdc_pinctrl_put_gpiodata(gpio_data);
 	return value;
 }
 EXPORT_SYMBOL(msm_cdc_get_gpio_state);
@@ -89,6 +100,7 @@ EXPORT_SYMBOL(msm_cdc_get_gpio_state);
 int msm_cdc_pinctrl_select_sleep_state(struct device_node *np)
 {
 	struct msm_cdc_pinctrl_info *gpio_data;
+	int ret;
 
 	gpio_data = msm_cdc_pinctrl_get_gpiodata(np);
 	if (!gpio_data)
@@ -96,12 +108,15 @@ int msm_cdc_pinctrl_select_sleep_state(struct device_node *np)
 
 	if (!gpio_data->pinctrl_sleep) {
 		pr_err("%s: pinctrl sleep state is null\n", __func__);
+		msm_cdc_pinctrl_put_gpiodata(gpio_data);
 		return -EINVAL;
 	}
 	gpio_data->state = false;
 
-	return pinctrl_select_state(gpio_data->pinctrl,
+	ret = pinctrl_select_state(gpio_data->pinctrl,
 				    gpio_data->pinctrl_sleep);
+	msm_cdc_pinctrl_put_gpiodata(gpio_data);
+	return ret;
 }
 EXPORT_SYMBOL(msm_cdc_pinctrl_select_sleep_state);
 
@@ -114,6 +129,7 @@ EXPORT_SYMBOL(msm_cdc_pinctrl_select_sleep_state);
 int msm_cdc_pinctrl_select_alt_active_state(struct device_node *np)
 {
 	struct msm_cdc_pinctrl_info *gpio_data;
+	int ret;
 
 	gpio_data = msm_cdc_pinctrl_get_gpiodata(np);
 	if (!gpio_data)
@@ -121,12 +137,15 @@ int msm_cdc_pinctrl_select_alt_active_state(struct device_node *np)
 
 	if (!gpio_data->pinctrl_alt_active) {
 		pr_err("%s: pinctrl alt_active state is null\n", __func__);
+		msm_cdc_pinctrl_put_gpiodata(gpio_data);
 		return -EINVAL;
 	}
 	gpio_data->state = true;
 
-	return pinctrl_select_state(gpio_data->pinctrl,
+	ret = pinctrl_select_state(gpio_data->pinctrl,
 				    gpio_data->pinctrl_alt_active);
+	msm_cdc_pinctrl_put_gpiodata(gpio_data);
+	return ret;
 }
 EXPORT_SYMBOL(msm_cdc_pinctrl_select_alt_active_state);
 
@@ -139,6 +158,7 @@ EXPORT_SYMBOL(msm_cdc_pinctrl_select_alt_active_state);
 int msm_cdc_pinctrl_select_active_state(struct device_node *np)
 {
 	struct msm_cdc_pinctrl_info *gpio_data;
+	int ret;
 
 	gpio_data = msm_cdc_pinctrl_get_gpiodata(np);
 	if (!gpio_data)
@@ -146,12 +166,15 @@ int msm_cdc_pinctrl_select_active_state(struct device_node *np)
 
 	if (!gpio_data->pinctrl_active) {
 		pr_err("%s: pinctrl active state is null\n", __func__);
+		msm_cdc_pinctrl_put_gpiodata(gpio_data);
 		return -EINVAL;
 	}
 	gpio_data->state = true;
 
-	return pinctrl_select_state(gpio_data->pinctrl,
+	ret = pinctrl_select_state(gpio_data->pinctrl,
 				    gpio_data->pinctrl_active);
+	msm_cdc_pinctrl_put_gpiodata(gpio_data);
+	return ret;
 }
 EXPORT_SYMBOL(msm_cdc_pinctrl_select_active_state);
 
@@ -165,12 +188,15 @@ EXPORT_SYMBOL(msm_cdc_pinctrl_select_active_state);
 int msm_cdc_pinctrl_get_state(struct device_node *np)
 {
 	struct msm_cdc_pinctrl_info *gpio_data;
+	int state;
 
 	gpio_data = msm_cdc_pinctrl_get_gpiodata(np);
 	if (!gpio_data)
 		return -EINVAL;
 
-	return gpio_data->state;
+	state = gpio_data->state;
+	msm_cdc_pinctrl_put_gpiodata(gpio_data);
+	return state;
 }
 EXPORT_SYMBOL(msm_cdc_pinctrl_get_state);
 
@@ -212,6 +238,7 @@ int msm_cdc_pinctrl_set_wakeup_capable(struct device_node *np, bool enable)
 		}
 	}
 exit:
+	msm_cdc_pinctrl_put_gpiodata(gpio_data);
 	return ret;
 }
 EXPORT_SYMBOL(msm_cdc_pinctrl_set_wakeup_capable);
@@ -231,6 +258,8 @@ static int msm_cdc_pinctrl_probe(struct platform_device *pdev)
 				 GFP_KERNEL);
 	if (!gpio_data)
 		return -ENOMEM;
+
+	gpio_data->pdev = pdev;
 
 	gpio_data->pinctrl = devm_pinctrl_get(&pdev->dev);
 	if (IS_ERR_OR_NULL(gpio_data->pinctrl)) {

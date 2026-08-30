@@ -331,7 +331,6 @@ static int msm8952_set_spk(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component =
 			snd_soc_kcontrol_component(kcontrol);
 
-	pr_debug("%s()\n", __func__);
 	if (msm8952_spk_control == ucontrol->value.integer.value[0])
 		return 0;
 
@@ -1825,7 +1824,6 @@ int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = 2;
 
@@ -1841,7 +1839,6 @@ int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = 2;
 
@@ -2289,7 +2286,6 @@ int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels =
 	    hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 				   slim0_rx_bit_format);
 	rate->min = rate->max = slim0_rx_sample_rate;
@@ -2311,7 +2307,6 @@ int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 			SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 				   slim0_tx_bit_format);
 	rate->min = rate->max = slim0_tx_sample_rate;
@@ -2329,7 +2324,6 @@ int msm_slim_1_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 			SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 				slim1_tx_bit_format);
 	rate->min = rate->max = slim1_tx_sample_rate;
@@ -2347,7 +2341,6 @@ int msm_slim_2_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 			SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 				slim2_tx_bit_format);
 	rate->min = rate->max = slim2_tx_sample_rate;
@@ -2365,7 +2358,6 @@ int msm_slim_4_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels =
 	    hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 				   slim4_rx_bit_format);
 	rate->min = rate->max = slim4_rx_sample_rate;
@@ -2462,7 +2454,6 @@ int msm_slim_5_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct msm8952_asoc_mach_data *pdata =
 					snd_soc_card_get_drvdata(rtd->card);
 
-	pr_debug("%s enter\n", __func__);
 	if (!strcmp(dev_name(codec_dai->dev), "tavil_codec"))
 		component = snd_soc_rtdcom_lookup(rtd, "tavil_codec");
 	else if (!strcmp(dev_name(codec_dai->dev), "tasha_codec"))
@@ -2533,8 +2524,6 @@ static int msm_afe_set_config(struct snd_soc_component *component)
 	void *config_data;
 	struct snd_soc_card *card = component->card;
 	struct msm8952_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-
-	pr_debug("%s: enter\n", __func__);
 
 	if (!pdata->msm8952_codec_fn.get_afe_config_fn) {
 		dev_err(component->dev, "%s: codec get afe config not init'ed\n",
@@ -3444,8 +3433,6 @@ static bool msm8952_swap_gnd_mic(struct snd_soc_component *component,
 static int is_us_eu_switch_gpio_support(struct platform_device *pdev,
 		struct msm8952_asoc_mach_data *pdata)
 {
-	pr_debug("%s\n", __func__);
-
 	/* check if US-EU GPIO is supported */
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 					"qcom,cdc-us-euro-gpios", 0);

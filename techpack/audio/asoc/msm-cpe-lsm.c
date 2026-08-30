@@ -193,7 +193,7 @@ static struct cpe_priv *cpe_get_private_data(
 		pr_err("%s: %s is invalid\n",
 			__func__,
 			(!substream) ? "substream" : "private_data");
-		goto err_ret;
+		return NULL;
 	}
 
 	rtd = substream->private_data;
@@ -202,18 +202,16 @@ static struct cpe_priv *cpe_get_private_data(
 		pr_err("%s: %s is invalid\n",
 			 __func__,
 			(!rtd) ? "runtime" : "platform");
-		goto err_ret;
+		return NULL;
 	}
 
 	component = snd_soc_rtdcom_lookup(rtd, DRV_NAME);
 	if (!component) {
 		pr_err("%s: invalid component\n", __func__);
-		goto err_ret;
+		return NULL;
 	}
-        return snd_soc_component_get_drvdata(component);
 
-err_ret:
-	return NULL;
+	return snd_soc_component_get_drvdata(component);
 }
 
 /*
@@ -2570,9 +2568,6 @@ static int msm_cpe_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 		if (!err) {
 			udata_32 = kzalloc(u_pld_size, GFP_KERNEL);
 			if (!udata_32) {
-				dev_err(rtd->dev,
-					"%s: nomem for udata\n",
-					__func__);
 				err = -EFAULT;
 			} else {
 				udata_32->status = event_status->status;
@@ -2656,9 +2651,6 @@ static int msm_cpe_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 		if (!err) {
 			udata_32 = kzalloc(u_pld_size, GFP_KERNEL);
 			if (!udata_32) {
-				dev_err(rtd->dev,
-					"%s: nomem for udata\n",
-					__func__);
 				err = -EFAULT;
 			} else {
 				udata_32->timestamp_lsw =

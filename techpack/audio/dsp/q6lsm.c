@@ -270,7 +270,7 @@ done:
 		case LSM_SESSION_CMD_GET_PARAMS_V3:
 			if (token != client->session &&
 					payload != NULL &&
-					payload[0] !=LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
+					payload[0] != LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
 				pr_err("%s: Invalid session %d receivced expected %d\n",
 					__func__, token, client->session);
 				spin_unlock_irqrestore(&lsm_session_lock, flags);
@@ -399,6 +399,7 @@ struct lsm_client *q6lsm_client_alloc(lsm_app_cb cb, void *priv)
 	if (CHECK_SESSION(client->session)) {
 		pr_err("%s: Client session %d\n",
 			__func__, client->session);
+		q6lsm_session_free(client);
 		kfree(client);
 		return NULL;
 	}
@@ -780,8 +781,8 @@ static int q6lsm_get_params(struct lsm_client *client,
 	struct param_hdr_v2 param_info_v2;
 	int ret = 0;
 	bool iid_supported = q6common_is_instance_id_supported();
-	memset(&param_info_v2, 0, sizeof(struct param_hdr_v2));
 
+	memset(&param_info_v2, 0, sizeof(struct param_hdr_v2));
 	if (iid_supported)
 		ret = q6lsm_get_params_v3(client, mem_hdr, param_info);
 	else {
@@ -1236,7 +1237,7 @@ int q6lsm_set_afe_data_format(uint64_t fe_id, uint16_t afe_data_format)
 		 afe_data_format ? "unprocessed" : "processed");
 
 	for (n = LSM_MIN_SESSION_ID; n <= LSM_MAX_SESSION_ID; n++) {
-		if (0 == lsm_client_afe_data[n].fe_id) {
+		if (lsm_client_afe_data[n].fe_id == 0) {
 			lsm_client_afe_data[n].fe_id = fe_id;
 			lsm_client_afe_data[n].unprocessed_data =
 							afe_data_format;
@@ -1264,7 +1265,7 @@ void q6lsm_get_afe_data_format(uint64_t fe_id, uint16_t *afe_data_format)
 {
 	int n = 0;
 
-	if (NULL == afe_data_format) {
+	if (afe_data_format == NULL) {
 		pr_err("%s: Pointer afe_data_format is NULL\n", __func__);
 		return;
 	}
@@ -1312,7 +1313,7 @@ int q6lsm_set_port_connected(struct lsm_client *client)
 	connectport_hdr.param_size = sizeof(connect_port);
 
 	client->connect_to_port = get_lsm_port();
-	if (ADM_LSM_PORT_ID != client->connect_to_port)
+	if (client->connect_to_port != ADM_LSM_PORT_ID)
 		q6lsm_get_afe_data_format(client->fe_id,
 					  &client->unprocessed_data);
 	connect_port.minor_version = QLSM_PARAM_ID_MINOR_VERSION;
@@ -1676,6 +1677,7 @@ int q6lsm_deregister_sound_model(struct lsm_client *client)
 	 * also set stage index to LSM_STAGE_INDEX_FIRST.
 	 */
 	struct lsm_params_info_v2 p_info = {0};
+
 	p_info.stage_idx = LSM_STAGE_INDEX_FIRST;
 
 	if (!client) {
@@ -1906,7 +1908,7 @@ static int q6lsm_snd_cal_alloc(struct lsm_client *client,
 
 	cal = &client->stage_cfg[stage_idx].cal_info;
 	if (cal->data) {
-		pr_debug("%s: cal data for stage_idx(%d) is already set \n",
+		pr_debug("%s: cal data for stage_idx(%d) is already set\n",
 			__func__, stage_idx);
 		goto exit;
 	}
@@ -2318,6 +2320,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 
 	case LSM_GAIN: {
 		struct snd_lsm_gain *lsm_gain = (struct snd_lsm_gain *) data;
+
 		param_info.module_id = p_info->module_id;
 		param_info.instance_id = p_info->instance_id;
 		param_info.param_id = p_info->param_id;
@@ -2372,8 +2375,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 		mem_hdr.data_payload_addr_lsw =
 			lower_32_bits(sm->phys);
 		mem_hdr.data_payload_addr_msw =
-			msm_audio_populate_upper_32_bits(
-				sm->phys),
+			msm_audio_populate_upper_32_bits(sm->phys);
 		mem_hdr.mem_map_handle = sm->mem_map_handle;
 
 		rc = q6lsm_set_params(client, &mem_hdr, NULL, payload_size,
@@ -2746,8 +2748,9 @@ int q6lsm_lab_buffer_alloc(struct lsm_client *client, bool alloc)
 				out_params->buf_sz;
 		allocate_size = PAGE_ALIGN(allocate_size);
 		client->lab_buffer =
-			kzalloc(sizeof(struct lsm_lab_buffer) *
-			out_params->period_count, GFP_KERNEL);
+			kcalloc(out_params->period_count,
+				sizeof(struct lsm_lab_buffer),
+				GFP_KERNEL);
 		if (!client->lab_buffer) {
 			pr_err("%s: memory allocation for lab buffer failed count %d\n"
 				, __func__,
@@ -2838,8 +2841,6 @@ static int q6lsm_alloc_cal(int32_t cal_type,
 	int ret = 0;
 	int cal_index;
 
-	pr_debug("%s:\n", __func__);
-
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
 		pr_err("%s: could not get cal index %d!\n",
@@ -2866,8 +2867,6 @@ static int q6lsm_dealloc_cal(int32_t cal_type,
 	int ret = 0;
 	int cal_index;
 
-	pr_debug("%s:\n", __func__);
-
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
 		pr_err("%s: could not get cal index %d!\n",
@@ -2893,8 +2892,6 @@ static int q6lsm_set_cal(int32_t cal_type,
 {
 	int ret = 0;
 	int cal_index;
-
-	pr_debug("%s:\n", __func__);
 
 	cal_index = get_cal_type_index(cal_type);
 	if (cal_index < 0) {
@@ -2925,8 +2922,6 @@ done:
 
 static void lsm_delete_cal_data(void)
 {
-	pr_debug("%s:\n", __func__);
-
 	cal_utils_destroy_cal_types(LSM_MAX_CAL_IDX, lsm_common.cal_data);
 }
 
@@ -2949,7 +2944,6 @@ static int q6lsm_init_cal_data(void)
 		q6lsm_set_cal, NULL, NULL} },
 		{NULL, NULL, cal_utils_match_buf_num} }
 	};
-	pr_debug("%s:\n", __func__);
 
 	ret = cal_utils_create_cal_types(LSM_MAX_CAL_IDX,
 		lsm_common.cal_data, cal_type_info);
@@ -2969,8 +2963,6 @@ err:
 int __init q6lsm_init(void)
 {
 	int i = 0;
-
-	pr_debug("%s:\n", __func__);
 
 	memset(&lsm_common, 0, sizeof(lsm_common));
 	spin_lock_init(&lsm_session_lock);
@@ -2992,5 +2984,10 @@ int __init q6lsm_init(void)
 
 void q6lsm_exit(void)
 {
+	int i;
+
 	lsm_delete_cal_data();
+	mutex_destroy(&lsm_common.apr_lock);
+	for (i = 0; i <= LSM_MAX_SESSION_ID; i++)
+		mutex_destroy(&lsm_common.common_client[i].cmd_lock);
 }

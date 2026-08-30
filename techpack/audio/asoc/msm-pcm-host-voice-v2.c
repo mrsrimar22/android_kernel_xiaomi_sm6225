@@ -1453,7 +1453,6 @@ static int msm_asoc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
 
-	pr_debug("%s:\n", __func__);
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
@@ -1509,6 +1508,7 @@ static struct platform_driver msm_pcm_driver = {
 int __init msm_voice_host_init(void)
 {
 	int i = 0;
+	int ret;
 	struct session *s = NULL;
 
 	memset(&hpcm_drv, 0, sizeof(hpcm_drv));
@@ -1541,12 +1541,16 @@ int __init msm_voice_host_init(void)
 		INIT_LIST_HEAD(&s->tx_tap_point.playback_dai_data.free_queue);
 	}
 
-	return platform_driver_register(&msm_pcm_driver);
+	ret = platform_driver_register(&msm_pcm_driver);
+	if (ret)
+		mutex_destroy(&hpcm_drv.lock);
+	return ret;
 }
 
 void msm_voice_host_exit(void)
 {
 	platform_driver_unregister(&msm_pcm_driver);
+	mutex_destroy(&hpcm_drv.lock);
 }
 
 MODULE_DESCRIPTION("PCM module platform driver");

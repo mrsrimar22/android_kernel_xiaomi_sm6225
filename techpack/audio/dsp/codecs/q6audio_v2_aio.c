@@ -174,8 +174,6 @@ void audio_aio_async_read_ack(struct q6audio_aio *audio, uint32_t token,
 	struct audio_aio_buffer_node *filled_buf;
 	int ret;
 
-	pr_debug("%s\n", __func__);
-
 	/* No active flush in progress */
 	if (audio->rflush)
 		return;

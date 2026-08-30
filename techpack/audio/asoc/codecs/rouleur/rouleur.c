@@ -1334,8 +1334,8 @@ int rouleur_micbias_control(struct snd_soc_component *component,
 		    (rouleur->pullup_ref[micb_index] > 0)) {
 			snd_soc_component_update_bits(component, micb_reg,
 				pullup_mask, pullup_mask);
-                        snd_soc_component_update_bits(component, micb_reg,
-                                enable_mask, 0x00);
+			snd_soc_component_update_bits(component, micb_reg,
+				enable_mask, 0x00);
 			rouleur_global_mbias_disable(component);
 		} else if ((rouleur->micb_ref[micb_index] == 0) &&
 			   (rouleur->pullup_ref[micb_index] == 0)) {
@@ -1343,8 +1343,8 @@ int rouleur_micbias_control(struct snd_soc_component *component,
 				blocking_notifier_call_chain(
 					&rouleur->mbhc->notifier, pre_off_event,
 					&rouleur->mbhc->wcd_mbhc);
-                        snd_soc_component_update_bits(component, micb_reg,
-                                enable_mask, 0x00);
+			snd_soc_component_update_bits(component, micb_reg,
+				enable_mask, 0x00);
 			rouleur_global_mbias_disable(component);
 			if (post_off_event && rouleur->mbhc)
 				blocking_notifier_call_chain(
@@ -2162,9 +2162,7 @@ static int rouleur_soc_codec_probe(struct snd_soc_component *component)
 			snd_soc_component_get_dapm(component);
 	int ret = -EINVAL;
 
-	dev_info(component->dev, "%s()\n", __func__);
 	rouleur = snd_soc_component_get_drvdata(component);
-
 	if (!rouleur)
 		return -EINVAL;
 
@@ -2323,7 +2321,7 @@ static int rouleur_suspend(struct device *dev)
 		clear_bit(ALLOW_VPOS_DISABLE, &rouleur->status_mask);
 	}
 	if (rouleur->dapm_bias_off) {
-		 msm_cdc_set_supplies_lpm_mode(rouleur->dev,
+		msm_cdc_set_supplies_lpm_mode(rouleur->dev,
 					      rouleur->supplies,
 					      pdata->regulator,
 					      pdata->num_supplies,
@@ -2603,7 +2601,7 @@ static int rouleur_bind(struct device *dev)
 	/*
 	 * Add 5msec delay to provide sufficient time for
 	 * soundwire auto enumeration of slave devices as
-	 * as per HW requirement.
+	 * per HW requirement.
 	 */
 	usleep_range(5000, 5010);
 	rouleur->wakeup = rouleur_wakeup;
@@ -2725,7 +2723,7 @@ static void rouleur_unbind(struct device *dev)
 }
 
 static const struct of_device_id rouleur_dt_match[] = {
-	{ .compatible = "qcom,rouleur-codec" , .data = "rouleur" },
+	{ .compatible = "qcom,rouleur-codec", .data = "rouleur" },
 	{}
 };
 

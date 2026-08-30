@@ -11,27 +11,33 @@
 
 static int __init wcd9xxx_core_init(void)
 {
-	int ret[NUM_DRIVERS_REG_RET] = {0};
-	int i = 0;
+	int ret;
 
-	ret[0] = msm_cdc_pinctrl_drv_init();
-	if (ret[0])
-		pr_err("%s: Failed init pinctrl drv: %d\n", __func__, ret[0]);
+	ret = msm_cdc_pinctrl_drv_init();
+	if (ret) {
+		pr_err("%s: Failed init pinctrl drv: %d\n", __func__, ret);
+		return ret;
+	}
 
-	ret[1] = wcd9xxx_irq_drv_init();
-	if (ret[1])
-		pr_err("%s: Failed init irq drv: %d\n", __func__, ret[1]);
+	ret = wcd9xxx_irq_drv_init();
+	if (ret) {
+		pr_err("%s: Failed init irq drv: %d\n", __func__, ret);
+		goto err_irq;
+	}
 
-	ret[2] = wcd9xxx_init();
-	if (ret[2])
-		pr_err("%s: Failed wcd core drv: %d\n", __func__, ret[2]);
-
-	for (i = 0; i < NUM_DRIVERS_REG_RET; i++) {
-		if (ret[i])
-			return ret[i];
+	ret = wcd9xxx_init();
+	if (ret) {
+		pr_err("%s: Failed wcd core drv: %d\n", __func__, ret);
+		goto err_wcd;
 	}
 
 	return 0;
+
+err_wcd:
+	wcd9xxx_irq_drv_exit();
+err_irq:
+	msm_cdc_pinctrl_drv_exit();
+	return ret;
 }
 module_init(wcd9xxx_core_init);
 

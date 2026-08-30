@@ -154,8 +154,6 @@ void wcd_enable_curr_micbias(const struct wcd_mbhc *mbhc,
 		pr_debug("%s: Invalid parameter", __func__);
 		break;
 	}
-
-	pr_debug("%s: exit\n", __func__);
 }
 EXPORT_SYMBOL(wcd_enable_curr_micbias);
 
@@ -672,7 +670,7 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		} else if (jack_type == SND_JACK_LINEOUT) {
 			mbhc->current_plug = MBHC_PLUG_TYPE_HIGH_HPH;
 		} else {
-			pr_debug("%s: invalid Jack type %d\n",__func__, jack_type);
+			pr_debug("%s: invalid Jack type %d\n", __func__, jack_type);
 		}
 
 		if (mbhc->mbhc_cb->hph_pa_on_status)
@@ -805,7 +803,7 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 
 	if (mbhc->current_plug == plug_type) {
 		pr_debug("%s: cable already reported, exit\n", __func__);
-		goto exit;
+		return;
 	}
 
 	if (plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
@@ -860,8 +858,6 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 		WARN(1, "Unexpected current plug_type %d, plug_type %d\n",
 		     mbhc->current_plug, plug_type);
 	}
-exit:
-	pr_debug("%s: leave\n", __func__);
 }
 EXPORT_SYMBOL(wcd_mbhc_find_plug_and_report);
 
@@ -903,7 +899,6 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 	struct snd_soc_component *component = mbhc->component;
 	enum snd_jack_types jack_type;
 
-	dev_dbg(component->dev, "%s: enter\n", __func__);
 	WCD_MBHC_RSC_LOCK(mbhc);
 	mbhc->in_swch_irq_handler = true;
 
@@ -1004,7 +999,7 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 			break;
 		case MBHC_PLUG_TYPE_HIGH_HPH:
 			if (mbhc->mbhc_detection_logic == WCD_DETECTION_ADC)
-			    WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ELECT_ISRC_EN, 0);
+				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ELECT_ISRC_EN, 0);
 			mbhc->is_extn_cable = false;
 			jack_type = SND_JACK_LINEOUT;
 			break;
@@ -1051,7 +1046,6 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 done:
 	mbhc->in_swch_irq_handler = false;
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 }
 
 static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
@@ -1059,7 +1053,6 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 	int r = IRQ_HANDLED;
 	struct wcd_mbhc *mbhc = data;
 
-	pr_debug("%s: enter\n", __func__);
 	if (mbhc == NULL) {
 		pr_err("%s: NULL irq data\n", __func__);
 		return IRQ_NONE;
@@ -1072,7 +1065,6 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		wcd_mbhc_swch_irq_handler(mbhc);
 		mbhc->mbhc_cb->lock_sleep(mbhc, false);
 	}
-	pr_debug("%s: leave %d\n", __func__, r);
 	return r;
 }
 
@@ -1116,8 +1108,6 @@ static void wcd_btn_lpress_fn(struct work_struct *work)
 	struct wcd_mbhc *mbhc;
 	s16 btn_result = 0;
 
-	pr_debug("%s: Enter\n", __func__);
-
 	dwork = to_delayed_work(work);
 	mbhc = container_of(dwork, struct wcd_mbhc, mbhc_btn_dwork);
 
@@ -1128,7 +1118,6 @@ static void wcd_btn_lpress_fn(struct work_struct *work)
 		wcd_mbhc_jack_report(mbhc, &mbhc->button_jack,
 				mbhc->buttons_pressed, mbhc->buttons_pressed);
 	}
-	pr_debug("%s: leave\n", __func__);
 	mbhc->mbhc_cb->lock_sleep(mbhc, false);
 }
 
@@ -1162,7 +1151,6 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 	int mask;
 	unsigned long msec_val;
 
-	pr_debug("%s: enter\n", __func__);
 	complete(&mbhc->btn_press_compl);
 	WCD_MBHC_RSC_LOCK(mbhc);
 	wcd_cancel_btn_work(mbhc);
@@ -1202,7 +1190,6 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 		mbhc->mbhc_cb->lock_sleep(mbhc, false);
 	}
 done:
-	pr_debug("%s: leave\n", __func__);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 	return IRQ_HANDLED;
 }
@@ -1212,7 +1199,6 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 	struct wcd_mbhc *mbhc = data;
 	int ret;
 
-	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_LOCK(mbhc);
 	if (wcd_swch_level_remove(mbhc)) {
 		pr_debug("%s: Switch level is low ", __func__);
@@ -1267,7 +1253,6 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 		mbhc->buttons_pressed &= ~WCD_MBHC_JACK_BUTTON_MASK;
 	}
 exit:
-	pr_debug("%s: leave\n", __func__);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 	return IRQ_HANDLED;
 }
@@ -1355,7 +1340,6 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	int ret = 0;
 	struct snd_soc_component *component = mbhc->component;
 
-	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_LOCK(mbhc);
 
 	/* enable HS detection */
@@ -1439,7 +1423,6 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	reinit_completion(&mbhc->btn_press_compl);
 
 	WCD_MBHC_RSC_UNLOCK(mbhc);
-	pr_debug("%s: leave\n", __func__);
 	return ret;
 }
 
@@ -1614,8 +1597,6 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 	/* update the mbhc config */
 	mbhc->mbhc_cfg = mbhc_cfg;
 
-	dev_dbg(mbhc->component->dev, "%s: enter\n", __func__);
-
 	/* check if USB C analog is defined on device tree */
 	mbhc_cfg->enable_usbc_analog = 0;
 	if (of_find_property(card->dev->of_node, usb_c_dt, NULL)) {
@@ -1682,8 +1663,6 @@ EXPORT_SYMBOL(wcd_mbhc_start);
 
 void wcd_mbhc_stop(struct wcd_mbhc *mbhc)
 {
-	pr_debug("%s: enter\n", __func__);
-
 	if (mbhc->current_plug != MBHC_PLUG_TYPE_NONE) {
 		if (mbhc->mbhc_cb && mbhc->mbhc_cb->skip_imped_detect)
 			mbhc->mbhc_cb->skip_imped_detect(mbhc->component);
@@ -1708,8 +1687,6 @@ void wcd_mbhc_stop(struct wcd_mbhc *mbhc)
 
 	if (mbhc->mbhc_cfg->enable_usbc_analog)
 		fsa4480_unreg_notifier(&mbhc->fsa_nb, mbhc->fsa_np);
-
-	pr_debug("%s: leave\n", __func__);
 }
 EXPORT_SYMBOL(wcd_mbhc_stop);
 
@@ -1733,8 +1710,6 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
 	const char *hs_thre = "qcom,msm-mbhc-hs-mic-max-threshold-mv";
 	const char *hph_thre = "qcom,msm-mbhc-hs-mic-min-threshold-mv";
-
-	pr_debug("%s: enter\n", __func__);
 
 	ret = of_property_read_u32(card->dev->of_node, hph_switch, &hph_swh);
 	if (ret) {
@@ -1817,7 +1792,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 		return -EINVAL;
 	}
 
-	/* No need to create new sound card jacks if is is already created */
+	/* No need to create new sound card jacks if is already created */
 	if (mbhc->headset_jack.jack == NULL) {
 		ret = snd_soc_card_jack_new(component->card,
 					    "Headset Jack", WCD_MBHC_JACK_MASK,
@@ -1990,6 +1965,8 @@ err_mbhc_sw_irq:
 	if (mbhc->mbhc_cb->register_notifier)
 		mbhc->mbhc_cb->register_notifier(mbhc, &mbhc->nblock, false);
 	mutex_destroy(&mbhc->codec_resource_lock);
+	mutex_destroy(&mbhc->hphl_pa_lock);
+	mutex_destroy(&mbhc->hphr_pa_lock);
 err:
 	pr_debug("%s: leave ret %d\n", __func__, ret);
 	return ret;

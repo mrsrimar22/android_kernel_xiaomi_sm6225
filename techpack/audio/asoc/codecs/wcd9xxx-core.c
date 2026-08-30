@@ -629,7 +629,7 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx)
 err_irq:
 	wcd9xxx_irq_exit(&wcd9xxx->core_res);
 err:
-    wcd9xxx_core_res_deinit(&wcd9xxx->core_res);
+	wcd9xxx_core_res_deinit(&wcd9xxx->core_res);
 fail_cdc_fill:
 	devm_kfree(wcd9xxx->dev, wcd9xxx->codec_type);
 	wcd9xxx_bringdown(wcd9xxx->dev);
@@ -674,7 +674,7 @@ static int codec_debug_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int get_parameters(char *buf, long int *param1, int num_of_par)
+static int get_parameters(char *buf, long *param1, int num_of_par)
 {
 	char *token;
 	int base, cnt;
@@ -775,7 +775,7 @@ static void wcd9xxx_set_reset_pin_state(struct wcd9xxx *wcd9xxx,
 
 static int codec_debug_process_cdc_power(char *lbuf)
 {
-	long int param;
+	long param;
 	int rc;
 	struct wcd9xxx_pdata *pdata;
 
@@ -822,7 +822,7 @@ static ssize_t codec_debug_write(struct file *filp,
 	char *access_str = filp->private_data;
 	char lbuf[32];
 	int rc;
-	long int param[5];
+	long param[5];
 
 	if (cnt > sizeof(lbuf) - 1)
 		return -EINVAL;
@@ -1197,13 +1197,10 @@ static int wcd9xxx_i2c_probe(struct i2c_client *client,
 		wcd9xxx_set_intf_type(WCD9XXX_INTERFACE_TYPE_I2C);
 
 		return ret;
-	} else {
-		ret = -EINVAL;
-		pr_err("%s: I2C probe in wrong state, ret %d\n", __func__, ret);
-		goto fail;
 	}
 
-
+	pr_err("%s: I2C probe in wrong state, ret %d\n", __func__, ret);
+	return -EINVAL;
 
 err_device_init:
 	wcd9xxx_reset_low(wcd9xxx->dev);

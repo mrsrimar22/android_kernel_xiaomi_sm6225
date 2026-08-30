@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef _CALIB_HWDEP_H
 #define _CALIB_HWDEP_H
 
