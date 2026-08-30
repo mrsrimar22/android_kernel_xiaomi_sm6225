@@ -2298,6 +2298,7 @@ deinit_wm:
 	for (--i; i >= 0; i--)
 		cam_tfe_bus_deinit_wm_resource(&bus_priv->bus_client[i]);
 
+	mutex_destroy(&bus_priv->common_data.bus_mutex);
 	kfree(tfe_bus_local->bus_priv);
 
 free_bus_local:

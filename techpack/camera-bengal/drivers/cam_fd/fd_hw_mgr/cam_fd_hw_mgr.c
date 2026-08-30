@@ -1938,6 +1938,8 @@ put_free_list:
 
 int cam_fd_hw_mgr_deinit(struct device_node *of_node)
 {
+	int i;
+
 	CAM_DBG(CAM_FD, "HW Mgr Deinit");
 
 	cam_req_mgr_workq_destroy(&g_fd_hw_mgr.work);
@@ -1945,9 +1947,12 @@ int cam_fd_hw_mgr_deinit(struct device_node *of_node)
 	cam_smmu_destroy_handle(g_fd_hw_mgr.device_iommu.non_secure);
 	g_fd_hw_mgr.device_iommu.non_secure = -1;
 
-	mutex_destroy(&g_fd_hw_mgr.ctx_mutex);
-	mutex_destroy(&g_fd_hw_mgr.frame_req_mutex);
+	for (i = g_fd_hw_mgr.num_devices - 1; i >= 0; i--)
+		mutex_destroy(&g_fd_hw_mgr.hw_device[i].lock);
+
 	mutex_destroy(&g_fd_hw_mgr.hw_mgr_mutex);
+	mutex_destroy(&g_fd_hw_mgr.frame_req_mutex);
+	mutex_destroy(&g_fd_hw_mgr.ctx_mutex);
 
 	return 0;
 }
@@ -1955,7 +1960,7 @@ int cam_fd_hw_mgr_deinit(struct device_node *of_node)
 int cam_fd_hw_mgr_init(struct device_node *of_node,
 	struct cam_hw_mgr_intf *hw_mgr_intf)
 {
-	int count, i, rc = 0;
+	int count, i, j, rc = 0;
 	struct cam_hw_intf *hw_intf = NULL;
 	struct cam_fd_hw_mgr_ctx *hw_mgr_ctx;
 	struct cam_fd_device *hw_device;
@@ -1978,7 +1983,8 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 	count = of_property_count_strings(of_node, "compat-hw-name");
 	if (!count || (count > CAM_FD_HW_MAX)) {
 		CAM_ERR(CAM_FD, "Invalid compat names in dev tree %d", count);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto destroy_mutex;
 	}
 	g_fd_hw_mgr.num_devices = count;
 
@@ -1991,7 +1997,7 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 		rc = cam_fd_mgr_util_pdev_get_hw_intf(of_node, i, &hw_intf);
 		if (rc) {
 			CAM_ERR(CAM_FD, "hw intf from pdev failed, rc=%d", rc);
-			return rc;
+			goto destroy_hw_device;
 		}
 
 		mutex_init(&hw_device->lock);
@@ -2013,7 +2019,8 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 			if (rc) {
 				CAM_ERR(CAM_FD,
 					"Failed in REGISTER_CALLBACK %d", rc);
-				return rc;
+				i++;
+				goto destroy_hw_device;
 			}
 		}
 
@@ -2023,7 +2030,8 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 				sizeof(hw_device->hw_caps));
 			if (rc) {
 				CAM_ERR(CAM_FD, "Failed in get_hw_caps %d", rc);
-				return rc;
+				i++;
+				goto destroy_hw_device;
 			}
 
 			g_fd_hw_mgr.raw_results_available |=
@@ -2056,7 +2064,7 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 		&g_fd_hw_mgr.device_iommu.non_secure);
 	if (rc) {
 		CAM_ERR(CAM_FD, "Get iommu handle failed, rc=%d", rc);
-		goto destroy_mutex;
+		goto destroy_hw_device;
 	}
 
 	rc = cam_cdm_get_iommu_handle("fd", &g_fd_hw_mgr.cdm_iommu);
@@ -2140,10 +2148,13 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 detach_smmu:
 	cam_smmu_destroy_handle(g_fd_hw_mgr.device_iommu.non_secure);
 	g_fd_hw_mgr.device_iommu.non_secure = -1;
+destroy_hw_device:
+	for (j = i - 1; j >= 0; j--)
+		mutex_destroy(&g_fd_hw_mgr.hw_device[j].lock);
 destroy_mutex:
-	mutex_destroy(&g_fd_hw_mgr.ctx_mutex);
-	mutex_destroy(&g_fd_hw_mgr.frame_req_mutex);
 	mutex_destroy(&g_fd_hw_mgr.hw_mgr_mutex);
+	mutex_destroy(&g_fd_hw_mgr.frame_req_mutex);
+	mutex_destroy(&g_fd_hw_mgr.ctx_mutex);
 
 	return rc;
 }

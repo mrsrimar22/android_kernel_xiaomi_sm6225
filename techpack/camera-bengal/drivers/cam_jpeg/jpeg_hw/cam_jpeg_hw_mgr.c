@@ -1763,9 +1763,30 @@ cdm_iommu_failed:
 	cam_smmu_destroy_handle(g_jpeg_hw_mgr.iommu_hdl);
 	g_jpeg_hw_mgr.iommu_hdl = 0;
 smmu_get_failed:
-	mutex_destroy(&g_jpeg_hw_mgr.hw_mgr_mutex);
-	for (i = 0; i < CAM_JPEG_CTX_MAX; i++)
+	for (i = CAM_JPEG_CTX_MAX - 1; i >= 0; i--)
 		mutex_destroy(&g_jpeg_hw_mgr.ctx_data[i].ctx_mutex);
+	mutex_destroy(&g_jpeg_hw_mgr.hw_mgr_mutex);
 
 	return rc;
+}
+
+void cam_jpeg_hw_mgr_deinit(void)
+{
+	int i;
+
+	kfree(g_jpeg_hw_mgr.process_irq_cb_work_data);
+	g_jpeg_hw_mgr.process_irq_cb_work_data = NULL;
+	kfree(g_jpeg_hw_mgr.process_frame_work_data);
+	g_jpeg_hw_mgr.process_frame_work_data = NULL;
+	cam_req_mgr_workq_destroy(&g_jpeg_hw_mgr.work_process_irq_cb);
+	cam_req_mgr_workq_destroy(&g_jpeg_hw_mgr.work_process_frame);
+
+	cam_smmu_destroy_handle(g_jpeg_hw_mgr.iommu_hdl);
+	g_jpeg_hw_mgr.iommu_hdl = 0;
+
+	for (i = CAM_JPEG_CTX_MAX - 1; i >= 0; i--)
+		mutex_destroy(&g_jpeg_hw_mgr.ctx_data[i].ctx_mutex);
+	mutex_destroy(&g_jpeg_hw_mgr.hw_mgr_mutex);
+
+	memset(&g_jpeg_hw_mgr, 0, sizeof(g_jpeg_hw_mgr));
 }

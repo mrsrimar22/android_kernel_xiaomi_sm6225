@@ -1333,6 +1333,7 @@ int cam_custom_hw_mgr_init(struct device_node *of_node,
 	if (cam_smmu_get_handle("custom",
 		&g_custom_hw_mgr.img_iommu_hdl)) {
 		CAM_ERR(CAM_CUSTOM, "Can not get iommu handle");
+		mutex_destroy(&g_custom_hw_mgr.ctx_mutex);
 		return -EINVAL;
 	}
 
@@ -1381,5 +1382,13 @@ int cam_custom_hw_mgr_init(struct device_node *of_node,
 		*iommu_hdl = g_custom_hw_mgr.img_iommu_hdl;
 
 	CAM_DBG(CAM_CUSTOM, "HW manager initialized");
+	return 0;
+}
+
+int cam_custom_hw_mgr_deinit(void)
+{
+	mutex_destroy(&g_custom_hw_mgr.ctx_mutex);
+	memset(&g_custom_hw_mgr, 0, sizeof(g_custom_hw_mgr));
+
 	return 0;
 }

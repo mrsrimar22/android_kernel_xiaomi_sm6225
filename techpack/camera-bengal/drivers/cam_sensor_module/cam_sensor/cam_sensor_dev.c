@@ -108,7 +108,7 @@ static int cam_sensor_init_subdev_params(struct cam_sensor_ctrl_t *s_ctrl)
 		&cam_sensor_internal_ops;
 	s_ctrl->v4l2_dev_str.ops =
 		&cam_sensor_subdev_ops;
-	strlcpy(s_ctrl->device_name, CAMX_SENSOR_DEV_NAME,
+	strscpy(s_ctrl->device_name, CAMX_SENSOR_DEV_NAME,
 		sizeof(s_ctrl->device_name));
 	s_ctrl->v4l2_dev_str.name =
 		s_ctrl->device_name;
@@ -165,7 +165,7 @@ static int32_t cam_sensor_driver_i2c_probe(struct i2c_client *client,
 
 	rc = cam_sensor_init_subdev_params(s_ctrl);
 	if (rc)
-		goto free_s_ctrl;
+		goto free_subdev;
 
 	s_ctrl->i2c_data.per_frame =
 		kzalloc(sizeof(struct i2c_settings_array) *
@@ -196,6 +196,9 @@ static int32_t cam_sensor_driver_i2c_probe(struct i2c_client *client,
 	return rc;
 unreg_subdev:
 	cam_unregister_subdev(&(s_ctrl->v4l2_dev_str));
+free_subdev:
+	mutex_destroy(&(s_ctrl->cam_sensor_mutex));
+	kfree(s_ctrl->sensordata);
 free_s_ctrl:
 	kfree(s_ctrl);
 	return rc;
@@ -225,6 +228,8 @@ static int cam_sensor_platform_remove(struct platform_device *pdev)
 	kfree(s_ctrl->i2c_data.per_frame);
 	platform_set_drvdata(pdev, NULL);
 	v4l2_set_subdevdata(&(s_ctrl->v4l2_dev_str.sd), NULL);
+	mutex_destroy(&(s_ctrl->cam_sensor_mutex));
+	kfree(s_ctrl->sensordata);
 	devm_kfree(&pdev->dev, s_ctrl);
 
 	return 0;
@@ -252,6 +257,8 @@ static int cam_sensor_driver_i2c_remove(struct i2c_client *client)
 
 	kfree(s_ctrl->i2c_data.per_frame);
 	v4l2_set_subdevdata(&(s_ctrl->v4l2_dev_str.sd), NULL);
+	mutex_destroy(&(s_ctrl->cam_sensor_mutex));
+	kfree(s_ctrl->sensordata);
 	kfree(s_ctrl);
 
 	return 0;
@@ -301,7 +308,7 @@ static int32_t cam_sensor_driver_platform_probe(
 
 	rc = cam_sensor_init_subdev_params(s_ctrl);
 	if (rc)
-		goto free_s_ctrl;
+		goto free_subdev;
 
 	s_ctrl->i2c_data.per_frame =
 		kzalloc(sizeof(struct i2c_settings_array) *
@@ -334,6 +341,9 @@ static int32_t cam_sensor_driver_platform_probe(
 	return rc;
 unreg_subdev:
 	cam_unregister_subdev(&(s_ctrl->v4l2_dev_str));
+free_subdev:
+	mutex_destroy(&(s_ctrl->cam_sensor_mutex));
+	kfree(s_ctrl->sensordata);
 free_s_ctrl:
 	devm_kfree(&pdev->dev, s_ctrl);
 	return rc;

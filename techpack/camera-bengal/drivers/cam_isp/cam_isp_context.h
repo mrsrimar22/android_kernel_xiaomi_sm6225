@@ -156,16 +156,14 @@ struct cam_isp_ctx_req {
 
 	struct cam_hw_update_entry            cfg[CAM_ISP_CTX_CFG_MAX];
 	uint32_t                              num_cfg;
-	struct cam_hw_fence_map_entry         fence_map_out
-						[CAM_ISP_CTX_RES_MAX];
+	struct cam_hw_fence_map_entry         fence_map_out[CAM_ISP_CTX_RES_MAX];
 	uint32_t                              num_fence_map_out;
 	struct cam_hw_fence_map_entry         fence_map_in[CAM_ISP_CTX_RES_MAX];
 	uint32_t                              num_fence_map_in;
 	uint32_t                              num_acked;
 	int32_t                               bubble_report;
 	struct cam_isp_prepare_hw_update_data hw_update_data;
-	ktime_t                               event_timestamp
-		[CAM_ISP_CTX_EVENT_MAX];
+	ktime_t                               event_timestamp[CAM_ISP_CTX_EVENT_MAX];
 	bool                                  bubble_detected;
 	bool                                  reapply;
 };
@@ -281,8 +279,7 @@ struct cam_isp_context {
 	struct cam_isp_context_state_monitor cam_isp_ctx_state_monitor[
 		CAM_ISP_CTX_STATE_MONITOR_MAX_ENTRIES];
 	struct cam_isp_context_req_id_info    req_info;
-	atomic64_t                            event_record_head[
-		CAM_ISP_CTX_EVENT_MAX];
+	atomic64_t                            event_record_head[CAM_ISP_CTX_EVENT_MAX];
 	struct cam_isp_context_event_record   event_record[
 		CAM_ISP_CTX_EVENT_MAX][CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES];
 	bool                                  rdi_only_context;

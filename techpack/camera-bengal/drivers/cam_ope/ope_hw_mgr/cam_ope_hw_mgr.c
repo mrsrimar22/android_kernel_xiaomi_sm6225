@@ -2660,18 +2660,17 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 		CAM_ERR(CAM_ISP, "Out of memory");
 		goto end;
 	}
-	strlcpy(cdm_acquire->identifier, "ope", sizeof("ope"));
+	strscpy(cdm_acquire->identifier, "ope", sizeof(cdm_acquire->identifier));
 	if (ctx->ope_acquire.dev_type == OPE_DEV_TYPE_OPE_RT) {
 		cdm_acquire->priority = CAM_CDM_BL_FIFO_3;
 		ctx->req_timer_timeout = OPE_REQUEST_RT_TIMEOUT;
-	}
-	else if (ctx->ope_acquire.dev_type ==
+	} else if (ctx->ope_acquire.dev_type ==
 		OPE_DEV_TYPE_OPE_NRT) {
 		cdm_acquire->priority = CAM_CDM_BL_FIFO_0;
 		ctx->req_timer_timeout = OPE_REQUEST_NRT_TIMEOUT;
-	}
-	else
+	} else {
 		goto free_cdm_acquire;
+	}
 
 	cdm_acquire->cell_index = 0;
 	cdm_acquire->handle = 0;
@@ -4169,7 +4168,6 @@ ctx_bitmap_alloc_failed:
 	ope_hw_mgr->devices[OPE_DEV_OPE] = NULL;
 dev_init_failed:
 ope_ctx_bitmap_failed:
-	mutex_destroy(&ope_hw_mgr->hw_mgr_mutex);
 	for (j = i - 1; j >= 0; j--) {
 		mutex_destroy(&ope_hw_mgr->ctx[j].ctx_mutex);
 		kzfree(ope_hw_mgr->ctx[j].bitmap);
@@ -4177,9 +4175,57 @@ ope_ctx_bitmap_failed:
 		ope_hw_mgr->ctx[j].bitmap_size = 0;
 		ope_hw_mgr->ctx[j].bits = 0;
 	}
+	mutex_destroy(&ope_hw_mgr->hw_mgr_mutex);
 	kzfree(ope_hw_mgr);
 	ope_hw_mgr = NULL;
 
 	return rc;
 }
 
+void cam_ope_hw_mgr_deinit(void)
+{
+	int i;
+
+	if (!ope_hw_mgr)
+		return;
+
+	debugfs_remove_recursive(ope_hw_mgr->dentry);
+	ope_hw_mgr->dentry = NULL;
+
+	kfree(ope_hw_mgr->timer_work_data);
+	ope_hw_mgr->timer_work_data = NULL;
+	kfree(ope_hw_mgr->msg_work_data);
+	ope_hw_mgr->msg_work_data = NULL;
+	kfree(ope_hw_mgr->cmd_work_data);
+	ope_hw_mgr->cmd_work_data = NULL;
+
+	cam_req_mgr_workq_destroy(&ope_hw_mgr->timer_work);
+	cam_req_mgr_workq_destroy(&ope_hw_mgr->msg_work);
+	cam_req_mgr_workq_destroy(&ope_hw_mgr->cmd_work);
+
+	cam_smmu_destroy_handle(ope_hw_mgr->iommu_sec_hdl);
+	ope_hw_mgr->iommu_sec_hdl = -1;
+	cam_smmu_destroy_handle(ope_hw_mgr->iommu_hdl);
+	ope_hw_mgr->iommu_hdl = -1;
+
+	kzfree(ope_hw_mgr->ctx_bitmap);
+	ope_hw_mgr->ctx_bitmap = NULL;
+	ope_hw_mgr->ctx_bitmap_size = 0;
+	ope_hw_mgr->ctx_bits = 0;
+
+	kzfree(ope_hw_mgr->devices[OPE_DEV_OPE]);
+	ope_hw_mgr->devices[OPE_DEV_OPE] = NULL;
+
+	for (i = OPE_CTX_MAX - 1; i >= 0; i--) {
+		mutex_destroy(&ope_hw_mgr->ctx[i].ctx_mutex);
+		kzfree(ope_hw_mgr->ctx[i].bitmap);
+		ope_hw_mgr->ctx[i].bitmap = NULL;
+		ope_hw_mgr->ctx[i].bitmap_size = 0;
+		ope_hw_mgr->ctx[i].bits = 0;
+	}
+
+	mutex_destroy(&ope_hw_mgr->hw_mgr_mutex);
+
+	kzfree(ope_hw_mgr);
+	ope_hw_mgr = NULL;
+}

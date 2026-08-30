@@ -40,7 +40,7 @@ static long cam_cci_subdev_ioctl(struct v4l2_subdev *sd,
 
 	switch (cmd) {
 	case VIDIOC_MSM_CCI_CFG:
-		rc = -EOPNOTSUPP;
+		rc = cam_cci_core_cfg(sd, arg);
 		break;
 	case VIDIOC_CAM_CONTROL:
 		break;
@@ -78,6 +78,7 @@ irqreturn_t cam_cci_irq(int irq_num, void *data)
 
 	if (irq_status0 & CCI_IRQ_STATUS_0_RST_DONE_ACK_BMSK) {
 		struct cam_cci_master_info *cci_master_info;
+
 		if (cci_dev->cci_master_info[MASTER_0].reset_pending == true) {
 			cci_master_info = &cci_dev->cci_master_info[MASTER_0];
 			cci_dev->cci_master_info[MASTER_0].reset_pending =
@@ -491,7 +492,7 @@ static int cam_cci_platform_probe(struct platform_device *pdev)
 		&cci_subdev_intern_ops;
 	new_cci_dev->v4l2_dev_str.ops =
 		&cci_subdev_ops;
-	strlcpy(new_cci_dev->device_name, CAMX_CCI_DEV_NAME,
+	strscpy(new_cci_dev->device_name, CAMX_CCI_DEV_NAME,
 		sizeof(new_cci_dev->device_name));
 	new_cci_dev->v4l2_dev_str.name =
 		new_cci_dev->device_name;
@@ -530,7 +531,7 @@ static int cam_cci_platform_probe(struct platform_device *pdev)
 	cpas_parms.cell_index = soc_info->index;
 	cpas_parms.dev = &pdev->dev;
 	cpas_parms.userdata = new_cci_dev;
-	strlcpy(cpas_parms.identifier, "cci", CAM_HW_IDENTIFIER_LENGTH);
+	strscpy(cpas_parms.identifier, "cci", CAM_HW_IDENTIFIER_LENGTH);
 	rc = cam_cpas_register_client(&cpas_parms);
 	if (rc) {
 		CAM_ERR(CAM_CCI, "CPAS registration failed");
@@ -549,6 +550,10 @@ static int cam_cci_platform_probe(struct platform_device *pdev)
 
 cci_unregister_subdev:
 	cam_unregister_subdev(&(new_cci_dev->v4l2_dev_str));
+	if (soc_info->index < MAX_CCI)
+		g_cci_subdev[soc_info->index] = NULL;
+	mutex_destroy(&(new_cci_dev->init_mutex));
+	cam_cci_soc_remove(pdev, new_cci_dev);
 cci_no_resource:
 	kfree(new_cci_dev);
 	return rc;
@@ -559,9 +564,21 @@ static int cam_cci_device_remove(struct platform_device *pdev)
 	struct v4l2_subdev *subdev = platform_get_drvdata(pdev);
 	struct cci_device *cci_dev =
 		v4l2_get_subdevdata(subdev);
+	int i;
 
-	cam_cpas_unregister_client(cci_dev->cpas_handle);
+	for (i = 0; i < MASTER_MAX; i++) {
+		if (cci_dev->write_wq[i]) {
+			destroy_workqueue(cci_dev->write_wq[i]);
+			cci_dev->write_wq[i] = NULL;
+		}
+	}
+
 	debugfs_remove_recursive(debugfs_root);
+	cam_cpas_unregister_client(cci_dev->cpas_handle);
+	cam_unregister_subdev(&(cci_dev->v4l2_dev_str));
+	if (cci_dev->soc_info.index < MAX_CCI)
+		g_cci_subdev[cci_dev->soc_info.index] = NULL;
+	mutex_destroy(&(cci_dev->init_mutex));
 	cam_cci_soc_remove(pdev, cci_dev);
 	devm_kfree(&pdev->dev, cci_dev);
 	return 0;

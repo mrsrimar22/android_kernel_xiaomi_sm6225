@@ -2094,7 +2094,6 @@ static int cam_tfe_csid_deinit_hw(void *hw_priv,
 	/* Disable CSID HW */
 	CAM_DBG(CAM_ISP, "Disabling CSID Hw");
 	cam_tfe_csid_disable_hw(csid_hw);
-	CAM_DBG(CAM_ISP, "%s: Exit", __func__);
 
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
@@ -2215,7 +2214,6 @@ static int cam_tfe_csid_stop(void *hw_priv,
 		res->res_state = CAM_ISP_RESOURCE_STATE_INIT_HW;
 	}
 
-	CAM_DBG(CAM_ISP,  "%s: Exit", __func__);
 	return rc;
 }
 
@@ -3162,7 +3160,7 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 		cam_tfe_csid_irq, tfe_csid_hw);
 	if (rc < 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d Failed to init_soc", csid_idx);
-		goto err;
+		return rc;
 	}
 
 	mutex_init(&tfe_csid_hw->hw_info->hw_mutex);
@@ -3277,6 +3275,9 @@ err:
 			tfe_csid_hw->csid_info->csid_reg->cmn_reg->num_rdis;
 			i++)
 			kfree(tfe_csid_hw->rdi_res[i].res_priv);
+
+		mutex_destroy(&tfe_csid_hw->hw_info->hw_mutex);
+		cam_tfe_csid_deinit_soc_resources(&tfe_csid_hw->hw_info->soc_info);
 	}
 
 	return rc;
@@ -3292,6 +3293,8 @@ int cam_tfe_csid_hw_deinit(struct cam_tfe_csid_hw *tfe_csid_hw)
 		CAM_ERR(CAM_ISP, "Invalid param");
 		return rc;
 	}
+
+	mutex_destroy(&tfe_csid_hw->hw_info->hw_mutex);
 
 	/* release the privdate data memory from resources */
 	kfree(tfe_csid_hw->ipp_res.res_priv);

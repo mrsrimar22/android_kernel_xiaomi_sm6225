@@ -3014,23 +3014,23 @@ static int __cam_req_mgr_setup_link_info(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_req_tbl             *pd_tbl;
 	enum cam_pipeline_delay                 max_delay;
 	uint32_t                                subscribe_event = 0;
-	if (link_info->version == VERSION_1) {
-		if (link_info->u.link_info_v1.num_devices >
-			CAM_REQ_MGR_MAX_HANDLES)
-			return -EPERM;
-		}
-	else if (link_info->version == VERSION_2) {
-		if (link_info->u.link_info_v2.num_devices >
-			CAM_REQ_MGR_MAX_HANDLES_V2)
-			return -EPERM;
-		}
+
+	if (link_info->version == VERSION_1 &&
+	    (link_info->u.link_info_v1.num_devices >
+	     CAM_REQ_MGR_MAX_HANDLES)) {
+		return -EPERM;
+	} else if (link_info->version == VERSION_2 &&
+		(link_info->u.link_info_v2.num_devices >
+		 CAM_REQ_MGR_MAX_HANDLES_V2)) {
+		return -EPERM;
+	}
 	mutex_init(&link->req.lock);
 	CAM_DBG(CAM_CRM, "LOCK_DBG in_q lock %pK", &link->req.lock);
 	link->req.num_tbl = 0;
 
 	rc = __cam_req_mgr_setup_in_q(&link->req);
 	if (rc < 0)
-		return rc;
+		goto error;
 
 	max_delay = CAM_PIPELINE_DELAY_0;
 	if (link_info->version == VERSION_1)
@@ -4020,6 +4020,7 @@ end:
 int cam_req_mgr_core_device_init(void)
 {
 	int i;
+
 	CAM_DBG(CAM_CRM, "Enter g_crm_core_dev %pK", g_crm_core_dev);
 
 	if (g_crm_core_dev) {
@@ -4047,12 +4048,33 @@ int cam_req_mgr_core_device_init(void)
 
 int cam_req_mgr_core_device_deinit(void)
 {
+	struct cam_req_mgr_core_session *cam_session, *session_safe;
+	int i;
+
 	if (!g_crm_core_dev) {
 		CAM_ERR(CAM_CRM, "NULL pointer");
 		return -EINVAL;
 	}
 
 	CAM_DBG(CAM_CRM, "g_crm_core_dev %pK", g_crm_core_dev);
+
+	mutex_lock(&g_crm_core_dev->crm_lock);
+	list_for_each_entry_safe(cam_session, session_safe,
+		&g_crm_core_dev->session_head, entry) {
+		struct cam_req_mgr_session_info ses_info;
+
+		ses_info.session_hdl = cam_session->session_hdl;
+		mutex_unlock(&g_crm_core_dev->crm_lock);
+		cam_req_mgr_destroy_session(&ses_info, true);
+		mutex_lock(&g_crm_core_dev->crm_lock);
+	}
+	mutex_unlock(&g_crm_core_dev->crm_lock);
+
+	for (i = MAXIMUM_LINKS_PER_SESSION - 1; i >= 0; i--)
+		mutex_destroy(&g_links[i].lock);
+
+	cam_req_mgr_debug_unregister();
+
 	mutex_destroy(&g_crm_core_dev->crm_lock);
 	kfree(g_crm_core_dev);
 	g_crm_core_dev = NULL;

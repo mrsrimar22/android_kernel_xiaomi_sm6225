@@ -304,7 +304,7 @@ static int cam_cpas_util_axi_setup(struct cam_cpas *cpas_core,
 
 	return 0;
 bus_register_fail:
-	of_node_put(cpas_core->axi_port[i].axi_port_node);
+	cam_cpas_util_axi_cleanup(cpas_core, soc_info);
 	return rc;
 }
 
@@ -1920,9 +1920,8 @@ static int cam_cpas_util_client_setup(struct cam_hw_info *cpas_hw)
 	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
 	int i;
 
-	for (i = 0; i < CAM_CPAS_MAX_CLIENTS; i++) {
+	for (i = 0; i < CAM_CPAS_MAX_CLIENTS; i++)
 		mutex_init(&cpas_core->client_mutex[i]);
-	}
 
 	return 0;
 }
@@ -2194,9 +2193,9 @@ int cam_cpas_hw_remove(struct cam_hw_intf *cpas_hw_intf)
 	}
 
 	cam_cpas_util_axi_cleanup(cpas_core, &cpas_hw->soc_info);
-	cam_cpas_node_tree_cleanup(cpas_core, cpas_hw->soc_info.soc_private);
 	cam_cpas_util_unregister_bus_client(&cpas_core->ahb_bus_client);
 	cam_cpas_util_client_cleanup(cpas_hw);
+	cam_cpas_node_tree_cleanup(cpas_core, cpas_hw->soc_info.soc_private);
 	cam_cpas_soc_deinit_resources(&cpas_hw->soc_info);
 	debugfs_remove_recursive(cpas_core->dentry);
 	cpas_core->dentry = NULL;

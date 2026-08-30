@@ -669,7 +669,10 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 cleanup_tree:
 	cam_cpas_node_tree_cleanup(cpas_core, soc_private);
 cleanup_clients:
-	cam_cpas_util_client_cleanup(cpas_hw);
+	for (i = 0; i < soc_private->num_clients; i++) {
+		kfree(cpas_core->cpas_client[i]);
+		cpas_core->cpas_client[i] = NULL;
+	}
 	return rc;
 }
 
