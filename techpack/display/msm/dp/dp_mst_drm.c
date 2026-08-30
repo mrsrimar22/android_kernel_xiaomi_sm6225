@@ -214,8 +214,7 @@ static void dp_mst_sim_destroy_port(struct kref *ref)
 			struct drm_dp_mst_port, kref);
 	struct drm_dp_mst_topology_mgr *mgr = port->mgr;
 
-	if (port->cached_edid)
-		kfree(port->cached_edid);
+	kfree(port->cached_edid);
 
 	if (port->connector) {
 		mutex_lock(&mgr->destroy_connector_lock);
@@ -224,9 +223,9 @@ static void dp_mst_sim_destroy_port(struct kref *ref)
 		mutex_unlock(&mgr->destroy_connector_lock);
 		schedule_work(&mgr->destroy_connector_work);
 		return;
-	} else {
-		kfree(port);
 	}
+
+	kfree(port);
 }
 
 /* DRM DP MST Framework simulator OPs */
@@ -310,7 +309,8 @@ static void dp_mst_sim_link_probe_work(struct work_struct *work)
 		port_data.port_number = cnt;
 
 		for (i = 0; i < DP_MST_SIM_MAX_PORTS; i++) {
-			if (sim->port_edids[i].valid) continue;
+			if (sim->port_edids[i].valid)
+				continue;
 
 			sim->port_edids[i].port_number = port_data.port_number;
 			memcpy(sim->port_edids[i].edid, sim->edid, SZ_256);
@@ -487,7 +487,8 @@ static void dp_mst_sim_handle_hpd_irq(void *dp_display,
 	if (info->mst_sim_add_con) {
 		port_available = false;
 		for (i = 0; i < DP_MST_SIM_MAX_PORTS; i++) {
-			if (mst->simulator.port_edids[i].valid) continue;
+			if (mst->simulator.port_edids[i].valid)
+				continue;
 
 			port_data.port_number = i;
 			mst->simulator.port_edids[i].port_number = i;

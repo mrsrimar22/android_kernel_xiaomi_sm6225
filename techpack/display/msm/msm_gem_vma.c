@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016 Red Hat
@@ -59,6 +60,13 @@ static int smmu_aspace_map_vma(struct msm_gem_address_space *aspace,
 
 static void smmu_aspace_destroy(struct msm_gem_address_space *aspace)
 {
+	struct aspace_client *aclient, *tmp;
+
+	list_for_each_entry_safe(aclient, tmp, &aspace->clients, list) {
+		list_del(&aclient->list);
+		kfree(aclient);
+	}
+
 	if (aspace->mmu)
 		aspace->mmu->funcs->destroy(aspace->mmu);
 }
@@ -200,6 +208,7 @@ msm_gem_address_space_destroy(struct kref *kref)
 	if (aspace && aspace->ops->destroy)
 		aspace->ops->destroy(aspace);
 
+	mutex_destroy(&aspace->list_lock);
 	kfree(aspace);
 }
 
@@ -219,7 +228,8 @@ static void iommu_aspace_unmap_vma(struct msm_gem_address_space *aspace,
 		return;
 
 	if (aspace->mmu) {
-		unsigned size = vma->node.size << PAGE_SHIFT;
+		unsigned int size = vma->node.size << PAGE_SHIFT;
+
 		aspace->mmu->funcs->unmap(aspace->mmu, vma->iova, sgt, size);
 	}
 
@@ -263,7 +273,8 @@ static int iommu_aspace_map_vma(struct msm_gem_address_space *aspace,
 	vma->iova = vma->node.start << PAGE_SHIFT;
 
 	if (aspace->mmu) {
-		unsigned size = npages << PAGE_SHIFT;
+		unsigned int size = npages << PAGE_SHIFT;
+
 		ret = aspace->mmu->funcs->map(aspace->mmu, vma->iova, sgt,
 				size, IOMMU_READ | IOMMU_WRITE);
 	}
@@ -307,6 +318,7 @@ msm_gem_address_space_create(struct device *dev, struct iommu_domain *domain,
 	drm_mm_init(&aspace->mm, (domain->geometry.aperture_start >> PAGE_SHIFT),
 		size >> PAGE_SHIFT);
 
+	mutex_init(&aspace->list_lock);
 	kref_init(&aspace->kref);
 
 	return aspace;

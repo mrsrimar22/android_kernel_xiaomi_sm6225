@@ -385,7 +385,7 @@ static int reg_dmav1_get_dspp_blk(struct sde_hw_cp_cfg *hw_cfg,
 
 	/* Treat first dspp as master to simplify setup */
 	dspp = hw_cfg->dspp[0];
-	if(!dspp) {
+	if (!dspp) {
 		DRM_ERROR("Invalid dspp NULL");
 		return -EINVAL;
 	}
@@ -820,9 +820,8 @@ void reg_dmav1_setup_dspp_3d_gamutv42(struct sde_hw_dspp *ctx, void *cfg)
 		GAMUT_SCALE_OFF_LEN);
 	if (payload && (payload->flags & GAMUT_3D_MAP_EN)) {
 		for (i = 0; i < GAMUT_3D_SCALE_OFF_TBL_NUM; i++) {
-			for (j = 0; j < GAMUT_3D_SCALE_OFF_SZ; j++) {
+			for (j = 0; j < GAMUT_3D_SCALE_OFF_SZ; j++)
 				payload->scale_off[i][j] = scale_off[i][j];
-			}
 		}
 	}
 }

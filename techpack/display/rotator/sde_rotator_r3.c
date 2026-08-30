@@ -937,6 +937,7 @@ static int sde_hw_rotator_irq_setup(struct sde_hw_rotator *rot)
 static int sde_hw_rotator_enable_irq(struct sde_hw_rotator *rot)
 {
 	int ret = 0;
+
 	SDEROT_DBG("irq_num:%d enabled:%d\n", rot->irq_num,
 		atomic_read(&rot->irq_enabled));
 

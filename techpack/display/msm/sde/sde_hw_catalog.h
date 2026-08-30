@@ -173,7 +173,7 @@ enum sde_intr_enum {
 
 /**
  * MDP TOP BLOCK features
- * @SDE_MDP_PANIC_PER_PIPE Panic configuration needs to be be done per pipe
+ * @SDE_MDP_PANIC_PER_PIPE Panic configuration needs to be done per pipe
  * @SDE_MDP_10BIT_SUPPORT, Chipset supports 10 bit pixel formats
  * @SDE_MDP_BWC,           MDSS HW supports Bandwidth compression.
  * @SDE_MDP_UBWC_1_0,      This chipsets supports Universal Bandwidth
@@ -583,7 +583,7 @@ enum sde_qos_lut_usage {
  * @smart_dma_priority: hw priority of rect1 of multirect pipe
  * @max_per_pipe_bw: maximum allowable bandwidth of this pipe in kBps
  * @max_per_pipe_bw_high: maximum allowable bandwidth of this pipe in kBps
- * 				in case of no VFE
+ *				in case of no VFE
  * @src_blk:
  * @scaler_blk:
  * @csc_blk:

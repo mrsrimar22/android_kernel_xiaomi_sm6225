@@ -764,11 +764,10 @@ void sde_connector_complete_qsync_commit(struct drm_connector *conn,
 			struct msm_display_conn_params *params);
 
 /**
-* sde_connector_get_dyn_hdr_meta - returns pointer to connector state's dynamic
-*				   HDR metadata info
-* @connector: pointer to drm connector
-*/
-
+ * sde_connector_get_dyn_hdr_meta - returns pointer to connector state's dynamic
+ *				   HDR metadata info
+ * @connector: pointer to drm connector
+ */
 struct sde_connector_dyn_hdr_metadata *sde_connector_get_dyn_hdr_meta(
 		struct drm_connector *connector);
 
@@ -913,12 +912,12 @@ int sde_connector_state_get_mode_info(struct drm_connector_state *conn_state,
 	struct msm_mode_info *mode_info);
 
 /**
-* sde_connector_get_mode_info - retrieve mode info for given mode
-* @connector: Pointer to drm connector structure
-* @drm_mode: Display mode set for the display
-* @mode_info: Out parameter. information of the display mode
-* Returns: Zero on success
-*/
+ * sde_connector_get_mode_info - retrieve mode info for given mode
+ * @connector: Pointer to drm connector structure
+ * @drm_mode: Display mode set for the display
+ * @mode_info: Out parameter. information of the display mode
+ * Returns: Zero on success
+ */
 int sde_connector_get_mode_info(struct drm_connector *conn,
 		const struct drm_display_mode *drm_mode,
 		struct msm_mode_info *mode_info);

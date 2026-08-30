@@ -106,7 +106,7 @@ struct sde_rsc_client *sde_rsc_client_create(u32 rsc_index, char *client_name,
 		return ERR_PTR(-ENOMEM);
 
 	mutex_lock(&rsc->client_lock);
-	strlcpy(client->name, client_name, MAX_RSC_CLIENT_NAME_LEN);
+	strscpy(client->name, client_name, MAX_RSC_CLIENT_NAME_LEN);
 	client->current_state = SDE_RSC_IDLE_STATE;
 	client->rsc_index = rsc_index;
 	client->id = id;
@@ -1404,6 +1404,7 @@ static void sde_rsc_deinit(struct platform_device *pdev,
 
 	sde_power_resource_deinit(pdev, &rsc->phandle);
 	debugfs_remove_recursive(rsc->debugfs_root);
+	mutex_destroy(&rsc->client_lock);
 	kfree(rsc);
 }
 
@@ -1499,6 +1500,12 @@ static int sde_rsc_probe(struct platform_device *pdev)
 		goto rsc_alloc_fail;
 	}
 
+	mutex_init(&rsc->client_lock);
+	INIT_LIST_HEAD(&rsc->client_list);
+	INIT_LIST_HEAD(&rsc->event_list);
+	init_waitqueue_head(&rsc->rsc_vsync_waitq);
+	atomic_set(&rsc->resource_refcount, 0);
+
 	platform_set_drvdata(pdev, rsc);
 	rsc->dev = &pdev->dev;
 	of_property_read_u32(pdev->dev.of_node, "qcom,sde-rsc-version",
@@ -1583,12 +1590,6 @@ static int sde_rsc_probe(struct platform_device *pdev)
 		goto sde_rsc_fail;
 
 	sde_rsc_resource_disable(rsc);
-
-	INIT_LIST_HEAD(&rsc->client_list);
-	INIT_LIST_HEAD(&rsc->event_list);
-	mutex_init(&rsc->client_lock);
-	init_waitqueue_head(&rsc->rsc_vsync_waitq);
-	atomic_set(&rsc->resource_refcount, 0);
 
 	pr_info("sde rsc index:%d probed successfully\n",
 				SDE_RSC_INDEX + counter);
