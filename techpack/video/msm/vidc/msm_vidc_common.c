@@ -1490,8 +1490,9 @@ static void msm_vidc_comm_update_ctrl_limits(struct msm_vidc_inst *inst)
 			V4L2_CID_MPEG_VIDEO_HEVC_LEVEL,
 			&inst->capability.cap[CAP_HEVC_LEVEL]);
 	/* Default value of level is unknown, but since we are not using unknown value
-	   while updating level controls, we need to reinitialize inst->level to HFI
-	   unknown value */
+	 * while updating level controls, we need to reinitialize inst->level to HFI
+	 * unknown value
+	 */
 	inst->level = HFI_LEVEL_UNKNOWN;
 }
 
@@ -2324,9 +2325,8 @@ void msm_comm_session_clean(struct msm_vidc_inst *inst)
 	s_vpr_h(inst->sid, "%s: inst %pK\n", __func__, inst);
 	rc = call_hfi_op(hdev, session_clean,
 			(void *)inst->session);
-	if (rc) {
-		s_vpr_e(inst->sid, "Session clean failed :%pK\n", inst);
-	}
+	if (rc)
+		s_vpr_e(inst->sid, "Session clean failed: %pK\n", inst);
 	inst->session = NULL;
 	mutex_unlock(&inst->lock);
 }
@@ -3114,7 +3114,7 @@ static int msm_comm_init_core(struct msm_vidc_inst *inst)
 		core->capabilities = NULL;
 		goto fail_core_init;
 	}
-	s_vpr_h(inst->sid, "%s: done\n", __func__);
+
 core_already_inited:
 	change_inst_state(inst, MSM_VIDC_CORE_INIT);
 	mutex_unlock(&core->lock);
@@ -4326,9 +4326,8 @@ int msm_vidc_comm_cmd(void *instance, union msm_v4l2_cmd *cmd)
 	switch (which_cmd) {
 	case V4L2_CMD_FLUSH:
 		rc = msm_comm_flush(inst, flags);
-		if (rc) {
+		if (rc)
 			s_vpr_e(inst->sid, "Failed to flush buffers: %d\n", rc);
-		}
 		break;
 	case V4L2_CMD_SESSION_CONTINUE:
 	{
@@ -4428,7 +4427,7 @@ static void populate_frame_data(struct vidc_frame_data *data,
 		if (vbuf->flags & V4L2_BUF_FLAG_CODECCONFIG)
 			data->flags |= HAL_BUFFERFLAG_CODECCONFIG;
 
-		if(msm_vidc_cvp_usage && (vbuf->flags & V4L2_BUF_FLAG_CVPMETADATA_SKIP))
+		if (msm_vidc_cvp_usage && (vbuf->flags & V4L2_BUF_FLAG_CVPMETADATA_SKIP))
 			data->flags |= HAL_BUFFERFLAG_CVPMETADATA_SKIP;
 
 		msm_comm_fetch_input_tag(&inst->etb_data, vb->index,
@@ -4684,7 +4683,8 @@ static int msm_comm_qbuf_superframe_to_hfi(struct msm_vidc_inst *inst,
 	}
 
 	/* If cvp metadata is enabled and metadata is available,
-	 * do not add skip flag for only first frame */
+	 * do not add skip flag for only first frame
+	 */
 	if (skip_allowed && !(mbuf->vvb.flags & V4L2_BUF_FLAG_CVPMETADATA_SKIP))
 		frames[0].flags &= ~HAL_BUFFERFLAG_CVPMETADATA_SKIP;
 
@@ -6235,9 +6235,9 @@ int msm_vidc_check_session_supported(struct msm_vidc_inst *inst)
 			rc = -ENOTSUPP;
 		}
 	}
-	if (rc) {
+	if (rc)
 		s_vpr_e(sid, "%s: Resolution unsupported\n", __func__);
-	}
+
 	return rc;
 }
 
@@ -7305,7 +7305,7 @@ int msm_comm_store_input_tag(struct msm_vidc_list *data_list,
 
 	if (!found) {
 		pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
-		if (!pdata)  {
+		if (!pdata) {
 			s_vpr_e(sid, "%s: malloc failure.\n", __func__);
 			rc = -ENOMEM;
 			goto exit;
@@ -7444,8 +7444,7 @@ int msm_comm_set_color_format_constraints(struct msm_vidc_inst *inst,
 		s_vpr_h(inst->sid, "Set color format constraint success\n");
 
 exit:
-	if (pconstraint)
-		kfree(pconstraint);
+	kfree(pconstraint);
 	return rc;
 }
 
@@ -7502,9 +7501,8 @@ int msm_comm_set_cvp_skip_ratio(struct msm_vidc_inst *inst,
 	fractional_part = capture_rate % cvp_rate;
 	if (fractional_part) {
 		fractional_part = (fractional_part * 100) / cvp_rate;
-		skip_ratio = integral_part | ((fractional_part << 16)/100) ;
-	}
-	else
+		skip_ratio = integral_part | ((fractional_part << 16)/100);
+	} else
 		skip_ratio = integral_part;
 
 	cvp_data.cvp_skip_ratio = skip_ratio;
@@ -7591,9 +7589,9 @@ int msm_comm_check_window_bitrate(struct msm_vidc_inst *inst,
 	}
 
 	pdata = NULL;
-	if(!temp) {
+	if (!temp) {
 		pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
-		if (!pdata)  {
+		if (!pdata) {
 			s_vpr_e(inst->sid, "%s: malloc failure.\n", __func__);
 			mutex_unlock(&inst->window_data.lock);
 			return -ENOMEM;

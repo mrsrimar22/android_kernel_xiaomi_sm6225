@@ -91,8 +91,8 @@ struct hfi_mem_map {
 	VIDC_IFACEQ_MAX_BUF_COUNT * VIDC_IFACE_MAX_PARALLEL_CLNTS)
 
 #define VIDC_IFACEQ_GET_QHDR_START_ADDR(ptr, i)     \
-	(void *)((ptr + sizeof(struct hfi_queue_table_header)) + \
-		(i * sizeof(struct hfi_queue_header)))
+	((void *)((ptr + sizeof(struct hfi_queue_table_header)) + \
+		(i * sizeof(struct hfi_queue_header))))
 
 #define QDSS_SIZE 4096
 #define SFR_SIZE 4096

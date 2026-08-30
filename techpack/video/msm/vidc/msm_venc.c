@@ -1153,9 +1153,9 @@ int msm_venc_inst_init(struct msm_vidc_inst *inst)
 			f->fmt.pix_mp.pixelformat);
 		return -EINVAL;
 	}
-	strlcpy(inst->fmts[OUTPUT_PORT].name, fmt_desc->name,
+	strscpy(inst->fmts[OUTPUT_PORT].name, fmt_desc->name,
 		sizeof(inst->fmts[OUTPUT_PORT].name));
-	strlcpy(inst->fmts[OUTPUT_PORT].description, fmt_desc->description,
+	strscpy(inst->fmts[OUTPUT_PORT].description, fmt_desc->description,
 		sizeof(inst->fmts[OUTPUT_PORT].description));
 	f = &inst->fmts[INPUT_PORT].v4l2_fmt;
 	f->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1177,9 +1177,9 @@ int msm_venc_inst_init(struct msm_vidc_inst *inst)
 			f->fmt.pix_mp.pixelformat);
 		return -EINVAL;
 	}
-	strlcpy(inst->fmts[INPUT_PORT].name, fmt_desc->name,
+	strscpy(inst->fmts[INPUT_PORT].name, fmt_desc->name,
 		sizeof(inst->fmts[INPUT_PORT].name));
-	strlcpy(inst->fmts[INPUT_PORT].description, fmt_desc->description,
+	strscpy(inst->fmts[INPUT_PORT].description, fmt_desc->description,
 		sizeof(inst->fmts[INPUT_PORT].description));
 	inst->prop.bframe_changed = false;
 	inst->prop.extradata_ctrls = EXTRADATA_NONE;
@@ -1238,7 +1238,7 @@ int msm_venc_enum_fmt(struct msm_vidc_inst *inst, struct v4l2_fmtdesc *f)
 
 	memset(f->reserved, 0, sizeof(f->reserved));
 	if (fmt_desc) {
-		strlcpy(f->description, fmt_desc->description,
+		strscpy(f->description, fmt_desc->description,
 				sizeof(f->description));
 		f->pixelformat = fmt_desc->fourcc;
 	} else {
@@ -1325,8 +1325,8 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 				f->fmt.pix_mp.pixelformat);
 			return -EINVAL;
 		}
-		strlcpy(fmt->name, fmt_desc->name, sizeof(fmt->name));
-		strlcpy(fmt->description, fmt_desc->description,
+		strscpy(fmt->name, fmt_desc->name, sizeof(fmt->name));
+		strscpy(fmt->description, fmt_desc->description,
 			sizeof(fmt->description));
 
 		fmt->v4l2_fmt.type = f->type;
@@ -1376,8 +1376,8 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 				f->fmt.pix_mp.pixelformat);
 			return -EINVAL;
 		}
-		strlcpy(fmt->name, fmt_desc->name, sizeof(fmt->name));
-		strlcpy(fmt->description, fmt_desc->description,
+		strscpy(fmt->name, fmt_desc->name, sizeof(fmt->name));
+		strscpy(fmt->description, fmt_desc->description,
 			sizeof(fmt->description));
 
 		inst->clk_data.opb_fourcc = f->fmt.pix_mp.pixelformat;
@@ -2025,10 +2025,10 @@ int msm_venc_set_frame_size(struct msm_vidc_inst *inst)
 	frame_sz.width = f->fmt.pix_mp.width;
 	frame_sz.height = f->fmt.pix_mp.height;
 	/* firmware needs grid size in output where as
-	 * client sends out full resolution in output port */
-	if (is_grid_session(inst)) {
+	 * client sends out full resolution in output port
+	 */
+	if (is_grid_session(inst))
 		frame_sz.width = frame_sz.height = HEIC_GRID_DIMENSION;
-	}
 	s_vpr_h(inst->sid, "%s: output %d %d\n", __func__,
 			frame_sz.width, frame_sz.height);
 	rc = call_hfi_op(hdev, session_set_property, inst->session,
@@ -2525,7 +2525,6 @@ int msm_venc_set_request_keyframe(struct msm_vidc_inst *inst)
 	}
 	hdev = inst->core->device;
 
-	s_vpr_h(inst->sid, "%s\n", __func__);
 	rc = call_hfi_op(hdev, session_set_property, inst->session,
 		HFI_PROPERTY_CONFIG_VENC_REQUEST_SYNC_FRAME, NULL, 0);
 	if (rc) {
@@ -2673,9 +2672,8 @@ set_vbv_delay:
 		(void *)inst->session,
 		HFI_PROPERTY_CONFIG_VENC_VBV_HRD_BUF_SIZE,
 		(void *)&hrd_buf_size, sizeof(hrd_buf_size));
-	if (rc) {
+	if (rc)
 		s_vpr_e(inst->sid, "%s: set property failed\n", __func__);
-	}
 	return rc;
 }
 
@@ -3002,8 +3000,6 @@ static void set_all_intra_preconditions(struct msm_vidc_inst *inst)
 		update_ctrl(ctrl, 0, inst->sid);
 		update_ctrl(ctrl_t, 0, inst->sid);
 	}
-
-	return;
 }
 
 static void set_heif_preconditions(struct msm_vidc_inst *inst)
@@ -3023,8 +3019,6 @@ static void set_heif_preconditions(struct msm_vidc_inst *inst)
 		s_vpr_h(inst->sid, "Reset B-frame count for HEIF\n");
 		update_ctrl(ctrl, 0, inst->sid);
 	}
-
-	return;
 }
 
 int msm_venc_set_frame_quality(struct msm_vidc_inst *inst)
@@ -3309,9 +3303,8 @@ int msm_venc_set_intra_refresh_mode(struct msm_vidc_inst *inst)
 
 		num_mbs_per_frame = NUM_MBS_PER_FRAME(height, width);
 		intra_refresh.mbs = num_mbs_per_frame / ctrl->val;
-		if (num_mbs_per_frame % ctrl->val) {
+		if (num_mbs_per_frame % ctrl->val)
 			intra_refresh.mbs++;
-		}
 	} else {
 		ctrl = get_ctrl(inst,
 			V4L2_CID_MPEG_VIDEO_CYCLIC_INTRA_REFRESH_MB);
@@ -3893,8 +3886,8 @@ int msm_venc_check_dynamic_flip_constraints(struct msm_vidc_inst *inst)
 	scalar_enable = vidc_scalar_enabled(inst);
 
 	/* Check blur configs
-	 * blur value = 0 -> enable auto blur
-	 * blur value  = 2 or input resolution -> disable all blur
+	 * value = 0 -> enable auto blur
+	 * value = 2 or input resolution -> disable all blur
 	 * For other values -> enable external blur
 	 * Dynamic flip is not allowed with external blur enabled
 	 */
@@ -4172,9 +4165,9 @@ int msm_venc_set_ltr_mode(struct msm_vidc_inst *inst)
 	if (!(inst->rc_type == RATE_CONTROL_OFF ||
 		inst->rc_type == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR ||
 		inst->rc_type == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR_VFR)) {
-			is_ltr = false;
-			goto disable_ltr;
-		}
+		is_ltr = false;
+		goto disable_ltr;
+	}
 
 	if (ctrl->val > inst->capability.cap[CAP_LTR_COUNT].max) {
 		s_vpr_e(inst->sid, "%s: invalid ltr count %d, max %d\n",
@@ -4389,7 +4382,7 @@ int msm_venc_set_blur_resolution(struct msm_vidc_inst *inst)
 		frame_sz.width = f->fmt.pix_mp.width;
 		frame_sz.height = f->fmt.pix_mp.height;
 		s_vpr_h(inst->sid, "Disable both auto and external blur\n");
-	} else if (ctrl->val != 0){
+	} else if (ctrl->val != 0) {
 		if (check_blur_restrictions(inst)) {
 			/* reject external blur */
 			s_vpr_e(inst->sid,

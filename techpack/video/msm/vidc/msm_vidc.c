@@ -87,7 +87,7 @@ int msm_vidc_querycap(void *instance, struct v4l2_capability *cap)
 	if (!inst || !cap)
 		return -EINVAL;
 
-	strlcpy(cap->driver, MSM_VIDC_DRV_NAME, sizeof(cap->driver));
+	strscpy(cap->driver, MSM_VIDC_DRV_NAME, sizeof(cap->driver));
 	cap->bus_info[0] = 0;
 	cap->version = MSM_VIDC_VERSION;
 	cap->device_caps = V4L2_CAP_VIDEO_CAPTURE_MPLANE |
@@ -98,9 +98,9 @@ int msm_vidc_querycap(void *instance, struct v4l2_capability *cap)
 	memset(cap->reserved, 0, sizeof(cap->reserved));
 
 	if (inst->session_type == MSM_VIDC_DECODER)
-		strlcpy(cap->card, MSM_VDEC_DVC_NAME, sizeof(cap->card));
+		strscpy(cap->card, MSM_VDEC_DVC_NAME, sizeof(cap->card));
 	else if (inst->session_type == MSM_VIDC_ENCODER)
-		strlcpy(cap->card, MSM_VENC_DVC_NAME, sizeof(cap->card));
+		strscpy(cap->card, MSM_VENC_DVC_NAME, sizeof(cap->card));
 	else
 		return -EINVAL;
 
@@ -1025,9 +1025,8 @@ static inline int stop_streaming(struct msm_vidc_inst *inst)
 		s_vpr_e(inst->sid, "Failed to move inst: %pK to state %d\n",
 				inst, MSM_VIDC_RELEASE_RESOURCES_DONE);
 
-	if (is_encode_session(inst)) {
+	if (is_encode_session(inst))
 		inst->all_intra = false;
-	}
 
 	msm_clock_data_reset(inst);
 

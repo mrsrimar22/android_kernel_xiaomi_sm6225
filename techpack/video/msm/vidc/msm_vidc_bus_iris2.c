@@ -352,7 +352,7 @@ static unsigned long __calculate_encoder(struct vidc_bus_vote_data *d)
 
 	if (d->use_sys_cache) {
 		llc_ref_chroma_cache_enabled = true;
-		llc_top_line_buf_enabled = true,
+		llc_top_line_buf_enabled = true;
 		llc_vpss_rot_line_buf_enabled = true;
 	}
 

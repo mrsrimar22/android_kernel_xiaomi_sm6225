@@ -490,7 +490,7 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 		return -ENOMEM;
 
 	core->platform_data = vidc_get_drv_data(&pdev->dev);
-	if(!core->platform_data) {
+	if (!core->platform_data) {
 		d_vpr_e("Failed to get platform data\n");
 		rc = -EINVAL;
 		goto err_core_init;
@@ -753,7 +753,6 @@ static int msm_vidc_pm_suspend(struct device *dev)
 
 static int msm_vidc_pm_resume(struct device *dev)
 {
-	d_vpr_h("%s\n", __func__);
 	return 0;
 }
 

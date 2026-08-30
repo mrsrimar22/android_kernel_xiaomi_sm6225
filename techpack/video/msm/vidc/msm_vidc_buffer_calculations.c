@@ -1030,9 +1030,8 @@ u32 msm_vidc_calculate_enc_output_frame_size(struct msm_vidc_inst *inst)
 	 * Initially frame_size = YUVsize * 2;
 	 */
 
-	if (is_grid_session(inst)) {
+	if (is_grid_session(inst))
 		f->fmt.pix_mp.width = f->fmt.pix_mp.height = HEIC_GRID_DIMENSION;
-	}
 	width = ALIGN(f->fmt.pix_mp.width, BUFFER_ALIGNMENT_SIZE(32));
 	height = ALIGN(f->fmt.pix_mp.height, BUFFER_ALIGNMENT_SIZE(32));
 	mbs_per_frame = NUM_MBS_PER_FRAME(width, height);
