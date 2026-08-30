@@ -893,6 +893,7 @@ static void sde_cp_get_hw_payload(struct sde_cp_node *prop_node,
 				  bool *feature_enabled)
 {
 	struct drm_property_blob *blob = NULL;
+
 	memset(hw_cfg, 0, sizeof(*hw_cfg));
 	*feature_enabled = false;
 
@@ -2092,6 +2093,7 @@ void sde_cp_crtc_destroy_properties(struct drm_crtc *crtc)
 	sde_crtc->ltm_buffer_cnt = 0;
 	sde_crtc->ltm_hist_en = false;
 
+	mutex_destroy(&sde_crtc->ltm_buffer_lock);
 	mutex_destroy(&sde_crtc->crtc_cp_lock);
 	INIT_LIST_HEAD(&sde_crtc->active_list);
 	INIT_LIST_HEAD(&sde_crtc->dirty_list);

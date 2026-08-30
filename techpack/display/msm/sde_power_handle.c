@@ -44,9 +44,8 @@ static void sde_power_event_trigger_locked(struct sde_power_handle *phandle,
 
 	phandle->last_event_handled = event_type;
 	list_for_each_entry(event, &phandle->event_list, list) {
-		if (event->event_type & event_type) {
+		if (event->event_type & event_type)
 			event->cb_fnc(event_type, event->usr);
-		}
 	}
 }
 
@@ -129,7 +128,7 @@ static int sde_power_parse_dt_supply(struct platform_device *pdev,
 			goto error;
 		}
 
-		strlcpy(mp->vreg_config[i].vreg_name, st,
+		strscpy(mp->vreg_config[i].vreg_name, st,
 					sizeof(mp->vreg_config[i].vreg_name));
 
 		rc = of_property_read_u32(supply_node,
@@ -257,7 +256,7 @@ static int sde_power_parse_dt_clock(struct platform_device *pdev,
 	for (i = 0; i < num_clk; i++) {
 		of_property_read_string_index(pdev->dev.of_node, "clock-names",
 							i, &clock_name);
-		strlcpy(mp->clk_config[i].clk_name, clock_name,
+		strscpy(mp->clk_config[i].clk_name, clock_name,
 				sizeof(mp->clk_config[i].clk_name));
 
 		of_property_read_u32_index(pdev->dev.of_node, "clock-rate",
@@ -527,7 +526,6 @@ int sde_power_resource_init(struct platform_device *pdev,
 		goto end;
 	}
 	mp = &phandle->mp;
-	phandle->dev = &pdev->dev;
 
 	rc = sde_power_parse_dt_clock(pdev, mp);
 	if (rc) {
@@ -589,6 +587,7 @@ int sde_power_resource_init(struct platform_device *pdev,
 	phandle->rsc_client = NULL;
 	phandle->rsc_client_init = false;
 
+	phandle->dev = &pdev->dev;
 	mutex_init(&phandle->phandle_lock);
 	mutex_init(&phandle->ext_client_lock);
 
@@ -611,6 +610,7 @@ parse_vreg_err:
 		devm_kfree(&pdev->dev, mp->clk_config);
 	mp->num_clk = 0;
 end:
+	phandle->dev = NULL;
 	return rc;
 }
 
@@ -621,7 +621,7 @@ void sde_power_resource_deinit(struct platform_device *pdev,
 	struct sde_power_event *curr_event, *next_event;
 	int i;
 
-	if (!phandle || !pdev) {
+	if (!phandle || !pdev || !phandle->dev) {
 		pr_err("invalid input param\n");
 		return;
 	}
@@ -661,6 +661,10 @@ void sde_power_resource_deinit(struct platform_device *pdev,
 
 	if (phandle->rsc_client)
 		sde_rsc_client_destroy(phandle->rsc_client);
+
+	mutex_destroy(&phandle->ext_client_lock);
+	mutex_destroy(&phandle->phandle_lock);
+	phandle->dev = NULL;
 }
 
 int sde_power_scale_reg_bus(struct sde_power_handle *phandle,
@@ -1007,7 +1011,7 @@ struct sde_power_event *sde_power_handle_register_event(
 	event->event_type = event_type;
 	event->cb_fnc = cb_fnc;
 	event->usr = usr;
-	strlcpy(event->client_name, client_name, MAX_CLIENT_NAME_LEN);
+	strscpy(event->client_name, client_name, MAX_CLIENT_NAME_LEN);
 	event->active = true;
 
 	mutex_lock(&phandle->phandle_lock);

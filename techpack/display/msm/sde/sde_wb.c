@@ -764,12 +764,26 @@ static int sde_wb_probe(struct platform_device *pdev)
 	list_add(&wb_dev->wb_list, &sde_wb_list);
 	mutex_unlock(&sde_wb_list_lock);
 
-	if (!_sde_wb_dev_init(wb_dev)) {
-		ret = component_add(&pdev->dev, &sde_wb_comp_ops);
-		if (ret)
-			pr_err("component add failed\n");
+	ret = _sde_wb_dev_init(wb_dev);
+	if (ret)
+		goto error_list;
+
+	ret = component_add(&pdev->dev, &sde_wb_comp_ops);
+	if (ret) {
+		pr_err("component add failed, ret=%d\n", ret);
+		goto error_dev_init;
 	}
 
+	return 0;
+
+error_dev_init:
+	(void)_sde_wb_dev_deinit(wb_dev);
+error_list:
+	mutex_lock(&sde_wb_list_lock);
+	list_del(&wb_dev->wb_list);
+	mutex_unlock(&sde_wb_list_lock);
+	platform_set_drvdata(pdev, NULL);
+	mutex_destroy(&wb_dev->wb_lock);
 	return ret;
 }
 

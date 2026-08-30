@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
@@ -130,7 +129,7 @@ static int msm_fbdev_create(struct drm_fb_helper *helper,
 	fbi->par = helper;
 	fbi->fbops = &msm_fb_ops;
 
-	strlcpy(fbi->fix.id, "msm", sizeof(fbi->fix.id));
+	strscpy(fbi->fix.id, "msm", sizeof(fbi->fix.id));
 
 	drm_fb_helper_fill_fix(fbi, fb->pitches[0], fb->format->depth);
 	drm_fb_helper_fill_var(fbi, helper, sizes->fb_width, sizes->fb_height);

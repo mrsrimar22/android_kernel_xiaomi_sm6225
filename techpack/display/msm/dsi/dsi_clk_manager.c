@@ -1328,7 +1328,7 @@ void *dsi_register_clk_handle(void *clk_mngr, char *client)
 		goto error;
 	}
 
-	strlcpy(c->name, client, MAX_STRING_LEN);
+	strscpy(c->name, client, sizeof(c->name));
 	c->mngr = mngr;
 
 	list_add(&c->list, &mngr->client_list);
@@ -1417,6 +1417,7 @@ void *dsi_display_clk_mngr_register(struct dsi_clk_info *info)
 	mngr->master_ndx = info->master_ndx;
 
 	if (mngr->dsi_ctrl_count > MAX_DSI_CTRL) {
+		mutex_destroy(&mngr->clk_mutex);
 		kfree(mngr);
 		return ERR_PTR(-EINVAL);
 	}
@@ -1474,6 +1475,7 @@ int dsi_display_clk_mngr_deregister(void *clk_mngr)
 		DSI_ERR("failed to disable all clocks\n");
 
 	mutex_unlock(&mngr->clk_mutex);
+	mutex_destroy(&mngr->clk_mutex);
 	DSI_DEBUG("%s: EXIT, rc = %d\n", mngr->name, rc);
 	kfree(mngr);
 	return rc;

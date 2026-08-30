@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
@@ -2031,6 +2032,10 @@ static void sde_kms_destroy(struct msm_kms *kms)
 	}
 
 	_sde_kms_hw_destroy(sde_kms, to_platform_device(dev->dev));
+
+	mutex_destroy(&sde_kms->vblank_ctl_global_lock);
+	mutex_destroy(&sde_kms->secure_transition_lock);
+
 	kfree(sde_kms);
 }
 
