@@ -276,6 +276,8 @@ struct dsi_display {
 	struct workqueue_struct *dma_cmd_workq;
 };
 
+#define to_dsi_display(x) container_of((x), struct dsi_display, host)
+
 int dsi_display_dev_probe(struct platform_device *pdev);
 int dsi_display_dev_remove(struct platform_device *pdev);
 
