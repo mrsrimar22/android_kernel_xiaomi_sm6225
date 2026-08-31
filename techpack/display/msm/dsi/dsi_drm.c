@@ -13,9 +13,6 @@
 #include "sde_trace.h"
 #include "sde_dbg.h"
 
-#define to_dsi_bridge(x)     container_of((x), struct dsi_bridge, base)
-#define to_dsi_state(x)      container_of((x), struct dsi_connector_state, base)
-
 #define DEFAULT_PANEL_JITTER_NUMERATOR		2
 #define DEFAULT_PANEL_JITTER_DENOMINATOR	1
 #define DEFAULT_PANEL_JITTER_ARRAY_SIZE		2
