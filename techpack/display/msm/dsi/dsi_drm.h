@@ -25,6 +25,8 @@ struct dsi_bridge {
 	struct dsi_display_mode dsi_mode;
 };
 
+#define to_dsi_bridge(x) container_of((x), struct dsi_bridge, base)
+
 /**
  * dsi_conn_set_info_blob - callback to perform info blob initialization
  * @connector: Pointer to drm connector structure
