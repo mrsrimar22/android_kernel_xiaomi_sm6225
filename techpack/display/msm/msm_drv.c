@@ -52,6 +52,7 @@
 #include "msm_mmu.h"
 #include "sde_wb.h"
 #include "sde_dbg.h"
+#include "sde_fence.h"
 
 /*
  * MSM driver version:
@@ -2288,6 +2289,10 @@ static int __init msm_drm_register(void)
 	if (ret)
 		goto err_atomic_init;
 
+	ret = sde_fence_cache_init();
+	if (ret)
+		goto err_fence_init;
+
 	msm_smmu_driver_init();
 	msm_dsi_register();
 	msm_edp_register();
@@ -2299,6 +2304,8 @@ static int __init msm_drm_register(void)
 	return 0;
 
 out:
+err_fence_init:
+	msm_atomic_destroy();
 err_atomic_init:
 	kmem_cache_destroy(kmem_vblank_work_pool);
 	return ret;
@@ -2312,6 +2319,7 @@ static void __exit msm_drm_unregister(void)
 	msm_edp_unregister();
 	msm_dsi_unregister();
 	msm_smmu_driver_cleanup();
+	sde_fence_cache_destroy();
 	msm_atomic_destroy();
 	kmem_cache_destroy(kmem_vblank_work_pool);
 }
