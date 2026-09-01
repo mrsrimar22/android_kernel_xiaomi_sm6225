@@ -102,7 +102,7 @@ int cam_sync_init_group_object(struct sync_table_row *table,
 		row->remaining++;
 
 		/* Add child info */
-		child_info = kzalloc(sizeof(*child_info), GFP_ATOMIC);
+		child_info = kmem_cache_zalloc(cam_sync_child_cache, GFP_ATOMIC);
 		if (!child_info) {
 			spin_unlock_bh(&sync_dev->row_spinlocks[sync_objs[i]]);
 			rc = -ENOMEM;
@@ -112,7 +112,7 @@ int cam_sync_init_group_object(struct sync_table_row *table,
 		list_add_tail(&child_info->list, &row->children_list);
 
 		/* Add parent info */
-		parent_info = kzalloc(sizeof(*parent_info), GFP_ATOMIC);
+		parent_info = kmem_cache_zalloc(cam_sync_parent_cache, GFP_ATOMIC);
 		if (!parent_info) {
 			spin_unlock_bh(&sync_dev->row_spinlocks[sync_objs[i]]);
 			rc = -ENOMEM;
@@ -214,7 +214,7 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 			list_del_init(&child_info->list);
 			spin_unlock_bh(&sync_dev->row_spinlocks[
 				child_info->sync_id]);
-			kfree(child_info);
+			kmem_cache_free(cam_sync_child_cache, child_info);
 			continue;
 		}
 
@@ -228,7 +228,7 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 
 		list_del_init(&child_info->list);
 		spin_unlock_bh(&sync_dev->row_spinlocks[child_info->sync_id]);
-		kfree(child_info);
+		kmem_cache_free(cam_sync_child_cache, child_info);
 	}
 
 	/* Cleanup the parent to child link */
@@ -243,7 +243,7 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 			list_del_init(&parent_info->list);
 			spin_unlock_bh(&sync_dev->row_spinlocks[
 				parent_info->sync_id]);
-			kfree(parent_info);
+			kmem_cache_free(cam_sync_parent_cache, parent_info);
 			continue;
 		}
 
@@ -257,7 +257,7 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 
 		list_del_init(&parent_info->list);
 		spin_unlock_bh(&sync_dev->row_spinlocks[parent_info->sync_id]);
-		kfree(parent_info);
+		kmem_cache_free(cam_sync_parent_cache, parent_info);
 	}
 
 	spin_lock_bh(&sync_dev->row_spinlocks[idx]);
@@ -422,7 +422,7 @@ void cam_sync_util_cleanup_children_list(struct sync_table_row *row,
 
 		curr_sync_obj = child_info->sync_id;
 		list_del_init(&child_info->list);
-		kfree(child_info);
+		kmem_cache_free(cam_sync_child_cache, child_info);
 
 		if ((list_clean_type == SYNC_LIST_CLEAN_ONE) &&
 			(curr_sync_obj == sync_obj))
@@ -445,7 +445,7 @@ void cam_sync_util_cleanup_parents_list(struct sync_table_row *row,
 
 		curr_sync_obj = parent_info->sync_id;
 		list_del_init(&parent_info->list);
-		kfree(parent_info);
+		kmem_cache_free(cam_sync_parent_cache, parent_info);
 
 		if ((list_clean_type == SYNC_LIST_CLEAN_ONE) &&
 			(curr_sync_obj == sync_obj))

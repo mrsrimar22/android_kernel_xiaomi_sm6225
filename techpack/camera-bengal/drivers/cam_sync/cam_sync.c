@@ -19,6 +19,8 @@
 #endif
 struct sync_device *sync_dev;
 struct kmem_cache *cam_sync_cb_cache;
+struct kmem_cache *cam_sync_child_cache;
+struct kmem_cache *cam_sync_parent_cache;
 
 /*
  * Flag to determine whether to enqueue cb of a
@@ -268,7 +270,7 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 				parent_row->state);
 			spin_unlock_bh(
 				&sync_dev->row_spinlocks[parent_info->sync_id]);
-			kfree(parent_info);
+			kmem_cache_free(cam_sync_parent_cache, parent_info);
 			continue;
 		}
 
@@ -278,7 +280,7 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 
 		spin_unlock_bh(&sync_dev->row_spinlocks[parent_info->sync_id]);
 		list_del_init(&parent_info->list);
-		kfree(parent_info);
+		kmem_cache_free(cam_sync_parent_cache, parent_info);
 	}
 
 	return 0;
@@ -1173,6 +1175,18 @@ static int __init cam_sync_init(void)
 	if (!cam_sync_cb_cache)
 		return -ENOMEM;
 
+	cam_sync_child_cache = KMEM_CACHE(sync_child_info, SLAB_HWCACHE_ALIGN);
+	if (!cam_sync_child_cache) {
+		rc = -ENOMEM;
+		goto err_child_cache;
+	}
+
+	cam_sync_parent_cache = KMEM_CACHE(sync_parent_info, SLAB_HWCACHE_ALIGN);
+	if (!cam_sync_parent_cache) {
+		rc = -ENOMEM;
+		goto err_parent_cache;
+	}
+
 	rc = platform_device_register(&cam_sync_device);
 	if (rc)
 		goto err_device_register;
@@ -1186,6 +1200,10 @@ static int __init cam_sync_init(void)
 err_driver_register:
 	platform_device_unregister(&cam_sync_device);
 err_device_register:
+	kmem_cache_destroy(cam_sync_parent_cache);
+err_parent_cache:
+	kmem_cache_destroy(cam_sync_child_cache);
+err_child_cache:
 	kmem_cache_destroy(cam_sync_cb_cache);
 	return rc;
 }
@@ -1199,6 +1217,8 @@ static void __exit cam_sync_exit(void)
 	platform_driver_unregister(&cam_sync_driver);
 	platform_device_unregister(&cam_sync_device);
 	kfree(sync_dev);
+	kmem_cache_destroy(cam_sync_parent_cache);
+	kmem_cache_destroy(cam_sync_child_cache);
 	kmem_cache_destroy(cam_sync_cb_cache);
 }
 
