@@ -776,11 +776,18 @@ static int __init msm_vidc_init(void)
 {
 	int rc = 0;
 
+	rc = msm_comm_cache_init();
+	if (rc) {
+		d_vpr_e("Failed to create kmem_cache for msm_vidc\n");
+		return rc;
+	}
+
 	vidc_driver = kzalloc(sizeof(*vidc_driver),
 						GFP_KERNEL);
 	if (!vidc_driver) {
-		d_vpr_e("Failed to allocate memroy for msm_vidc_drv\n");
-		return -ENOMEM;
+		d_vpr_e("Failed to allocate memory for msm_vidc_drv\n");
+		rc = -ENOMEM;
+		goto err_alloc_driver;
 	}
 
 	INIT_LIST_HEAD(&vidc_driver->cores);
@@ -795,21 +802,33 @@ static int __init msm_vidc_init(void)
 	rc = platform_driver_register(&msm_vidc_driver);
 	if (rc) {
 		d_vpr_e("Failed to register platform driver\n");
-		debugfs_remove_recursive(vidc_driver->debugfs_root);
-		kfree(vidc_driver);
-		vidc_driver = NULL;
+		goto err_register_driver;
 	}
 
+	return 0;
+
+err_register_driver:
+#ifdef CONFIG_DEBUG_FS
+	debugfs_remove_recursive(vidc_driver->debugfs_root);
+#endif
+	mutex_destroy(&vidc_driver->lock);
+	kfree(vidc_driver);
+	vidc_driver = NULL;
+err_alloc_driver:
+	msm_comm_cache_destroy();
 	return rc;
 }
 
 static void __exit msm_vidc_exit(void)
 {
 	platform_driver_unregister(&msm_vidc_driver);
+#ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(vidc_driver->debugfs_root);
+#endif
 	mutex_destroy(&vidc_driver->lock);
 	kfree(vidc_driver);
 	vidc_driver = NULL;
+	msm_comm_cache_destroy();
 }
 
 module_init(msm_vidc_init);
