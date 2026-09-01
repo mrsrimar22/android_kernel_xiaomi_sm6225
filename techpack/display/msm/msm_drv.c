@@ -2284,6 +2284,10 @@ static int __init msm_drm_register(void)
 	if (!kmem_vblank_work_pool)
 		return -ENOMEM;
 
+	ret = msm_atomic_init();
+	if (ret)
+		goto err_atomic_init;
+
 	msm_smmu_driver_init();
 	msm_dsi_register();
 	msm_edp_register();
@@ -2295,6 +2299,7 @@ static int __init msm_drm_register(void)
 	return 0;
 
 out:
+err_atomic_init:
 	kmem_cache_destroy(kmem_vblank_work_pool);
 	return ret;
 }
@@ -2307,6 +2312,7 @@ static void __exit msm_drm_unregister(void)
 	msm_edp_unregister();
 	msm_dsi_unregister();
 	msm_smmu_driver_cleanup();
+	msm_atomic_destroy();
 	kmem_cache_destroy(kmem_vblank_work_pool);
 }
 

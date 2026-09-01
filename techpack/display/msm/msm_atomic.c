@@ -34,6 +34,22 @@ struct msm_commit {
 	struct kthread_work commit_work;
 };
 
+static struct kmem_cache *msm_commit_cache;
+
+int msm_atomic_init(void)
+{
+	msm_commit_cache = KMEM_CACHE(msm_commit, SLAB_HWCACHE_ALIGN);
+	if (!msm_commit_cache)
+		return -ENOMEM;
+
+	return 0;
+}
+
+void msm_atomic_destroy(void)
+{
+	kmem_cache_destroy(msm_commit_cache);
+}
+
 static inline bool _msm_seamless_for_crtc(struct drm_device *dev,
 					struct drm_atomic_state *state,
 			struct drm_crtc_state *crtc_state, bool enable)
@@ -129,7 +145,7 @@ static void commit_destroy(struct msm_commit *c)
 	spin_unlock(&priv->pending_crtcs_event.lock);
 
 	if (c->nonblock)
-		kfree(c);
+		kmem_cache_free(msm_commit_cache, c);
 }
 
 static void msm_atomic_wait_for_commit_done(
@@ -553,7 +569,7 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 static struct msm_commit *commit_init(struct drm_atomic_state *state,
 	bool nonblock)
 {
-	struct msm_commit *c = kzalloc(sizeof(*c), GFP_KERNEL);
+	struct msm_commit *c = kmem_cache_zalloc(msm_commit_cache, GFP_KERNEL);
 
 	if (!c)
 		return NULL;
@@ -629,7 +645,7 @@ static void msm_atomic_commit_dispatch(struct drm_device *dev,
 
 	/* free nonblocking commits in this context, after processing */
 	if (!nonblock)
-		kfree(commit);
+		kmem_cache_free(msm_commit_cache, commit);
 }
 
 /**
@@ -762,7 +778,7 @@ retry:
 
 	return 0;
 err_free:
-	kfree(c);
+	kmem_cache_free(msm_commit_cache, c);
 error:
 	drm_atomic_helper_cleanup_planes(dev, state);
 	SDE_ATRACE_END("atomic_commit");
