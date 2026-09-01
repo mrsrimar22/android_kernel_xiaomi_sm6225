@@ -48,6 +48,8 @@ struct wdsp_rsp_que {
 	u8 buf[WDSP_MAX_READ_SIZE];
 };
 
+static struct kmem_cache *wdsp_rsp_cache;
+
 struct wdsp_ch {
 	struct wdsp_glink_priv *wpriv;
 	/* rpmsg handle */
@@ -316,7 +318,7 @@ static ssize_t wdsp_glink_read(struct file *file, char __user *buf,
 	if (ret < 0)
 		return ret;
 
-	read_rsp = kzalloc(sizeof(struct wdsp_rsp_que), GFP_KERNEL);
+	read_rsp = kmem_cache_zalloc(wdsp_rsp_cache, GFP_KERNEL);
 	if (!read_rsp)
 		return -ENOMEM;
 
@@ -360,7 +362,7 @@ static ssize_t wdsp_glink_read(struct file *file, char __user *buf,
 	}
 
 done:
-	kfree(read_rsp);
+	kmem_cache_free(wdsp_rsp_cache, read_rsp);
 	return ret;
 }
 
@@ -761,12 +763,25 @@ static struct platform_driver wdsp_glink_driver = {
 
 static int __init wdsp_glink_init(void)
 {
-	return platform_driver_register(&wdsp_glink_driver);
+	int ret;
+
+	wdsp_rsp_cache = KMEM_CACHE(wdsp_rsp_que, SLAB_HWCACHE_ALIGN);
+	if (!wdsp_rsp_cache)
+		return -ENOMEM;
+
+	ret = platform_driver_register(&wdsp_glink_driver);
+	if (ret) {
+		kmem_cache_destroy(wdsp_rsp_cache);
+		return ret;
+	}
+
+	return 0;
 }
 
 static void __exit wdsp_glink_exit(void)
 {
 	platform_driver_unregister(&wdsp_glink_driver);
+	kmem_cache_destroy(wdsp_rsp_cache);
 }
 
 module_init(wdsp_glink_init);
