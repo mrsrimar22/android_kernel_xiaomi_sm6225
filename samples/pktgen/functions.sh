@@ -99,9 +99,9 @@ function pgset() {
     echo $1 > $PGDEV
     local status=$?
 
-    result=`cat $PGDEV | fgrep "Result: OK:"`
+    result=`cat $PGDEV | grep -F "Result: OK:"`
     if [[ "$result" == "" ]]; then
-         cat $PGDEV | fgrep Result:
+         cat $PGDEV | grep -F Result:
     fi
     if (( $status != 0 )); then
 	err 5 "Write error($status) occurred cmd: \"$1 > $PGDEV\""

@@ -88,6 +88,6 @@ cat /sys/class/pktcdvd/device_map
 # assuming device pktcdvd0 was created, look at stat's
 cat /sys/class/pktcdvd/pktcdvd0/stat/kb_written
 # print the device id of the mapped block device
-fgrep pktcdvd0 /sys/class/pktcdvd/device_map
+grep -F pktcdvd0 /sys/class/pktcdvd/device_map
 # remove device, using pktcdvd0 device id   253:0
 echo "253:0" >/sys/class/pktcdvd/remove
