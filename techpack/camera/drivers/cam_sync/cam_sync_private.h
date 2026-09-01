@@ -107,6 +107,8 @@ struct sync_callback_info {
 	struct list_head list;
 };
 
+extern struct kmem_cache *cam_sync_cb_cache;
+
 /**
  * struct sync_user_payload - Single node of information about a user space
  * payload registered from user space
