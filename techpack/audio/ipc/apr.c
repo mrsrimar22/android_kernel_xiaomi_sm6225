@@ -47,6 +47,8 @@ struct apr_reset_work {
 	struct work_struct work;
 };
 
+static struct kmem_cache *apr_reset_work_cache;
+
 struct apr_chld_device {
 	struct platform_device *pdev;
 	struct list_head node;
@@ -797,7 +799,7 @@ static void apr_reset_deregister(struct work_struct *work)
 	handle = apr_reset->handle;
 	pr_debug("%s:handle[%pK]\n", __func__, handle);
 	apr_deregister(handle);
-	kfree(apr_reset);
+	kmem_cache_free(apr_reset_work_cache, apr_reset);
 }
 
 /**
@@ -980,8 +982,8 @@ void apr_reset(void *handle)
 		return;
 	}
 
-	apr_reset_worker = kzalloc(sizeof(struct apr_reset_work),
-							GFP_ATOMIC);
+	apr_reset_worker = kmem_cache_zalloc(apr_reset_work_cache,
+					      GFP_ATOMIC);
 
 	if (apr_reset_worker == NULL) {
 		pr_err("%s: mem failure\n", __func__);
@@ -1131,7 +1133,9 @@ static void apr_cleanup(void)
 	if (apr_reset_workqueue) {
 		flush_workqueue(apr_reset_workqueue);
 		destroy_workqueue(apr_reset_workqueue);
+		apr_reset_workqueue = NULL;
 	}
+	kmem_cache_destroy(apr_reset_work_cache);
 	mutex_destroy(&q6.lock);
 	for (i = 0; i < APR_DEST_MAX; i++) {
 		for (j = 0; j < APR_CLIENT_MAX; j++) {
@@ -1151,9 +1155,15 @@ static int apr_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&modem_wait);
 
-	apr_priv = kzalloc(sizeof(*apr_priv), GFP_KERNEL);
-	if (!apr_priv)
+	apr_reset_work_cache = KMEM_CACHE(apr_reset_work, SLAB_HWCACHE_ALIGN);
+	if (!apr_reset_work_cache)
 		return -ENOMEM;
+
+	apr_priv = kzalloc(sizeof(*apr_priv), GFP_KERNEL);
+	if (!apr_priv) {
+		ret = -ENOMEM;
+		goto err_priv;
+	}
 
 	apr_priv->dev = &pdev->dev;
 	spin_lock_init(&apr_priv->apr_lock);
@@ -1231,6 +1241,8 @@ err_wq:
 	}
 	kfree(apr_priv);
 	apr_priv = NULL;
+err_priv:
+	kmem_cache_destroy(apr_reset_work_cache);
 	return ret;
 }
 
