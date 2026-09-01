@@ -186,7 +186,7 @@ void get_src_version(const char *modname, char sum[], unsigned sumlen);
 
 /* from modpost.c */
 void *grab_file(const char *filename, unsigned long *size);
-char* get_next_line(unsigned long *pos, void *file, unsigned long size);
+char *get_next_line(unsigned long *pos, void *file, unsigned long size);
 void release_file(void *file, unsigned long size);
 
 void fatal(const char *fmt, ...);
