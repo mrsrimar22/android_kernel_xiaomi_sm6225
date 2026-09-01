@@ -363,7 +363,6 @@ static int _vs_client_block_req_open(struct vs_client_block_state *_state)
 	return 0;
 }
 
-EXPORT_SYMBOL(_vs_client_block_req_open);
 static int _vs_client_block_req_close(struct vs_client_block_state *_state)
 {
 	struct vs_mbuf *_mbuf;
@@ -423,7 +422,6 @@ static int _vs_client_block_req_close(struct vs_client_block_state *_state)
 	return 0;
 }
 
-EXPORT_SYMBOL(_vs_client_block_req_close);
 static int _vs_client_block_req_reopen(struct vs_client_block_state *_state)
 {
 	struct vs_mbuf *_mbuf;
@@ -482,8 +480,6 @@ static int _vs_client_block_req_reopen(struct vs_client_block_state *_state)
 
 	return 0;
 }
-
-EXPORT_SYMBOL(_vs_client_block_req_reopen);
 static int
 block_base_handle_ack_open(const struct vs_client_block *_client,
 			   struct vs_client_block_state *_state,

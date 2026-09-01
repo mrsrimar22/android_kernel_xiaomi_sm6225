@@ -8737,7 +8737,6 @@ fail_cmd:
 	}
 	return rc;
 }
-EXPORT_SYMBOL(q6asm_memory_unmap_regions);
 
 int q6asm_set_lrgain(struct audio_client *ac, int left_gain, int right_gain)
 {

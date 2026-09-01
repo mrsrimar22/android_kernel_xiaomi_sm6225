@@ -331,7 +331,6 @@ static int _vs_client_serial_req_open(struct vs_client_serial_state *_state)
 	return 0;
 }
 
-EXPORT_SYMBOL(_vs_client_serial_req_open);
 static int _vs_client_serial_req_close(struct vs_client_serial_state *_state)
 {
 	struct vs_mbuf *_mbuf;
@@ -391,7 +390,6 @@ static int _vs_client_serial_req_close(struct vs_client_serial_state *_state)
 	return 0;
 }
 
-EXPORT_SYMBOL(_vs_client_serial_req_close);
 static int _vs_client_serial_req_reopen(struct vs_client_serial_state *_state)
 {
 	struct vs_mbuf *_mbuf;
@@ -450,8 +448,6 @@ static int _vs_client_serial_req_reopen(struct vs_client_serial_state *_state)
 
 	return 0;
 }
-
-EXPORT_SYMBOL(_vs_client_serial_req_reopen);
 static int
 serial_base_handle_ack_open(const struct vs_client_serial *_client,
 			    struct vs_client_serial_state *_state,
