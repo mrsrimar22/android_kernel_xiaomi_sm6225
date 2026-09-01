@@ -110,6 +110,7 @@ struct sync_callback_info {
 extern struct kmem_cache *cam_sync_cb_cache;
 extern struct kmem_cache *cam_sync_child_cache;
 extern struct kmem_cache *cam_sync_parent_cache;
+extern struct kmem_cache *cam_sync_payload_cache;
 
 /**
  * struct sync_user_payload - Single node of information about a user space
