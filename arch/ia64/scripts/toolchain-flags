@@ -15,7 +15,7 @@ out=$tmp/out$$
 # that for building the gate DSO:
 
 $CC -nostdlib -static -Wl,-T$dir/check-segrel.lds $dir/check-segrel.S -o $out
-res=$($OBJDUMP --full --section .rodata $out | fgrep 000 | cut -f3 -d' ')
+res=$($OBJDUMP --full --section .rodata $out | grep -F 000 | cut -f3 -d' ')
 rm -f $out
 if [ $res != 00000a00 ]; then
     CPPFLAGS="$CPPFLAGS -DHAVE_BUGGY_SEGREL"
@@ -29,7 +29,7 @@ fi
 # Check whether .align inside a function works as expected.
 
 $CC -c $dir/check-text-align.S -o $out
-$READELF -u $out | fgrep -q 'prologue(rlen=12)'
+$READELF -u $out | grep -Fq 'prologue(rlen=12)'
 res=$?
 rm -f $out
 if [ $res -eq 0 ]; then

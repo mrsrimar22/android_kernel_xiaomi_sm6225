@@ -134,7 +134,7 @@ is still very high.  Administrators can verify the number of huge pages
 actually allocated by checking the sysctl or meminfo.  To check the per node
 distribution of huge pages in a NUMA system, use::
 
-	cat /sys/devices/system/node/node*/meminfo | fgrep Huge
+	cat /sys/devices/system/node/node*/meminfo | grep -F Huge
 
 ``/proc/sys/vm/nr_overcommit_hugepages`` specifies how large the pool of
 huge pages can grow, if more huge pages than ``/proc/sys/vm/nr_hugepages`` are
