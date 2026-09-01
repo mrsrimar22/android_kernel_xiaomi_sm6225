@@ -34,6 +34,32 @@ static void msm_vidc_print_running_insts(struct msm_vidc_core *core);
 #define V4L2_HEVC_LEVEL_UNKNOWN V4L2_MPEG_VIDEO_HEVC_LEVEL_UNKNOWN
 #define V4L2_VP9_LEVEL_61 V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_61
 
+static struct kmem_cache *msm_vidc_buffer_cache;
+static struct kmem_cache *msm_vidc_buf_data_cache;
+
+int msm_comm_cache_init(void)
+{
+	msm_vidc_buffer_cache = KMEM_CACHE(msm_vidc_buffer,
+			SLAB_HWCACHE_ALIGN);
+	if (!msm_vidc_buffer_cache)
+		return -ENOMEM;
+
+	msm_vidc_buf_data_cache = KMEM_CACHE(msm_vidc_buf_data,
+			SLAB_HWCACHE_ALIGN);
+	if (!msm_vidc_buf_data_cache) {
+		kmem_cache_destroy(msm_vidc_buffer_cache);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void msm_comm_cache_destroy(void)
+{
+	kmem_cache_destroy(msm_vidc_buf_data_cache);
+	kmem_cache_destroy(msm_vidc_buffer_cache);
+}
+
 int msm_comm_g_ctrl_for_id(struct msm_vidc_inst *inst, int id)
 {
 	struct v4l2_ctrl *ctrl;
@@ -6957,7 +6983,7 @@ struct msm_vidc_buffer *msm_comm_get_vidc_buffer(struct msm_vidc_inst *inst,
 
 	if (!found) {
 		/* this is new vb2_buffer */
-		mbuf = kzalloc(sizeof(struct msm_vidc_buffer), GFP_KERNEL);
+		mbuf = kmem_cache_zalloc(msm_vidc_buffer_cache, GFP_KERNEL);
 		if (!mbuf) {
 			s_vpr_e(inst->sid, "%s: alloc msm_vidc_buffer failed\n",
 				__func__);
@@ -7248,7 +7274,7 @@ static void kref_free_mbuf(struct kref *kref)
 	struct msm_vidc_buffer *mbuf = container_of(kref,
 			struct msm_vidc_buffer, kref);
 
-	kfree(mbuf);
+	kmem_cache_free(msm_vidc_buffer_cache, mbuf);
 }
 
 void kref_put_mbuf(struct msm_vidc_buffer *mbuf)
@@ -7304,7 +7330,7 @@ int msm_comm_store_input_tag(struct msm_vidc_list *data_list,
 	}
 
 	if (!found) {
-		pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+		pdata = kmem_cache_zalloc(msm_vidc_buf_data_cache, GFP_KERNEL);
 		if (!pdata) {
 			s_vpr_e(sid, "%s: malloc failure.\n", __func__);
 			rc = -ENOMEM;
@@ -7362,14 +7388,14 @@ int msm_comm_release_input_tag(struct msm_vidc_inst *inst)
 	mutex_lock(&inst->etb_data.lock);
 	list_for_each_entry_safe(pdata, next, &inst->etb_data.list, list) {
 		list_del(&pdata->list);
-		kfree(pdata);
+		kmem_cache_free(msm_vidc_buf_data_cache, pdata);
 	}
 	mutex_unlock(&inst->etb_data.lock);
 
 	mutex_lock(&inst->fbd_data.lock);
 	list_for_each_entry_safe(pdata, next, &inst->fbd_data.list, list) {
 		list_del(&pdata->list);
-		kfree(pdata);
+		kmem_cache_free(msm_vidc_buf_data_cache, pdata);
 	}
 	mutex_unlock(&inst->fbd_data.lock);
 
