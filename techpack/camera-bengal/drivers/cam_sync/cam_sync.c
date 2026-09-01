@@ -18,6 +18,7 @@
 #include <synx_api.h>
 #endif
 struct sync_device *sync_dev;
+struct kmem_cache *cam_sync_cb_cache;
 
 /*
  * Flag to determine whether to enqueue cb of a
@@ -102,7 +103,7 @@ int cam_sync_register_callback(sync_callback cb_func,
 		return -EINVAL;
 	}
 
-	sync_cb = kzalloc(sizeof(*sync_cb), GFP_ATOMIC);
+	sync_cb = kmem_cache_zalloc(cam_sync_cb_cache, GFP_ATOMIC);
 	if (!sync_cb) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		return -ENOMEM;
@@ -116,7 +117,7 @@ int cam_sync_register_callback(sync_callback cb_func,
 			CAM_DBG(CAM_SYNC, "Invoke callback for sync object:%d",
 				sync_obj);
 			status = row->state;
-			kfree(sync_cb);
+			kmem_cache_free(cam_sync_cb_cache, sync_cb);
 			spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 			cb_func(sync_obj, status, userdata);
 		} else {
@@ -174,7 +175,7 @@ int cam_sync_deregister_callback(sync_callback cb_func,
 		if (sync_cb->callback_func == cb_func &&
 			sync_cb->cb_data == userdata) {
 			list_del_init(&sync_cb->list);
-			kfree(sync_cb);
+			kmem_cache_free(cam_sync_cb_cache, sync_cb);
 			found = true;
 		}
 	}
@@ -1168,11 +1169,25 @@ static int __init cam_sync_init(void)
 {
 	int rc;
 
+	cam_sync_cb_cache = KMEM_CACHE(sync_callback_info, SLAB_HWCACHE_ALIGN);
+	if (!cam_sync_cb_cache)
+		return -ENOMEM;
+
 	rc = platform_device_register(&cam_sync_device);
 	if (rc)
-		return -ENODEV;
+		goto err_device_register;
 
-	return platform_driver_register(&cam_sync_driver);
+	rc = platform_driver_register(&cam_sync_driver);
+	if (rc)
+		goto err_driver_register;
+
+	return 0;
+
+err_driver_register:
+	platform_device_unregister(&cam_sync_device);
+err_device_register:
+	kmem_cache_destroy(cam_sync_cb_cache);
+	return rc;
 }
 
 static void __exit cam_sync_exit(void)
@@ -1184,6 +1199,7 @@ static void __exit cam_sync_exit(void)
 	platform_driver_unregister(&cam_sync_driver);
 	platform_device_unregister(&cam_sync_device);
 	kfree(sync_dev);
+	kmem_cache_destroy(cam_sync_cb_cache);
 }
 
 module_init(cam_sync_init);
