@@ -792,11 +792,18 @@ static int __init msm_vidc_init(void)
 {
 	int rc = 0;
 
+	rc = msm_comm_cache_init();
+	if (rc) {
+		d_vpr_e("Failed to create kmem_cache for msm_vidc\n");
+		return rc;
+	}
+
 	vidc_driver = kzalloc(sizeof(*vidc_driver),
 						GFP_KERNEL);
 	if (!vidc_driver) {
 		d_vpr_e("Failed to allocate memory for msm_vidc_drv\n");
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto err_alloc_driver;
 	}
 
 	INIT_LIST_HEAD(&vidc_driver->cores);
@@ -823,6 +830,8 @@ err_register_driver:
 	mutex_destroy(&vidc_driver->lock);
 	kfree(vidc_driver);
 	vidc_driver = NULL;
+err_alloc_driver:
+	msm_comm_cache_destroy();
 	return rc;
 }
 
@@ -835,6 +844,7 @@ static void __exit msm_vidc_exit(void)
 	mutex_destroy(&vidc_driver->lock);
 	kfree(vidc_driver);
 	vidc_driver = NULL;
+	msm_comm_cache_destroy();
 }
 
 module_init(msm_vidc_init);
