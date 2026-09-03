@@ -53,6 +53,7 @@
 #include "sde_wb.h"
 #include "sde_dbg.h"
 #include "sde_fence.h"
+#include "sde_crtc.h"
 
 /*
  * MSM driver version:
@@ -2285,6 +2286,10 @@ static int __init msm_drm_register(void)
 	if (ret)
 		return ret;
 
+	ret = sde_crtc_cache_init();
+	if (ret)
+		goto err_crtc_init;
+
 	msm_smmu_driver_init();
 	msm_dsi_register();
 	msm_edp_register();
@@ -2296,6 +2301,8 @@ static int __init msm_drm_register(void)
 	return 0;
 
 err_driver_register:
+	sde_crtc_cache_destroy();
+err_crtc_init:
 	sde_fence_cache_destroy();
 	return ret;
 }
@@ -2308,6 +2315,7 @@ static void __exit msm_drm_unregister(void)
 	msm_edp_unregister();
 	msm_dsi_unregister();
 	msm_smmu_driver_cleanup();
+	sde_crtc_cache_destroy();
 	sde_fence_cache_destroy();
 }
 
