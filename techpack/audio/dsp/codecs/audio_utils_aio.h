@@ -206,6 +206,7 @@ int insert_eos_buf(struct q6audio_aio *audio,
 int extract_meta_out_info(struct q6audio_aio *audio,
 		struct audio_aio_buffer_node *buf_node, int dir);
 
+extern struct kmem_cache *audio_aio_buf_node_cache;
 int audio_aio_open(struct q6audio_aio *audio, struct file *file);
 int audio_aio_enable(struct q6audio_aio  *audio);
 void audio_aio_post_event(struct q6audio_aio *audio, int type,

@@ -32,6 +32,7 @@
 #include <linux/qdsp6v2/audio_dev_ctl.h>
 #endif /*CONFIG_USE_DEV_CTRL_VOLUME*/
 static DEFINE_MUTEX(lock);
+struct kmem_cache *audio_aio_buf_node_cache;
 #ifdef CONFIG_DEBUG_FS
 
 int audio_aio_debug_open(struct inode *inode, struct file *file)
@@ -301,7 +302,7 @@ void audio_aio_async_write_ack(struct q6audio_aio *audio, uint32_t token,
 		event_payload.aio_buf = used_buf->buf;
 		audio_aio_post_event(audio, AUDIO_EVENT_WRITE_DONE,
 					event_payload);
-		kfree(used_buf);
+		kmem_cache_free(audio_aio_buf_node_cache, used_buf);
 		if (list_empty(&audio->out_queue) &&
 			(audio->drv_status & ADRV_STATUS_FSYNC)) {
 			pr_debug("%s[%pK]: list is empty, reached EOS in Tunnel\n",
@@ -343,7 +344,7 @@ void audio_aio_async_out_flush(struct q6audio_aio *audio)
 		list_del(&buf_node->list);
 		payload.aio_buf = buf_node->buf;
 		audio_aio_post_event(audio, AUDIO_EVENT_WRITE_DONE, payload);
-		kfree(buf_node);
+		kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 		pr_debug("%s[%pK]: Propagate WRITE_DONE during flush\n",
 				__func__, audio);
 	}
@@ -375,7 +376,7 @@ void audio_aio_async_in_flush(struct q6audio_aio *audio)
 					insert_meta_data_flush(audio, buf_node);
 		}
 		audio_aio_post_event(audio, AUDIO_EVENT_READ_DONE, payload);
-		kfree(buf_node);
+		kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 		pr_debug("%s[%pK]: Propagate READ_DONE during flush\n",
 				__func__, audio);
 	}
@@ -585,6 +586,21 @@ int enable_volume_ramp(struct q6audio_aio *audio)
 	return 0; /* do nothing */
 }
 #endif /*CONFIG_USE_DEV_CTRL_VOLUME*/
+
+int audio_utils_aio_init(void)
+{
+	audio_aio_buf_node_cache = KMEM_CACHE(audio_aio_buffer_node,
+					      SLAB_HWCACHE_ALIGN);
+	if (!audio_aio_buf_node_cache)
+		return -ENOMEM;
+
+	return 0;
+}
+
+void audio_utils_aio_exit(void)
+{
+	kmem_cache_destroy(audio_aio_buf_node_cache);
+}
 
 void audio_aio_free_locks_and_events(struct q6audio_aio *audio)
 {
@@ -1200,14 +1216,14 @@ static int audio_aio_buf_add_shared(struct q6audio_aio *audio, u32 dir,
 		if (!buf_node->paddr ||
 			(buf_node->paddr & 0x1) ||
 			(!audio->feedback && !buf_node->buf.data_len)) {
-			kfree(buf_node);
+			kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 			return -EINVAL;
 		}
 		ret = extract_meta_out_info(audio, buf_node, 1);
 		if (ret) {
 			pr_debug("%s: extract meta failed with %d\n",
 				  __func__, ret);
-			kfree(buf_node);
+			kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 			return ret;
 		}
 		/* Not a EOS buffer */
@@ -1230,7 +1246,7 @@ static int audio_aio_buf_add_shared(struct q6audio_aio *audio, u32 dir,
 				audio->eos_flag = 1;
 				audio->eos_rsp = 0;
 				q6asm_cmd(audio->ac, CMD_EOS);
-				kfree(buf_node);
+				kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 			} else { /* Flush in progress, send back i/p
 				  * EOS buffer as is
 				  */
@@ -1240,7 +1256,7 @@ static int audio_aio_buf_add_shared(struct q6audio_aio *audio, u32 dir,
 				audio_aio_post_event(audio,
 						AUDIO_EVENT_WRITE_DONE,
 						event_payload);
-				kfree(buf_node);
+				kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 			}
 		}
 	} else {
@@ -1248,7 +1264,7 @@ static int audio_aio_buf_add_shared(struct q6audio_aio *audio, u32 dir,
 		if (!buf_node->paddr ||
 			(buf_node->paddr & 0x1) ||
 			(buf_node->buf.buf_len < PCM_BUFSZ_MIN)) {
-			kfree(buf_node);
+			kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 			return -EINVAL;
 		}
 		/* No EOS reached */
@@ -1272,7 +1288,7 @@ static int audio_aio_buf_add_shared(struct q6audio_aio *audio, u32 dir,
 				__func__, audio);
 			audio_aio_post_event(audio, AUDIO_EVENT_READ_DONE,
 					event_payload);
-			kfree(buf_node);
+			kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 		}
 	}
 	return ret;
@@ -1284,13 +1300,13 @@ static int audio_aio_buf_add_compat(struct q6audio_aio *audio, u32 dir,
 	struct audio_aio_buffer_node *buf_node;
 	struct msm_audio_aio_buf32 aio_buf_32;
 
-	buf_node = kzalloc(sizeof(*buf_node), GFP_KERNEL);
+	buf_node = kmem_cache_zalloc(audio_aio_buf_node_cache, GFP_KERNEL);
 
 	if (!buf_node)
 		return -ENOMEM;
 
 	if (copy_from_user(&aio_buf_32, arg, sizeof(aio_buf_32))) {
-		kfree(buf_node);
+		kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 		pr_err("%s: copy_from_user failed\n", __func__);
 		return -EFAULT;
 	}
@@ -1310,13 +1326,13 @@ static int audio_aio_buf_add(struct q6audio_aio *audio, u32 dir,
 {
 	struct audio_aio_buffer_node *buf_node;
 
-	buf_node = kzalloc(sizeof(*buf_node), GFP_KERNEL);
+	buf_node = kmem_cache_zalloc(audio_aio_buf_node_cache, GFP_KERNEL);
 
 	if (!buf_node)
 		return -ENOMEM;
 
 	if (copy_from_user(&buf_node->buf, arg, sizeof(buf_node->buf))) {
-		kfree(buf_node);
+		kmem_cache_free(audio_aio_buf_node_cache, buf_node);
 		pr_err("%s: copy_from_user failed\n", __func__);
 		return -EFAULT;
 	}

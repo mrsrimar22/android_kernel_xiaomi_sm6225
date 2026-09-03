@@ -11,6 +11,12 @@ spinlock_t enc_dec_lock;
 
 static int __init audio_native_init(void)
 {
+	int ret;
+
+	ret = audio_utils_aio_init();
+	if (ret)
+		return ret;
+
 	aac_in_init();
 	amrnb_in_init();
 	amrwb_in_init();
@@ -61,6 +67,7 @@ static void __exit audio_native_exit(void)
 	g711alaw_in_exit();
 	g711mlaw_in_exit();
 	qcelp_in_exit();
+	audio_utils_aio_exit();
 }
 
 module_init(audio_native_init);

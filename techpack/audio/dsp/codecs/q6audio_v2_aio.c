@@ -220,7 +220,7 @@ void audio_aio_async_read_ack(struct q6audio_aio *audio, uint32_t token,
 		pr_debug("%s, posting read done to the app here\n", __func__);
 		audio_aio_post_event(audio, AUDIO_EVENT_READ_DONE,
 					event_payload);
-		kfree(filled_buf);
+		kmem_cache_free(audio_aio_buf_node_cache, filled_buf);
 	} else {
 		pr_err("%s[%pK]:expected=%x ret=%x\n",
 			__func__, audio, filled_buf->token, token);
