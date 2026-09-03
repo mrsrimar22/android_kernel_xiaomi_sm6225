@@ -1186,6 +1186,34 @@ struct plane_state {
 	u32 pipe_id;
 };
 
+static struct kmem_cache *sde_crtc_pstates_cache;
+static struct kmem_cache *sde_crtc_multirect_plane_cache;
+
+int sde_crtc_cache_init(void)
+{
+	sde_crtc_pstates_cache = kmem_cache_create("sde_crtc_pstates",
+			SDE_PSTATES_MAX * sizeof(struct plane_state),
+			0, SLAB_HWCACHE_ALIGN, NULL);
+	if (!sde_crtc_pstates_cache)
+		return -ENOMEM;
+
+	sde_crtc_multirect_plane_cache = kmem_cache_create("sde_crtc_multirect_plane",
+			SDE_MULTIRECT_PLANE_MAX * sizeof(struct sde_multirect_plane_states),
+			0, SLAB_HWCACHE_ALIGN, NULL);
+	if (!sde_crtc_multirect_plane_cache) {
+		kmem_cache_destroy(sde_crtc_pstates_cache);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void sde_crtc_cache_destroy(void)
+{
+	kmem_cache_destroy(sde_crtc_multirect_plane_cache);
+	kmem_cache_destroy(sde_crtc_pstates_cache);
+}
+
 static int pstate_cmp(const void *a, const void *b)
 {
 	struct plane_state *pa = (struct plane_state *)a;
@@ -4838,11 +4866,11 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 {
 	struct drm_device *dev;
 	struct sde_crtc *sde_crtc;
-	struct plane_state *pstates = NULL;
+	struct plane_state *pstates;
 	struct sde_crtc_state *cstate;
 	struct drm_display_mode *mode;
 	int rc = 0;
-	struct sde_multirect_plane_states *multirect_plane = NULL;
+	struct sde_multirect_plane_states *multirect_plane;
 	struct drm_connector *conn;
 	struct drm_connector_list_iter conn_iter;
 
@@ -4858,19 +4886,18 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 	if (!state->enable || !state->active) {
 		SDE_DEBUG("crtc%d -> enable %d, active %d, skip atomic_check\n",
 				crtc->base.id, state->enable, state->active);
-		goto end;
+		return 0;
 	}
 
-	pstates = kcalloc(SDE_PSTATES_MAX,
-			sizeof(struct plane_state), GFP_KERNEL);
+	pstates = kmem_cache_zalloc(sde_crtc_pstates_cache, GFP_KERNEL);
+	if (!pstates)
+		return -ENOMEM;
 
-	multirect_plane = kcalloc(SDE_MULTIRECT_PLANE_MAX,
-			sizeof(struct sde_multirect_plane_states),
+	multirect_plane = kmem_cache_zalloc(sde_crtc_multirect_plane_cache,
 			GFP_KERNEL);
-
-	if (!pstates || !multirect_plane) {
-		rc = -ENOMEM;
-		goto end;
+	if (!multirect_plane) {
+		kmem_cache_free(sde_crtc_pstates_cache, pstates);
+		return -ENOMEM;
 	}
 
 	mode = &state->adjusted_mode;
@@ -4928,8 +4955,8 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 		goto end;
 	}
 end:
-	kfree(pstates);
-	kfree(multirect_plane);
+	kmem_cache_free(sde_crtc_multirect_plane_cache, multirect_plane);
+	kmem_cache_free(sde_crtc_pstates_cache, pstates);
 	return rc;
 }
 

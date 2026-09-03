@@ -905,4 +905,7 @@ end:
 	SDE_DEBUG("sde_crtc comp ratio: %d\n", sde_crtc->comp_ratio);
 }
 
+int sde_crtc_cache_init(void);
+void sde_crtc_cache_destroy(void);
+
 #endif /* _SDE_CRTC_H_ */
