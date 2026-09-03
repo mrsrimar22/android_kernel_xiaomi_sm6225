@@ -31,11 +31,14 @@
 #include "kgsl_trace.h"
 
 /*
- * Define an kmem cache for the memobj & sparseobj structures since we
- * allocate and free them so frequently
+ * Define kmem caches for drawobj, syncobj, fence info, and memobj structures
+ * since we allocate and free them so frequently
  */
 static struct kmem_cache *memobjs_cache;
 static struct kmem_cache *sparseobjs_cache;
+static struct kmem_cache *cmdobjs_cache;
+static struct kmem_cache *syncobjs_cache;
+static struct kmem_cache *event_fence_info_cache;
 
 static void syncobj_destroy_object(struct kgsl_drawobj *drawobj)
 {
@@ -50,7 +53,7 @@ static void syncobj_destroy_object(struct kgsl_drawobj *drawobj)
 
 			if (priv) {
 				kfree(priv->fences);
-				kfree(priv);
+				kmem_cache_free(event_fence_info_cache, priv);
 			}
 		} else if (event->type == KGSL_CMD_SYNCPOINT_TYPE_TIMELINE) {
 			kfree(event->priv);
@@ -58,12 +61,12 @@ static void syncobj_destroy_object(struct kgsl_drawobj *drawobj)
 	}
 
 	kfree(syncobj->synclist);
-	kfree(syncobj);
+	kmem_cache_free(syncobjs_cache, syncobj);
 }
 
 static void cmdobj_destroy_object(struct kgsl_drawobj *drawobj)
 {
-	kfree(CMDOBJ(drawobj));
+	kmem_cache_free(cmdobjs_cache, CMDOBJ(drawobj));
 }
 
 static void timelineobj_destroy_object(struct kgsl_drawobj *drawobj)
@@ -558,7 +561,7 @@ static int drawobj_add_sync_fence(struct kgsl_device *device,
 	event->device = device;
 	event->context = NULL;
 
-	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+	priv = kmem_cache_zalloc(event_fence_info_cache, GFP_KERNEL);
 
 	set_bit(event->id, &syncobj->pending);
 
@@ -972,7 +975,7 @@ struct kgsl_drawobj_sync *kgsl_drawobj_sync_create(struct kgsl_device *device,
 		struct kgsl_context *context)
 {
 	struct kgsl_drawobj_sync *syncobj =
-		kzalloc(sizeof(*syncobj), GFP_KERNEL);
+		kmem_cache_zalloc(syncobjs_cache, GFP_KERNEL);
 	int ret;
 
 	if (!syncobj)
@@ -980,7 +983,7 @@ struct kgsl_drawobj_sync *kgsl_drawobj_sync_create(struct kgsl_device *device,
 
 	ret = drawobj_init(device, context, &syncobj->base, SYNCOBJ_TYPE);
 	if (ret) {
-		kfree(syncobj);
+		kmem_cache_free(syncobjs_cache, syncobj);
 		return ERR_PTR(ret);
 	}
 
@@ -1006,7 +1009,7 @@ struct kgsl_drawobj_cmd *kgsl_drawobj_cmd_create(struct kgsl_device *device,
 		struct kgsl_context *context, unsigned int flags,
 		unsigned int type)
 {
-	struct kgsl_drawobj_cmd *cmdobj = kzalloc(sizeof(*cmdobj), GFP_KERNEL);
+	struct kgsl_drawobj_cmd *cmdobj = kmem_cache_zalloc(cmdobjs_cache, GFP_KERNEL);
 	int ret;
 
 	if (!cmdobj)
@@ -1015,7 +1018,7 @@ struct kgsl_drawobj_cmd *kgsl_drawobj_cmd_create(struct kgsl_device *device,
 	ret = drawobj_init(device, context, &cmdobj->base,
 		(type & (CMDOBJ_TYPE | MARKEROBJ_TYPE)));
 	if (ret) {
-		kfree(cmdobj);
+		kmem_cache_free(cmdobjs_cache, cmdobj);
 		return ERR_PTR(ret);
 	}
 
@@ -1444,17 +1447,45 @@ int kgsl_drawobj_sync_add_synclist(struct kgsl_device *device,
 
 void kgsl_drawobjs_cache_exit(void)
 {
-	kmem_cache_destroy(memobjs_cache);
+	kmem_cache_destroy(event_fence_info_cache);
+	kmem_cache_destroy(syncobjs_cache);
+	kmem_cache_destroy(cmdobjs_cache);
 	kmem_cache_destroy(sparseobjs_cache);
+	kmem_cache_destroy(memobjs_cache);
 }
 
 int kgsl_drawobjs_cache_init(void)
 {
 	memobjs_cache = KMEM_CACHE(kgsl_memobj_node, 0);
-	sparseobjs_cache = KMEM_CACHE(kgsl_sparseobj_node, 0);
+	if (!memobjs_cache)
+		goto err_memobjs;
 
-	if (!memobjs_cache || !sparseobjs_cache)
-		return -ENOMEM;
+	sparseobjs_cache = KMEM_CACHE(kgsl_sparseobj_node, 0);
+	if (!sparseobjs_cache)
+		goto err_sparseobjs;
+
+	cmdobjs_cache = KMEM_CACHE(kgsl_drawobj_cmd, 0);
+	if (!cmdobjs_cache)
+		goto err_cmdobjs;
+
+	syncobjs_cache = KMEM_CACHE(kgsl_drawobj_sync, 0);
+	if (!syncobjs_cache)
+		goto err_syncobjs;
+
+	event_fence_info_cache = KMEM_CACHE(event_fence_info, 0);
+	if (!event_fence_info_cache)
+		goto err_event_fence_info;
 
 	return 0;
+
+err_event_fence_info:
+	kmem_cache_destroy(syncobjs_cache);
+err_syncobjs:
+	kmem_cache_destroy(cmdobjs_cache);
+err_cmdobjs:
+	kmem_cache_destroy(sparseobjs_cache);
+err_sparseobjs:
+	kmem_cache_destroy(memobjs_cache);
+err_memobjs:
+	return -ENOMEM;
 }
