@@ -1461,8 +1461,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	lm = mixer->hw_lm;
 	stage_cfg = &sde_crtc->stage_cfg;
 	cstate = to_sde_crtc_state(crtc->state);
-	pstates = kcalloc(SDE_PSTATES_MAX,
-			sizeof(struct plane_state), GFP_KERNEL);
+	pstates = kmem_cache_zalloc(sde_crtc_pstates_cache, GFP_KERNEL);
 	if (!pstates)
 		return;
 
@@ -1559,7 +1558,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	_sde_crtc_program_lm_output_roi(crtc);
 
 end:
-	kfree(pstates);
+	kmem_cache_free(sde_crtc_pstates_cache, pstates);
 }
 
 static void _sde_crtc_swap_mixers_for_right_partial_update(
