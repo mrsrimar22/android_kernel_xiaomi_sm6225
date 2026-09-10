@@ -13,6 +13,7 @@
 #include <linux/uaccess.h>
 #include <linux/dma-buf.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
 #include <linux/list_sort.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
@@ -3291,7 +3292,7 @@ static void _sde_dbg_dump_sde_dbg_bus(struct sde_dbg_sde_debug_bus *bus)
 
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem =  vzalloc(list_size);
+			*dump_mem = kvzalloc(list_size, GFP_KERNEL);
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
@@ -3450,7 +3451,7 @@ static void _sde_dbg_dump_vbif_dbg_bus(struct sde_dbg_vbif_debug_bus *bus)
 
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem =  vzalloc(list_size);
+			*dump_mem = kvzalloc(list_size, GFP_KERNEL);
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
@@ -3546,7 +3547,7 @@ static void _sde_dump_array(struct sde_dbg_reg_base *blk_arr[],
 
 	reg_dump_size =  _sde_dbg_get_reg_dump_size();
 	if (!dbg_base->reg_dump_base)
-		dbg_base->reg_dump_base = vzalloc(reg_dump_size);
+		dbg_base->reg_dump_base = kvzalloc(reg_dump_size, GFP_KERNEL);
 
 	dbg_base->reg_dump_addr =  dbg_base->reg_dump_base;
 
@@ -4799,15 +4800,15 @@ static void sde_dbg_reg_base_destroy(void)
 		list_del(&blk_base->reg_base_head);
 		kfree(blk_base);
 	}
-	vfree(dbg_base->reg_dump_base);
+	kvfree(dbg_base->reg_dump_base);
 }
 
 static void sde_dbg_buses_destroy(void)
 {
 	struct sde_dbg_base *dbg_base = &sde_dbg_base;
 
-	vfree(dbg_base->dbgbus_sde.cmn.dumped_content);
-	vfree(dbg_base->dbgbus_vbif_rt.cmn.dumped_content);
+	kvfree(dbg_base->dbgbus_sde.cmn.dumped_content);
+	kvfree(dbg_base->dbgbus_vbif_rt.cmn.dumped_content);
 }
 
 /**

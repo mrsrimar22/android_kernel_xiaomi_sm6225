@@ -9,6 +9,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
+#include <linux/mm.h>
 
 #include "sde_rotator_debug.h"
 #include "sde_rotator_base.h"
@@ -121,7 +122,6 @@ static void sde_rot_dump_debug_bus(u32 bus_dump_flag, u32 **dump_mem)
 	u32 *dump_addr = NULL;
 	u32 status = 0;
 	struct sde_rot_debug_bus *head;
-	phys_addr_t phys = 0;
 	int i;
 	u32 offset;
 	void __iomem *base;
@@ -137,9 +137,9 @@ static void sde_rot_dump_debug_bus(u32 bus_dump_flag, u32 **dump_mem)
 
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
+			*dump_mem = kvzalloc(
 				mdata->rot_dbg_bus_size * 4 * sizeof(u32),
-				&phys, GFP_KERNEL);
+				GFP_KERNEL);
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
@@ -249,7 +249,6 @@ static void sde_rot_dump_vbif_debug_bus(u32 bus_dump_flag,
 	u32 *dump_addr = NULL;
 	u32 value;
 	struct sde_rot_vbif_debug_bus *head;
-	phys_addr_t phys = 0;
 	int i, list_size = 0;
 	void __iomem *vbif_base;
 	struct sde_rot_vbif_debug_bus *dbg_bus;
@@ -277,8 +276,7 @@ static void sde_rot_dump_vbif_debug_bus(u32 bus_dump_flag,
 
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
-				list_size, &phys, GFP_KERNEL);
+			*dump_mem = kvzalloc(list_size, GFP_KERNEL);
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
@@ -332,7 +330,6 @@ void sde_rot_dump_reg(const char *dump_name, u32 reg_dump_flag,
 	struct sde_rot_data_type *mdata = sde_rot_get_mdata();
 	bool in_log, in_mem;
 	u32 *dump_addr = NULL;
-	phys_addr_t phys = 0;
 	int i;
 	void __iomem *base;
 
@@ -348,8 +345,7 @@ void sde_rot_dump_reg(const char *dump_name, u32 reg_dump_flag,
 
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
-				len * 16, &phys, GFP_KERNEL);
+			*dump_mem = kvzalloc(len * 16, GFP_KERNEL);
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
@@ -1359,5 +1355,16 @@ struct dentry *sde_rotator_create_debugfs(
  */
 void sde_rotator_destroy_debugfs(struct dentry *debugfs)
 {
+	int i;
+
+	kvfree(sde_rot_dbg_evtlog.rot_dbgbus_dump);
+	sde_rot_dbg_evtlog.rot_dbgbus_dump = NULL;
+	kvfree(sde_rot_dbg_evtlog.nrt_vbif_dbgbus_dump);
+	sde_rot_dbg_evtlog.nrt_vbif_dbgbus_dump = NULL;
+	for (i = 0; i < SDE_ROT_DEBUG_BASE_MAX; i++) {
+		kvfree(sde_rot_dbg_evtlog.reg_dump_array[i]);
+		sde_rot_dbg_evtlog.reg_dump_array[i] = NULL;
+	}
+
 	debugfs_remove_recursive(debugfs);
 }
