@@ -4056,7 +4056,7 @@ static ssize_t sde_recovery_regdump_read(struct file *file, char __user *ubuf,
 	mutex_lock(&sde_dbg_base.mutex);
 	if (!rbuf->dump_done && !rbuf->cur_blk) {
 		if (!rbuf->buf)
-			rbuf->buf = vzalloc(DUMP_BUF_SIZE);
+			rbuf->buf = kvzalloc(DUMP_BUF_SIZE, GFP_KERNEL);
 		if (!rbuf->buf) {
 			len =  -ENOMEM;
 			goto err;
@@ -4816,7 +4816,7 @@ static void sde_dbg_buses_destroy(void)
  */
 void sde_dbg_destroy(void)
 {
-	vfree(sde_dbg_base.regbuf.buf);
+	kvfree(sde_dbg_base.regbuf.buf);
 	memset(&sde_dbg_base.regbuf, 0, sizeof(sde_dbg_base.regbuf));
 	_sde_dbg_debugfs_destroy();
 	sde_dbg_base_evtlog = NULL;
