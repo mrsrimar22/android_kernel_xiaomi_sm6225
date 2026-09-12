@@ -136,7 +136,7 @@ void rmi_2d_sensor_rel_report(struct rmi_2d_sensor *sensor, int x, int y)
 }
 EXPORT_SYMBOL_GPL(rmi_2d_sensor_rel_report);
 
-static void rmi_2d_sensor_set_input_params(struct rmi_2d_sensor *sensor)
+void rmi_2d_sensor_set_input_params(struct rmi_2d_sensor *sensor)
 {
 	struct input_dev *input = sensor->input;
 	int res_x;

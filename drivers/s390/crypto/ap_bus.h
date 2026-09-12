@@ -281,4 +281,6 @@ int ap_owned_by_def_drv(int card, int queue);
 int ap_apqn_in_matrix_owned_by_def_drv(unsigned long *apm,
 				       unsigned long *aqm);
 
+int ap_query_configuration(struct ap_config_info *info);
+
 #endif /* _AP_BUS_H_ */

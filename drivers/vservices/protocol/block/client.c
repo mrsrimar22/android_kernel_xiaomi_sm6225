@@ -34,7 +34,7 @@
 #define VS_MBUF_DATA(mbuf) mbuf->data
 #define VS_STATE_SERVICE_PTR(state) state->service
 
-static int _vs_client_block_req_open(struct vs_client_block_state *_state);
+int _vs_client_block_req_open(struct vs_client_block_state *_state);
 
 /*** Linux driver model integration ***/
 struct vs_block_client_driver {
@@ -304,7 +304,7 @@ static int block_handle_tx_ready(struct vs_service_device *service)
 	return 0;
 }
 
-static int _vs_client_block_req_open(struct vs_client_block_state *_state)
+int _vs_client_block_req_open(struct vs_client_block_state *_state)
 {
 	struct vs_mbuf *_mbuf;
 
@@ -364,7 +364,7 @@ static int _vs_client_block_req_open(struct vs_client_block_state *_state)
 }
 
 EXPORT_SYMBOL(_vs_client_block_req_open);
-static int _vs_client_block_req_close(struct vs_client_block_state *_state)
+int _vs_client_block_req_close(struct vs_client_block_state *_state)
 {
 	struct vs_mbuf *_mbuf;
 
@@ -424,7 +424,7 @@ static int _vs_client_block_req_close(struct vs_client_block_state *_state)
 }
 
 EXPORT_SYMBOL(_vs_client_block_req_close);
-static int _vs_client_block_req_reopen(struct vs_client_block_state *_state)
+int _vs_client_block_req_reopen(struct vs_client_block_state *_state)
 {
 	struct vs_mbuf *_mbuf;
 

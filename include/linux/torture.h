@@ -57,6 +57,7 @@ bool torture_online(int cpu, long *n_onl_attempts, long *n_onl_successes,
 int torture_onoff_init(long ooholdoff, long oointerval);
 void torture_onoff_stats(void);
 bool torture_onoff_failures(void);
+void torture_onoff_cleanup(void);
 
 /* Low-rider random number generator. */
 struct torture_random_state {
@@ -71,6 +72,7 @@ unsigned long torture_random(struct torture_random_state *trsp);
 /* Task shuffler, which causes CPUs to occasionally go idle. */
 void torture_shuffle_task_register(struct task_struct *tp);
 int torture_shuffle_init(long shuffint);
+void torture_shuffle_cleanup(void);
 
 /* Test auto-shutdown handling. */
 void torture_shutdown_absorb(const char *title);
