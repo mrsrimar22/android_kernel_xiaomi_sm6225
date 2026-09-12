@@ -249,7 +249,7 @@ EXPORT_SYMBOL_GPL(torture_onoff_init);
 /*
  * Clean up after online/offline testing.
  */
-static void torture_onoff_cleanup(void)
+void torture_onoff_cleanup(void)
 {
 #ifdef CONFIG_HOTPLUG_CPU
 	if (onoff_task == NULL)
@@ -435,7 +435,7 @@ EXPORT_SYMBOL_GPL(torture_shuffle_init);
 /*
  * Stop the shuffling.
  */
-static void torture_shuffle_cleanup(void)
+void torture_shuffle_cleanup(void)
 {
 	torture_shuffle_task_unregister_all();
 	if (shuffler_task) {

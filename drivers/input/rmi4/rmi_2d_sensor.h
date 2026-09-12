@@ -84,6 +84,8 @@ void rmi_2d_sensor_abs_report(struct rmi_2d_sensor *sensor,
 
 void rmi_2d_sensor_rel_report(struct rmi_2d_sensor *sensor, int x, int y);
 
+void rmi_2d_sensor_set_input_params(struct rmi_2d_sensor *sensor);
+
 int rmi_2d_sensor_configure_input(struct rmi_function *fn,
 					struct rmi_2d_sensor *sensor);
 #endif /* _RMI_2D_SENSOR_H */

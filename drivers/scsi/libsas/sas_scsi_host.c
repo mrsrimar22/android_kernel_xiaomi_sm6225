@@ -406,7 +406,7 @@ struct sas_phy *sas_get_local_phy(struct domain_device *dev)
 }
 EXPORT_SYMBOL_GPL(sas_get_local_phy);
 
-static void sas_wait_eh(struct domain_device *dev)
+void sas_wait_eh(struct domain_device *dev)
 {
 	struct sas_ha_struct *ha = dev->port->ha;
 	DEFINE_WAIT(wait);

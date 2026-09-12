@@ -18,7 +18,7 @@
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
 
-static struct cam_ipe_device_hw_info cam_ipe_hw_info[] = {
+struct cam_ipe_device_hw_info cam_ipe_hw_info[] = {
 	{
 		.hw_idx = 0,
 		.pwr_ctrl = 0x4c,

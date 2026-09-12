@@ -715,6 +715,7 @@ extern int sas_drain_work(struct sas_ha_struct *ha);
 extern void sas_ssp_task_response(struct device *dev, struct sas_task *task,
 				  struct ssp_response_iu *iu);
 struct sas_phy *sas_get_local_phy(struct domain_device *dev);
+void sas_wait_eh(struct domain_device *dev);
 
 int sas_request_addr(struct Scsi_Host *shost, u8 *addr);
 

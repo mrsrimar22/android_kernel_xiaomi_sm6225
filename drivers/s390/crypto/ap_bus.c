@@ -201,7 +201,7 @@ static inline int ap_qact_available(void)
  * is returned, e.g. if the PQAP(QCI) instruction is not
  * available, the return value will be -EOPNOTSUPP.
  */
-static inline int ap_query_configuration(struct ap_config_info *info)
+int ap_query_configuration(struct ap_config_info *info)
 {
 	if (!ap_configuration_available())
 		return -EOPNOTSUPP;

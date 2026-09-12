@@ -120,10 +120,10 @@ static void q6asm_add_hdr_custom_topology(struct audio_client *ac,
 					  uint32_t pkt_size);
 static void q6asm_add_hdr_async(struct audio_client *ac, struct apr_hdr *hdr,
 			uint32_t pkt_size, uint32_t cmd_flg);
-static int q6asm_memory_map_regions(struct audio_client *ac, int dir,
+int q6asm_memory_map_regions(struct audio_client *ac, int dir,
 				uint32_t bufsz, uint32_t bufcnt,
 				bool is_contiguous);
-static int q6asm_memory_unmap_regions(struct audio_client *ac, int dir);
+int q6asm_memory_unmap_regions(struct audio_client *ac, int dir);
 static void q6asm_reset_buf_state(struct audio_client *ac);
 
 void *q6asm_mmap_apr_reg(void);
@@ -8472,7 +8472,7 @@ EXPORT_SYMBOL(q6asm_memory_unmap);
  *
  * Returns 0 on success or error on failure
  */
-static int q6asm_memory_map_regions(struct audio_client *ac, int dir,
+int q6asm_memory_map_regions(struct audio_client *ac, int dir,
 				uint32_t bufsz, uint32_t bufcnt,
 				bool is_contiguous)
 {
@@ -8628,7 +8628,7 @@ EXPORT_SYMBOL(q6asm_memory_map_regions);
  *
  * Returns 0 on success or error on failure
  */
-static int q6asm_memory_unmap_regions(struct audio_client *ac, int dir)
+int q6asm_memory_unmap_regions(struct audio_client *ac, int dir)
 {
 	struct avs_cmd_shared_mem_unmap_regions mem_unmap;
 	struct audio_port_data *port = NULL;
