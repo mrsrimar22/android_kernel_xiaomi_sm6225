@@ -3,14 +3,16 @@
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
+#ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
+#endif
 #include <linux/errno.h>
-#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/msm_ion.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/proc_fs.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/types.h>
@@ -718,6 +720,7 @@ static int _disp_log_stats(struct tzdbg_log_t *log,
 	uint32_t wrap_start;
 	uint32_t wrap_end;
 	uint32_t wrap_cnt;
+	uint32_t end_offset;
 	int max_len;
 	int len = 0;
 	int i = 0;
@@ -746,21 +749,10 @@ static int _disp_log_stats(struct tzdbg_log_t *log,
 
 	pr_debug("diag_buf wrap = %u, offset = %u\n",
 		log->log_pos.wrap, log->log_pos.offset);
-	while (log_start->offset == log->log_pos.offset) {
-		/*
-		 * No data in ring buffer,
-		 * so we'll hang around until something happens
-		 */
-		unsigned long t = msleep_interruptible(50);
-
-		if (t != 0) {
-			/* Some event woke us up, so let's quit */
-			return 0;
-		}
-		if (buf_idx == TZDBG_LOG)
-			memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase,
-				      debug_rw_buf_size);
-	}
+	dma_rmb();
+	end_offset = READ_ONCE(log->log_pos.offset);
+	if (end_offset >= log_len || log_start->offset == end_offset)
+		return 0;
 
 	max_len = (count > debug_rw_buf_size) ? debug_rw_buf_size : count;
 
@@ -769,7 +761,7 @@ static int _disp_log_stats(struct tzdbg_log_t *log,
 	/*
 	 *  Read from ring buff while there is data and space in return buff
 	 */
-	while ((log_start->offset != log->log_pos.offset) && (len < max_len)) {
+	while ((log_start->offset != end_offset) && (len < max_len)) {
 		tzdbg.disp_buf[i++] = log->log_buf[log_start->offset];
 		log_start->offset = (log_start->offset + 1) % log_len;
 		if (log_start->offset == 0)
@@ -792,6 +784,7 @@ static int _disp_log_stats_v2(struct tzdbg_log_v2_t *log,
 	uint32_t wrap_start;
 	uint32_t wrap_end;
 	uint32_t wrap_cnt;
+	uint32_t end_offset;
 	int max_len;
 	int len = 0;
 	int i = 0;
@@ -820,23 +813,10 @@ static int _disp_log_stats_v2(struct tzdbg_log_v2_t *log,
 	pr_debug("diag_buf wrap = %u, offset = %u\n",
 		log->log_pos.wrap, log->log_pos.offset);
 
-	while (log_start->offset == log->log_pos.offset) {
-		/*
-		 * No data in ring buffer,
-		 * so we'll hang around until something happens
-		 */
-		unsigned long t = msleep_interruptible(50);
-
-		if (t != 0) {
-			/* Some event woke us up, so let's quit */
-			return 0;
-		}
-
-		if (buf_idx == TZDBG_LOG)
-			memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase,
-						debug_rw_buf_size);
-
-	}
+	dma_rmb();
+	end_offset = READ_ONCE(log->log_pos.offset);
+	if (end_offset >= log_len || log_start->offset == end_offset)
+		return 0;
 
 	max_len = (count > debug_rw_buf_size) ? debug_rw_buf_size : count;
 
@@ -846,7 +826,7 @@ static int _disp_log_stats_v2(struct tzdbg_log_v2_t *log,
 	/*
 	 *  Read from ring buff while there is data and space in return buff
 	 */
-	while ((log_start->offset != log->log_pos.offset) && (len < max_len)) {
+	while ((log_start->offset != end_offset) && (len < max_len)) {
 		tzdbg.disp_buf[i++] = log->log_buf[log_start->offset];
 		log_start->offset = (log_start->offset + 1) % log_len;
 		if (log_start->offset == 0)
@@ -866,10 +846,10 @@ static int __disp_hyp_log_stats(uint8_t *log,
 			size_t count, uint32_t buf_idx)
 {
 	struct hypdbg_t *hyp = tzdbg.hyp_diag_buf;
-	unsigned long t = 0;
 	uint32_t wrap_start;
 	uint32_t wrap_end;
 	uint32_t wrap_cnt;
+	uint32_t end_offset;
 	int max_len;
 	int len = 0;
 	int i = 0;
@@ -896,21 +876,10 @@ static int __disp_hyp_log_stats(uint8_t *log,
 		log_start->offset = (hyp->log_pos.offset + 1) % log_len;
 	}
 
-	while (log_start->offset == hyp->log_pos.offset) {
-		/*
-		 * No data in ring buffer,
-		 * so we'll hang around until something happens
-		 */
-		t = msleep_interruptible(50);
-		if (t != 0) {
-			/* Some event woke us up, so let's quit */
-			return 0;
-		}
-
-		/* TZDBG_HYP_LOG */
-		memcpy_fromio((void *)tzdbg.hyp_diag_buf, tzdbg.hyp_virt_iobase,
-						tzdbg.hyp_debug_rw_buf_size);
-	}
+	dma_rmb();
+	end_offset = READ_ONCE(hyp->log_pos.offset);
+	if (end_offset >= log_len || log_start->offset == end_offset)
+		return 0;
 
 	max_len = (count > tzdbg.hyp_debug_rw_buf_size) ?
 				tzdbg.hyp_debug_rw_buf_size : count;
@@ -918,7 +887,7 @@ static int __disp_hyp_log_stats(uint8_t *log,
 	/*
 	 *  Read from ring buff while there is data and space in return buff
 	 */
-	while ((log_start->offset != hyp->log_pos.offset) && (len < max_len)) {
+	while ((log_start->offset != end_offset) && (len < max_len)) {
 		tzdbg.disp_buf[i++] = log[log_start->offset];
 		log_start->offset = (log_start->offset + 1) % log_len;
 		if (log_start->offset == 0)
@@ -1114,7 +1083,7 @@ static int tzdbg_request_encrypted_log(dma_addr_t buf_paddr,
 	desc.args[1] = len;
 	desc.args[2] = log_id;
 	desc.arginfo = TZ_OS_REQUEST_ENCR_LOG_BUFFER_ID_PARAM_ID;
-	pr_debug("%s: buf_paddr %lx, len %d, log_id %d\n",
+	pr_debug("%s: buf_paddr %llx, len %zu, log_id %u\n",
 		 __func__, (uint64_t)buf_paddr, len, log_id);
 	ret = scm_call2(smc_id, &desc);
 	if (ret || desc.ret[0] != QSEOS_RESULT_SUCCESS) {
@@ -1185,6 +1154,9 @@ static ssize_t tzdbgfs_read_unencrypted(struct file *file, char __user *buf,
 		break;
 	}
 
+	if (len <= 0)
+		return 0;
+
 	if (len > count)
 		len = count;
 
@@ -1228,7 +1200,7 @@ static ssize_t tzdbgfs_read_encrypted(struct file *file, char __user *buf,
 	stat->display_offset += ret;
 	stat->display_len -= ret;
 	pr_debug("ret = %d, offset = %d\n", ret, (int)(*offp));
-	pr_debug("display_len = %d, offset = %d\n",
+	pr_debug("display_len = %zu, offset = %zu\n",
 		 stat->display_len, stat->display_offset);
 	return ret;
 }
@@ -1253,11 +1225,13 @@ static ssize_t tzdbgfs_read(struct file *file, char __user *buf,
 		return tzdbgfs_read_encrypted(file, buf, count, offp);
 }
 
+#ifdef CONFIG_DEBUG_FS
 static const struct file_operations tzdbg_fops = {
 	.owner   = THIS_MODULE,
 	.read    = tzdbgfs_read,
 	.open    = simple_open,
 };
+#endif
 
 
 /*
@@ -1410,44 +1384,94 @@ static void tzdbg_free_encrypted_log_buf(struct platform_device *pdev)
 			enc_qseelog_info.vaddr, enc_qseelog_info.paddr);
 }
 
-static int  tzdbgfs_init(struct platform_device *pdev)
+#ifdef CONFIG_DEBUG_FS
+static void tzdbgfs_init(struct platform_device *pdev)
 {
-	int rc = 0;
 	int i;
 	struct dentry           *dent_dir;
 	struct dentry           *dent;
 
 	dent_dir = debugfs_create_dir("tzdbg", NULL);
-	if (dent_dir == NULL) {
-		dev_err(&pdev->dev, "tzdbg debugfs_create_dir failed\n");
-		return -ENOMEM;
+	if (IS_ERR_OR_NULL(dent_dir)) {
+		dev_warn(&pdev->dev, "tzdbg debugfs_create_dir failed\n");
+		return;
 	}
 
 	for (i = 0; i < TZDBG_STATS_MAX; i++) {
-		tzdbg.debug_tz[i] = i;
 		dent = debugfs_create_file_unsafe(tzdbg.stat[i].name,
 				0444, dent_dir,
 				&tzdbg.debug_tz[i], &tzdbg_fops);
-		if (dent == NULL) {
-			dev_err(&pdev->dev, "TZ debugfs_create_file failed\n");
-			rc = -ENOMEM;
+		if (IS_ERR_OR_NULL(dent)) {
+			dev_warn(&pdev->dev, "TZ debugfs_create_file failed\n");
 			goto err;
 		}
 	}
 
 	platform_set_drvdata(pdev, dent_dir);
-	return 0;
+	return;
 err:
 	debugfs_remove_recursive(dent_dir);
-
-	return rc;
+	platform_set_drvdata(pdev, NULL);
 }
 
 static void tzdbgfs_exit(struct platform_device *pdev)
 {
 	struct dentry *dent_dir;
+
 	dent_dir = platform_get_drvdata(pdev);
 	debugfs_remove_recursive(dent_dir);
+}
+#else
+static inline void tzdbgfs_init(struct platform_device *pdev) { }
+static inline void tzdbgfs_exit(struct platform_device *pdev) { }
+#endif
+
+static struct proc_dir_entry *tz_proc_dir;
+
+static int tz_proc_open(struct inode *inode, struct file *file)
+{
+	file->private_data = PDE_DATA(inode);
+	return 0;
+}
+
+static const struct file_operations tz_proc_fops = {
+	.owner   = THIS_MODULE,
+	.open    = tz_proc_open,
+	.read    = tzdbgfs_read,
+	.llseek  = default_llseek,
+};
+
+static void tz_proc_init(void)
+{
+	if (!IS_ENABLED(CONFIG_PROC_FS))
+		return;
+
+	tz_proc_dir = proc_mkdir("tzdbg", NULL);
+	if (!tz_proc_dir) {
+		pr_err("%s: failed to create /proc/tzdbg\n", __func__);
+		return;
+	}
+
+	if (!proc_create_data("qsee_log", 0444, tz_proc_dir,
+			      &tz_proc_fops,
+			      &tzdbg.debug_tz[TZDBG_QSEE_LOG]))
+		pr_err("%s: failed to create /proc/tzdbg/qsee_log\n", __func__);
+
+	if (!proc_create_data("tz_log", 0444, tz_proc_dir,
+			      &tz_proc_fops,
+			      &tzdbg.debug_tz[TZDBG_LOG]))
+		pr_err("%s: failed to create /proc/tzdbg/tz_log\n", __func__);
+}
+
+static void tz_proc_exit(void)
+{
+	if (!IS_ENABLED(CONFIG_PROC_FS))
+		return;
+
+	if (tz_proc_dir) {
+		proc_remove(tz_proc_dir);
+		tz_proc_dir = NULL;
+	}
 }
 
 static int __update_hypdbg_base(struct platform_device *pdev,
@@ -1523,7 +1547,7 @@ static int tzdbg_get_tz_version(void)
 
 	version = desc.ret[0];
 
-	pr_warn("tz diag version is %x\n", version);
+	pr_warn("tz diag version is %llx\n", version);
 	if (
 	(((version >> TZBSP_FVER_MAJOR_SHIFT) & TZBSP_FVER_MAJOR_MINOR_MASK)
 			== TZBSP_DIAG_MAJOR_VERSION_V9) &&
@@ -1550,7 +1574,7 @@ static void tzdbg_encrypted_log_init(void)
 		pr_err("scm_call QUERY_ENCR_LOG_FEATURE failed ret %d\n", ret);
 		tzdbg.is_encrypted_log_enabled = false;
 	} else {
-		pr_info("encrypted qseelog enabled is %d\n", desc.ret[0]);
+		pr_info("encrypted qseelog enabled is %llu\n", desc.ret[0]);
 		tzdbg.is_encrypted_log_enabled = desc.ret[0];
 	}
 }
@@ -1565,6 +1589,7 @@ static int tz_log_probe(struct platform_device *pdev)
 	phys_addr_t tzdiag_phy_iobase;
 	uint32_t *ptr = NULL;
 	int ret = 0;
+	int i;
 
 	ret = tzdbg_get_tz_version();
 	if (ret)
@@ -1653,7 +1678,7 @@ static int tz_log_probe(struct platform_device *pdev)
 	ret = tzdbg_allocate_encrypted_log_buf(pdev);
 	if (ret) {
 		dev_err(&pdev->dev,
-			"Failed to allocate encrypted log buffer\n",
+			"%s: Failed to allocate encrypted log buffer\n",
 			__func__);
 		goto exit_free_qsee_log_buf;
 	}
@@ -1671,13 +1696,13 @@ static int tz_log_probe(struct platform_device *pdev)
 		goto exit_free_encr_log_buf;
 	}
 
-	if (tzdbgfs_init(pdev))
-		goto exit_free_disp_buf;
+	for (i = 0; i < TZDBG_STATS_MAX; i++)
+		tzdbg.debug_tz[i] = i;
+
+	tzdbgfs_init(pdev);
+	tz_proc_init();
 	return 0;
 
-exit_free_disp_buf:
-	dma_free_coherent(&pdev->dev, display_buf_size,
-			(void *)tzdbg.disp_buf, disp_buf_paddr);
 exit_free_encr_log_buf:
 	tzdbg_free_encrypted_log_buf(pdev);
 exit_free_qsee_log_buf:
@@ -1689,6 +1714,7 @@ exit_free_diag_buf:
 
 static int tz_log_remove(struct platform_device *pdev)
 {
+	tz_proc_exit();
 	tzdbgfs_exit(pdev);
 	dma_free_coherent(&pdev->dev, display_buf_size,
 			  (void *)tzdbg.disp_buf, disp_buf_paddr);
