@@ -93,6 +93,9 @@ static DEFINE_MUTEX(binder_procs_lock);
 static HLIST_HEAD(binder_dead_nodes);
 static DEFINE_SPINLOCK(binder_dead_nodes_lock);
 
+static struct kmem_cache *binder_transaction_cache;
+static struct kmem_cache *binder_work_cache;
+
 static struct dentry *binder_debugfs_dir_entry_root;
 static struct dentry *binder_debugfs_dir_entry_proc;
 static struct dentry *binder_debugfs_dir_entry_proc_transaction;
@@ -1719,7 +1722,7 @@ static void binder_free_transaction(struct binder_transaction *t)
 	 * If the transaction has no target_proc, then
 	 * t->buffer->transaction has already been cleared.
 	 */
-	kfree(t);
+	kmem_cache_free(binder_transaction_cache, t);
 	binder_stats_deleted(BINDER_STAT_TRANSACTION);
 }
 
@@ -2780,7 +2783,7 @@ static void binder_transaction(struct binder_proc *proc,
 	e->to_proc = target_proc->pid;
 
 	/* TODO: reuse incoming transaction for reply */
-	t = kzalloc(sizeof(*t), GFP_KERNEL);
+	t = kmem_cache_zalloc(binder_transaction_cache, GFP_KERNEL);
 	if (t == NULL) {
 		return_error = BR_FAILED_REPLY;
 		return_error_param = -ENOMEM;
@@ -2790,7 +2793,7 @@ static void binder_transaction(struct binder_proc *proc,
 	binder_stats_created(BINDER_STAT_TRANSACTION);
 	spin_lock_init(&t->lock);
 
-	tcomplete = kzalloc(sizeof(*tcomplete), GFP_KERNEL);
+	tcomplete = kmem_cache_zalloc(binder_work_cache, GFP_KERNEL);
 	if (tcomplete == NULL) {
 		return_error = BR_FAILED_REPLY;
 		return_error_param = -ENOMEM;
@@ -3229,10 +3232,10 @@ err_bad_extra_size:
 	if (secctx)
 		security_release_secctx(secctx, secctx_sz);
 err_get_secctx_failed:
-	kfree(tcomplete);
+	kmem_cache_free(binder_work_cache, tcomplete);
 	binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 err_alloc_tcomplete_failed:
-	kfree(t);
+	kmem_cache_free(binder_transaction_cache, t);
 	binder_stats_deleted(BINDER_STAT_TRANSACTION);
 err_alloc_t_failed:
 err_bad_todo_list:
@@ -3936,7 +3939,7 @@ retry:
 			else
 				cmd = BR_TRANSACTION_COMPLETE;
 			binder_inner_proc_unlock(proc);
-			kfree(w);
+			kmem_cache_free(binder_work_cache, w);
 			binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 			if (put_user(cmd, (uint32_t __user *)ptr))
 				return -EFAULT;
@@ -4236,7 +4239,7 @@ static void binder_release_work(struct binder_proc *proc,
 		case BINDER_WORK_TRANSACTION_COMPLETE: {
 			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
 				"undelivered TRANSACTION_COMPLETE\n");
-			kfree(w);
+			kmem_cache_free(binder_work_cache, w);
 			binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 		} break;
 		case BINDER_WORK_DEAD_BINDER_AND_CLEAR:
@@ -6178,6 +6181,18 @@ static int __init binder_init(void)
 	if (ret)
 		return ret;
 
+	binder_transaction_cache = KMEM_CACHE(binder_transaction, 0);
+	if (!binder_transaction_cache) {
+		ret = -ENOMEM;
+		goto err_alloc_transaction_cache_failed;
+	}
+
+	binder_work_cache = KMEM_CACHE(binder_work, 0);
+	if (!binder_work_cache) {
+		ret = -ENOMEM;
+		goto err_alloc_work_cache_failed;
+	}
+
 	atomic_set(&binder_transaction_log.cur, ~0U);
 	atomic_set(&binder_transaction_log_failed.cur, ~0U);
 
@@ -6254,6 +6269,10 @@ err_init_binder_device_failed:
 
 err_alloc_device_names_failed:
 	debugfs_remove_recursive(binder_debugfs_dir_entry_root);
+	kmem_cache_destroy(binder_work_cache);
+err_alloc_work_cache_failed:
+	kmem_cache_destroy(binder_transaction_cache);
+err_alloc_transaction_cache_failed:
 	binder_alloc_shrinker_exit();
 
 	return ret;
