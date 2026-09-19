@@ -67,6 +67,8 @@ struct binderfs_mount_opts {
  * @device_count:   The current number of allocated binder devices.
  * @proc_log_dir:   Pointer to the directory dentry containing process-specific
  *                  logs.
+ * @proc_transaction_log_dir: Pointer to the directory dentry containing
+ *                  per-process transaction logs.
  */
 struct binderfs_info {
 	struct ipc_namespace *ipc_ns;
@@ -76,6 +78,7 @@ struct binderfs_info {
 	struct binderfs_mount_opts mount_opts;
 	int device_count;
 	struct dentry *proc_log_dir;
+	struct dentry *proc_transaction_log_dir;
 };
 
 extern const struct file_operations binder_fops;
@@ -422,6 +425,8 @@ struct binder_priority {
  * @default_priority:     default scheduler priority
  *                        (invariant after initialized)
  * @debugfs_entry:        debugfs node
+ * @debugfs_transaction_entry:  debugfs node for transaction log
+ * @binderfs_transaction_entry: binderfs file for transaction log
  * @alloc:                binder allocator bookkeeping
  * @context:              binder_context for this proc
  *                        (invariant after initialized)
@@ -459,6 +464,8 @@ struct binder_proc {
 	int tmp_ref;
 	struct binder_priority default_priority;
 	struct dentry *debugfs_entry;
+	struct dentry *debugfs_transaction_entry;
+	struct dentry *binderfs_transaction_entry;
 	struct binder_alloc alloc;
 	struct binder_context *context;
 	spinlock_t inner_lock;
@@ -527,6 +534,9 @@ struct binder_transaction {
 	int debug_id;
 	struct binder_work work;
 	struct binder_thread *from;
+	int async_from_pid;
+	int async_from_tid;
+	u64 timesRecord;
 	struct binder_transaction *from_parent;
 	struct binder_proc *to_proc;
 	struct binder_thread *to_thread;
