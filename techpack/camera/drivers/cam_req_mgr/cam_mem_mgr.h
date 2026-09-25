@@ -41,8 +41,8 @@ enum cam_smmu_mapping_client {
  * @vaddr:          IOVA of buffer
  * @kmdvaddr:       Kernel virtual address
  * @active:         state of the buffer
- * @is_imported:    Flag indicating if buffer is imported from an FD in user
- *                  space
+ * @is_imported:    Flag indicating if buffer is imported from an FD
+ *                  in user space
  * @krefcount:      Reference counter to track whether the buffer is
  *                  mapped and in use by kmd
  * @smmu_mapping_client: Client buffer (User or kernel)
@@ -77,6 +77,7 @@ struct cam_mem_buf_queue {
  * @bufq: array of buffers
  * @dentry: Debugfs entry
  * @alloc_profile_enable: Whether to enable alloc profiling
+ * @dbg_buf_idx: debug buffer index to get usecases info
  */
 struct cam_mem_table {
 	struct mutex m_lock;
@@ -85,6 +86,7 @@ struct cam_mem_table {
 	struct cam_mem_buf_queue bufq[CAM_MEM_BUFQ_MAX];
 	struct dentry *dentry;
 	bool alloc_profile_enable;
+	size_t dbg_buf_idx;
 };
 
 /**

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -268,7 +268,6 @@ int cam_context_dump_pf_info(struct cam_context *ctx, unsigned long iova,
 		return -EINVAL;
 	}
 
-	mutex_lock(&ctx->ctx_mutex);
 	if ((ctx->state > CAM_CTX_AVAILABLE) &&
 		(ctx->state < CAM_CTX_STATE_MAX)) {
 		if (ctx->state_machine[ctx->state].pagefault_ops) {
@@ -279,7 +278,6 @@ int cam_context_dump_pf_info(struct cam_context *ctx, unsigned long iova,
 				ctx->dev_hdl, ctx->state);
 		}
 	}
-	mutex_unlock(&ctx->ctx_mutex);
 
 	return rc;
 }
@@ -617,7 +615,7 @@ int cam_context_init(struct cam_context *ctx,
 	mutex_init(&ctx->sync_mutex);
 	spin_lock_init(&ctx->lock);
 
-	strlcpy(ctx->dev_name, dev_name, CAM_CTX_DEV_NAME_MAX_LENGTH);
+	strscpy(ctx->dev_name, dev_name, CAM_CTX_DEV_NAME_MAX_LENGTH);
 	ctx->dev_id = dev_id;
 	ctx->ctx_id = ctx_id;
 	ctx->last_flush_req = 0;
@@ -654,8 +652,14 @@ int cam_context_deinit(struct cam_context *ctx)
 	 * Everyting should be released at this moment.
 	 * so we just free the memory for the context
 	 */
+	if (ctx->state == CAM_CTX_UNINIT)
+		return 0;
+
 	if (ctx->state != CAM_CTX_AVAILABLE)
 		CAM_ERR(CAM_CORE, "Device did not shutdown cleanly");
+
+	mutex_destroy(&ctx->sync_mutex);
+	mutex_destroy(&ctx->ctx_mutex);
 
 	memset(ctx, 0, sizeof(*ctx));
 

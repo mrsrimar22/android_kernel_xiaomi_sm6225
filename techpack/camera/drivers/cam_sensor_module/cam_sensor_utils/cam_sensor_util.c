@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -254,7 +254,7 @@ static int32_t cam_sensor_get_io_buffer(
 		if ((rc < 0) || (!buf_addr)) {
 			CAM_ERR(CAM_SENSOR,
 				"invalid buffer, rc: %d, buf_addr: %pK",
-				rc, buf_addr);
+				rc, (void *)buf_addr);
 			return -EINVAL;
 		}
 		CAM_DBG(CAM_SENSOR,
@@ -262,9 +262,8 @@ static int32_t cam_sensor_get_io_buffer(
 			(void *)buf_addr, buf_size, io_cfg->offsets[0]);
 		if (io_cfg->offsets[0] >= buf_size) {
 			CAM_ERR(CAM_SENSOR,
-				"invalid size:io_cfg->offsets[0]: %d, buf_size: %d",
+				"invalid size:io_cfg->offsets[0]: %d, buf_size: %zu",
 				io_cfg->offsets[0], buf_size);
-			cam_mem_put_cpu_buf(io_cfg->mem_handle[0]);
 			return -EINVAL;
 		}
 		i2c_settings->read_buff =
@@ -289,11 +288,10 @@ static int32_t cam_sensor_handle_random_read(
 	struct cam_buf_io_cfg *io_cfg)
 {
 	struct i2c_settings_list *i2c_list;
-	int32_t rc = 0, cnt = 0, payload_count = 0;
+	int32_t rc = 0, cnt = 0;
 
-	payload_count = cmd_i2c_random_rd->header.count;
 	i2c_list = cam_sensor_get_i2c_ptr(i2c_reg_settings,
-		payload_count);
+		cmd_i2c_random_rd->header.count);
 	if ((i2c_list == NULL) ||
 		(i2c_list->i2c_settings.reg_setting == NULL)) {
 		CAM_ERR(CAM_SENSOR,
@@ -308,7 +306,7 @@ static int32_t cam_sensor_handle_random_read(
 	} else {
 		*cmd_length_in_bytes = sizeof(struct i2c_rdwr_header) +
 			(sizeof(struct cam_cmd_read) *
-			payload_count);
+			(cmd_i2c_random_rd->header.count));
 		i2c_list->op_code = CAM_SENSOR_I2C_READ_RANDOM;
 		i2c_list->i2c_settings.addr_type =
 			cmd_i2c_random_rd->header.addr_type;
@@ -317,7 +315,8 @@ static int32_t cam_sensor_handle_random_read(
 		i2c_list->i2c_settings.size =
 			cmd_i2c_random_rd->header.count;
 
-		for (cnt = 0; cnt < payload_count; cnt++) {
+		for (cnt = 0; cnt < (cmd_i2c_random_rd->header.count);
+			cnt++) {
 			i2c_list->i2c_settings.reg_setting[cnt].reg_addr =
 				cmd_i2c_random_rd->data_read[cnt].reg_data;
 		}
@@ -371,23 +370,36 @@ static int32_t cam_sensor_handle_continuous_read(
 }
 
 static int cam_sensor_handle_slave_info(
-	uint32_t *cmd_buf,
-	struct i2c_settings_array *i2c_reg_settings,
-	struct list_head **list_ptr)
+	struct camera_io_master *io_master,
+	uint32_t *cmd_buf)
 {
 	int rc = 0;
 	struct cam_cmd_i2c_info *i2c_info = (struct cam_cmd_i2c_info *)cmd_buf;
-	struct i2c_settings_list  *i2c_list;
 
-	i2c_list =
-		cam_sensor_get_i2c_ptr(i2c_reg_settings, 1);
-	if (!i2c_list || !i2c_list->i2c_settings.reg_setting) {
-		CAM_ERR(CAM_SENSOR, "Failed in allocating mem for list");
-		return -ENOMEM;
+	if (io_master == NULL || cmd_buf == NULL) {
+		CAM_ERR(CAM_SENSOR, "Invalid args");
+		return -EINVAL;
 	}
 
-	i2c_list->op_code = CAM_SENSOR_I2C_SET_I2C_INFO;
-	i2c_list->slave_info = *i2c_info;
+	switch (io_master->master_type) {
+	case CCI_MASTER:
+		io_master->cci_client->sid = (i2c_info->slave_addr >> 1);
+		io_master->cci_client->i2c_freq_mode = i2c_info->i2c_freq_mode;
+		break;
+
+	case I2C_MASTER:
+		io_master->client->addr = i2c_info->slave_addr;
+		break;
+
+	case SPI_MASTER:
+		break;
+
+	default:
+		CAM_ERR(CAM_SENSOR, "Invalid master type: %d",
+			io_master->master_type);
+		rc = -EINVAL;
+		break;
+	}
 
 	return rc;
 }
@@ -460,7 +472,6 @@ int cam_sensor_i2c_command_parser(
 		remain_len -= cmd_desc[i].offset;
 		if (remain_len < cmd_desc[i].length) {
 			CAM_ERR(CAM_SENSOR, "buffer provided too small");
-			cam_mem_put_cpu_buf(cmd_desc[i].mem_handle);
 			return -EINVAL;
 		}
 
@@ -608,7 +619,7 @@ int cam_sensor_i2c_command_parser(
 					goto end;
 				}
 				rc = cam_sensor_handle_slave_info(
-					cmd_buf, i2c_reg_settings, &list);
+					io_master, cmd_buf);
 				if (rc) {
 					CAM_ERR(CAM_SENSOR,
 					"Handle slave info failed with rc: %d",
@@ -641,7 +652,7 @@ int cam_sensor_i2c_command_parser(
 
 				if (tot_size > (remain_len - byte_cnt)) {
 					CAM_ERR(CAM_SENSOR,
-						"Not enough buffer provided %d, %d, %d",
+						"Not enough buffer provided %zu, %zu, %u",
 						tot_size, remain_len, byte_cnt);
 					rc = -EINVAL;
 					goto end;
@@ -682,7 +693,7 @@ int cam_sensor_i2c_command_parser(
 
 				if (tot_size > (remain_len - byte_cnt)) {
 					CAM_ERR(CAM_SENSOR,
-						"Not enough buffer provided %d, %d, %d",
+						"Not enough buffer provided %zu, %zu, %u",
 						tot_size, remain_len, byte_cnt);
 					rc = -EINVAL;
 					goto end;
@@ -731,7 +742,7 @@ int cam_sensor_util_i2c_apply_setting(
 	switch (i2c_list->op_code) {
 	case CAM_SENSOR_I2C_WRITE_RANDOM: {
 		rc = camera_io_dev_write(io_master_info,
-			&(i2c_list->i2c_settings), false);
+			&(i2c_list->i2c_settings));
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to random write I2C settings: %d",
@@ -742,8 +753,7 @@ int cam_sensor_util_i2c_apply_setting(
 	}
 	case CAM_SENSOR_I2C_WRITE_SEQ: {
 		rc = camera_io_dev_write_continuous(
-			io_master_info, &(i2c_list->i2c_settings),
-			0, false);
+			io_master_info, &(i2c_list->i2c_settings), 0);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to seq write I2C settings: %d",
@@ -754,8 +764,7 @@ int cam_sensor_util_i2c_apply_setting(
 	}
 	case CAM_SENSOR_I2C_WRITE_BURST: {
 		rc = camera_io_dev_write_continuous(
-			io_master_info, &(i2c_list->i2c_settings),
-			1, false);
+			io_master_info, &(i2c_list->i2c_settings), 1);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to burst write I2C settings: %d",
@@ -805,12 +814,6 @@ int32_t cam_sensor_i2c_read_data(
 
 	list_for_each_entry(i2c_list,
 		&(i2c_settings->list_head), list) {
-		if (i2c_list->op_code == CAM_SENSOR_I2C_SET_I2C_INFO) {
-			CAM_DBG(CAM_SENSOR,
-				"CAM_SENSOR_I2C_SET_I2C_INFO continue");
-			continue;
-		}
-
 		read_buff = i2c_list->i2c_settings.read_buff;
 		buff_length = i2c_list->i2c_settings.read_buff_len;
 		if ((read_buff == NULL) || (buff_length == 0)) {

@@ -98,7 +98,6 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	int i = 0;
-	uint32_t concurrency_sensors = 0;
 	struct cam_sensor_board_info *sensordata = NULL;
 	struct device_node *of_node = s_ctrl->of_node;
 	struct device_node *of_parent = NULL;
@@ -186,19 +185,6 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 			s_ctrl->cci_num = CCI_DEVICE_0;
 
 		CAM_DBG(CAM_SENSOR, "cci-index %d", s_ctrl->cci_num);
-
-		rc = of_property_read_u32(of_node,
-			"concurrency-sensors-on-same-cci",
-			&concurrency_sensors);
-		CAM_DBG(CAM_SENSOR,
-			"sensor %d concurrency_sensors %d, rc %d",
-			soc_info->index, concurrency_sensors, rc);
-		if (rc < 0 || concurrency_sensors < 2) {
-			s_ctrl->force_low_priority_for_init_setting = false;
-			rc = 0;
-		} else
-			s_ctrl->force_low_priority_for_init_setting = true;
-
 	}
 
 	if (of_property_read_u32(of_node, "sensor-position-pitch",
@@ -279,7 +265,7 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
 			CAM_ERR(CAM_SENSOR, "get failed for %s",
 				 soc_info->clk_name[i]);
 			rc = -ENOENT;
-			return rc;
+			goto FREE_DT_DATA;
 		}
 	}
 	rc = msm_sensor_init_default_params(s_ctrl);
@@ -292,6 +278,7 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
 	return rc;
 
 FREE_DT_DATA:
+	mutex_destroy(&(s_ctrl->cam_sensor_mutex));
 	kfree(s_ctrl->sensordata);
 	s_ctrl->sensordata = NULL;
 

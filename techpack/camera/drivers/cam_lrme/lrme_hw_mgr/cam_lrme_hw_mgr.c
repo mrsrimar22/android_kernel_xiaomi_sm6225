@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -113,15 +113,14 @@ static int cam_lrme_mgr_util_packet_validate(struct cam_packet *packet,
 		return -EINVAL;
 	}
 
-	if (!packet->num_cmd_buf) {
-		CAM_ERR(CAM_LRME, "no cmd bufs");
-		return -EINVAL;
-	}
-
 	cmd_desc = (struct cam_cmd_buf_desc *)((uint8_t *)&packet->payload +
 		packet->cmd_buf_offset);
 
 	for (i = 0; i < packet->num_cmd_buf; i++) {
+		rc = cam_packet_util_validate_cmd_desc(&cmd_desc[i]);
+		if (rc)
+			return rc;
+
 		if (!cmd_desc[i].length)
 			continue;
 
@@ -322,6 +321,10 @@ static int cam_lrme_mgr_util_prepare_hw_update_entries(
 		&prepare->packet->payload + prepare->packet->cmd_buf_offset);
 
 	for (i = 0; i < prepare->packet->num_cmd_buf; i++) {
+		rc = cam_packet_util_validate_cmd_desc(&cmd_desc[i]);
+		if (rc)
+			return rc;
+
 		if (!cmd_desc[i].length)
 			continue;
 
@@ -1048,11 +1051,6 @@ err:
 	return rc;
 }
 
-static void cam_req_mgr_process_workq_cam_lrme_device_submit_worker(
-	struct work_struct *w)
-{
-	cam_req_mgr_process_workq(w);
-}
 
 int cam_lrme_mgr_register_device(
 	struct cam_hw_intf *lrme_hw_intf,
@@ -1080,8 +1078,8 @@ int cam_lrme_mgr_register_device(
 	CAM_DBG(CAM_LRME, "Create submit workq for %s", buf);
 	rc = cam_req_mgr_workq_create(buf,
 		CAM_LRME_WORKQ_NUM_TASK,
-		&hw_device->work, CRM_WORKQ_USAGE_NON_IRQ, 0, true,
-		cam_req_mgr_process_workq_cam_lrme_device_submit_worker);
+		&hw_device->work, CRM_WORKQ_USAGE_NON_IRQ,
+		0);
 	if (rc) {
 		CAM_ERR(CAM_LRME,
 			"Unable to create a worker, rc=%d", rc);
@@ -1151,6 +1149,9 @@ int cam_lrme_mgr_deregister_device(int device_index)
 
 int cam_lrme_hw_mgr_deinit(void)
 {
+	debugfs_remove_recursive(g_lrme_hw_mgr.debugfs_entry.dentry);
+	g_lrme_hw_mgr.debugfs_entry.dentry = NULL;
+
 	mutex_destroy(&g_lrme_hw_mgr.hw_mgr_mutex);
 	memset(&g_lrme_hw_mgr, 0x0, sizeof(g_lrme_hw_mgr));
 

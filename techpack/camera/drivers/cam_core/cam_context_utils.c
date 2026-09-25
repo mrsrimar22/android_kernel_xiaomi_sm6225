@@ -297,14 +297,6 @@ int32_t cam_context_config_dev_to_hw(
 		return rc;
 	}
 
-	if ((len < sizeof(struct cam_packet)) ||
-		(cmd->offset >= (len - sizeof(struct cam_packet)))) {
-		CAM_ERR(CAM_CTXT, "Not enough buf, len : %zu offset = %llu",
-			len, cmd->offset);
-		cam_mem_put_cpu_buf((int32_t) cmd->packet_handle);
-		return -EINVAL;
-
-	}
 	packet = (struct cam_packet *) ((uint8_t *)packet_addr +
 		(uint32_t)cmd->offset);
 
@@ -466,9 +458,6 @@ int32_t cam_context_prepare_dev_to_hw(struct cam_context *ctx,
 			rc = cam_sync_check_valid(
 				req->in_map_entries[j].sync_id);
 			if (rc) {
-				spin_lock(&ctx->lock);
-				list_del_init(&req->list);
-				spin_unlock(&ctx->lock);
 				CAM_ERR(CAM_CTXT,
 					"invalid in map sync object %d",
 					req->in_map_entries[j].sync_id);
@@ -567,7 +556,6 @@ int32_t cam_context_acquire_dev_to_hw(struct cam_context *ctx,
 	param.event_cb = ctx->irq_cb_intf;
 	param.num_acq = cmd->num_resources;
 	param.acquire_info = cmd->resource_hdl;
-	param.session_hdl = cmd->session_handle;
 
 	/* call HW manager to reserve the resource */
 	rc = ctx->hw_mgr_intf->hw_acquire(ctx->hw_mgr_intf->hw_mgr_priv,
@@ -587,7 +575,7 @@ int32_t cam_context_acquire_dev_to_hw(struct cam_context *ctx,
 	req_hdl_param.media_entity_flag = 0;
 	req_hdl_param.priv = ctx;
 	req_hdl_param.ops = ctx->crm_ctx_intf;
-
+	req_hdl_param.dev_id = ctx->dev_id;
 	ctx->dev_hdl = cam_create_device_hdl(&req_hdl_param);
 	if (ctx->dev_hdl <= 0) {
 		rc = -EFAULT;
@@ -1191,7 +1179,7 @@ int32_t cam_context_dump_dev_to_hw(struct cam_context *ctx,
 		 */
 		if (dump_args.offset > cmd->offset) {
 			cam_context_dump_context(ctx, &dump_args);
-			CAM_INFO(CAM_CTXT, "[%s] ctx: %d Filled Length %u",
+			CAM_INFO(CAM_CTXT, "[%s] ctx: %d Filled Length %zu",
 				 ctx->dev_name, ctx->ctx_id,
 				 dump_args.offset - cmd->offset);
 			cmd->offset  = dump_args.offset;

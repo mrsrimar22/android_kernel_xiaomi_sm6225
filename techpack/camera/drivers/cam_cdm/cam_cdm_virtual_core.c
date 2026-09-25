@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
@@ -20,6 +20,7 @@
 #include "cam_cdm_core_common.h"
 #include "cam_cdm_soc.h"
 #include "cam_io_util.h"
+#include "cam_req_mgr_workq.h"
 
 #define CAM_CDM_VIRTUAL_NAME "qcom,cam_virtual_cdm"
 
@@ -33,6 +34,10 @@ static void cam_virtual_cdm_work(struct work_struct *work)
 	if (payload) {
 		cdm_hw = payload->hw;
 		core = (struct cam_cdm *)cdm_hw->core_info;
+
+		cam_req_mgr_thread_switch_delay_detect(
+			payload->workq_scheduled_ts);
+
 		if (payload->irq_status & 0x2) {
 			struct cam_cdm_bl_cb_request_entry *node;
 
@@ -184,9 +189,11 @@ int cam_virtual_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 					INIT_WORK((struct work_struct *)
 						&payload->work,
 						cam_virtual_cdm_work);
+					payload->workq_scheduled_ts =
+						ktime_get();
 					queue_work(core->work_queue,
 						&payload->work);
-					}
+				}
 			}
 			core->bl_tag++;
 			CAM_DBG(CAM_CDM,
@@ -298,7 +305,7 @@ int cam_virtual_cdm_probe(struct platform_device *pdev)
 	cpas_parms.cell_index = cdm_hw->soc_info.index;
 	cpas_parms.dev = &pdev->dev;
 	cpas_parms.userdata = cdm_hw_intf;
-	strlcpy(cpas_parms.identifier, "cam-cdm-intf",
+	strscpy(cpas_parms.identifier, "cam-cdm-intf",
 		CAM_HW_IDENTIFIER_LENGTH);
 	rc = cam_cpas_register_client(&cpas_parms);
 	if (rc) {

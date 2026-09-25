@@ -341,7 +341,7 @@ int cam_context_handle_crm_dump_req(struct cam_context *ctx,
 /**
  * cam_context_dump_pf_info()
  *
- * @brief:        Handle dump active request request command
+ * @brief:        Handle dump active request command
  *
  * @ctx:          Object pointer for cam_context
  * @iova:         Page fault address
