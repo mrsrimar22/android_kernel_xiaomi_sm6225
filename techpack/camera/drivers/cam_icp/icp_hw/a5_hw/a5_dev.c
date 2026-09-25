@@ -182,6 +182,7 @@ int cam_a5_probe(struct platform_device *pdev)
 	return 0;
 
 cpas_reg_failed:
+	cam_soc_util_release_platform_resource(&a5_dev->soc_info);
 init_soc_failure:
 match_err:
 	kfree(a5_dev->core_info);
@@ -191,6 +192,37 @@ a5_dev_alloc_failure:
 	kfree(a5_dev_intf);
 
 	return rc;
+}
+
+static int cam_a5_remove(struct platform_device *pdev)
+{
+	struct cam_hw_intf *a5_dev_intf = platform_get_drvdata(pdev);
+	struct cam_hw_info *a5_dev = NULL;
+	struct cam_a5_device_core_info *core_info = NULL;
+
+	if (!a5_dev_intf) {
+		CAM_ERR(CAM_ICP, "Invalid a5_dev_intf");
+		return -EINVAL;
+	}
+
+	a5_dev = a5_dev_intf->hw_priv;
+	if (!a5_dev) {
+		CAM_ERR(CAM_ICP, "Invalid a5_dev");
+		return -EINVAL;
+	}
+
+	core_info = (struct cam_a5_device_core_info *)a5_dev->core_info;
+	if (core_info) {
+		cam_cpas_unregister_client(core_info->cpas_handle);
+		kfree(core_info);
+	}
+
+	cam_soc_util_release_platform_resource(&a5_dev->soc_info);
+	mutex_destroy(&a5_dev->hw_mutex);
+	kfree(a5_dev);
+	kfree(a5_dev_intf);
+
+	return 0;
 }
 
 static const struct of_device_id cam_a5_dt_match[] = {
@@ -204,6 +236,7 @@ MODULE_DEVICE_TABLE(of, cam_a5_dt_match);
 
 static struct platform_driver cam_a5_driver = {
 	.probe = cam_a5_probe,
+	.remove = cam_a5_remove,
 	.driver = {
 		.name = "cam-a5",
 		.owner = THIS_MODULE,

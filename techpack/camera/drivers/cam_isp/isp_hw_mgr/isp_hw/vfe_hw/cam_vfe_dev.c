@@ -104,8 +104,13 @@ int cam_vfe_probe(struct platform_device *pdev)
 	spin_lock_init(&vfe_hw->hw_lock);
 	init_completion(&vfe_hw->hw_complete);
 
-	if (vfe_hw_intf->hw_idx < CAM_VFE_HW_NUM_MAX)
+	if (vfe_hw_intf->hw_idx < CAM_VFE_HW_NUM_MAX) {
 		cam_vfe_hw_list[vfe_hw_intf->hw_idx] = vfe_hw_intf;
+	} else {
+		CAM_ERR(CAM_ISP, "Invalid hw_idx %d", vfe_hw_intf->hw_idx);
+		rc = -EINVAL;
+		goto destroy_hw_mutex;
+	}
 
 	cam_vfe_init_hw(vfe_hw, NULL, 0);
 	cam_vfe_deinit_hw(vfe_hw, NULL, 0);
@@ -114,6 +119,8 @@ int cam_vfe_probe(struct platform_device *pdev)
 
 	return rc;
 
+destroy_hw_mutex:
+	mutex_destroy(&vfe_hw->hw_mutex);
 deinit_soc:
 	if (cam_vfe_deinit_soc_resources(&vfe_hw->soc_info))
 		CAM_ERR(CAM_ISP, "Failed to deinit soc");

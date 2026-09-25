@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -73,22 +73,16 @@ static int cam_fd_dev_close(struct v4l2_subdev *sd,
 	}
 
 	mutex_lock(&fd_dev->lock);
-	if (fd_dev->open_cnt <= 0) {
-		mutex_unlock(&fd_dev->lock);
-		return -EINVAL;
-	}
 	fd_dev->open_cnt--;
 	CAM_DBG(CAM_FD, "FD Subdev open count %d", fd_dev->open_cnt);
+	mutex_unlock(&fd_dev->lock);
 
 	if (!node) {
 		CAM_ERR(CAM_FD, "Node ptr is NULL");
-		mutex_unlock(&fd_dev->lock);
 		return -EINVAL;
 	}
 
-	if (fd_dev->open_cnt == 0)
-		cam_node_shutdown(node);
-	mutex_unlock(&fd_dev->lock);
+	cam_node_shutdown(node);
 
 	return 0;
 }
@@ -142,7 +136,6 @@ static int cam_fd_dev_probe(struct platform_device *pdev)
 
 	mutex_init(&g_fd_dev.lock);
 	g_fd_dev.probe_done = true;
-	g_fd_dev.open_cnt = 0;
 
 	CAM_DBG(CAM_FD, "Camera FD probe complete");
 
@@ -153,6 +146,9 @@ deinit_ctx:
 		if (cam_fd_context_deinit(&g_fd_dev.fd_ctx[i]))
 			CAM_ERR(CAM_FD, "FD context %d deinit failed", i);
 	}
+	rc = cam_fd_hw_mgr_deinit(pdev->dev.of_node);
+	if (rc)
+		CAM_ERR(CAM_FD, "Failed in hw mgr deinit, rc=%d", rc);
 unregister_subdev:
 	if (cam_subdev_remove(&g_fd_dev.sd))
 		CAM_ERR(CAM_FD, "Failed in subdev remove");
@@ -163,6 +159,8 @@ unregister_subdev:
 static int cam_fd_dev_remove(struct platform_device *pdev)
 {
 	int i, rc;
+
+	g_fd_dev.probe_done = false;
 
 	for (i = 0; i < CAM_CTX_MAX; i++) {
 		rc = cam_fd_context_deinit(&g_fd_dev.fd_ctx[i]);
@@ -180,7 +178,6 @@ static int cam_fd_dev_remove(struct platform_device *pdev)
 		CAM_ERR(CAM_FD, "Unregister failed, rc=%d", rc);
 
 	mutex_destroy(&g_fd_dev.lock);
-	g_fd_dev.probe_done = false;
 
 	return rc;
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -28,7 +27,7 @@
 #include "cam_debug_util.h"
 #include "cam_common_util.h"
 
-#define CAM_REQ_MGR_EVENT_MAX 100
+#define CAM_REQ_MGR_EVENT_MAX 30
 
 static struct cam_req_mgr_device g_dev;
 struct kmem_cache *g_cam_req_mgr_timer_cachep;
@@ -48,7 +47,7 @@ static int cam_media_device_setup(struct device *dev)
 
 	media_device_init(g_dev.v4l2_dev->mdev);
 	g_dev.v4l2_dev->mdev->dev = dev;
-	strlcpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
+	strscpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
 		sizeof(g_dev.v4l2_dev->mdev->model));
 
 	rc = media_device_register(g_dev.v4l2_dev->mdev);
@@ -139,7 +138,6 @@ static int cam_req_mgr_open(struct file *filep)
 	spin_unlock_bh(&g_dev.cam_eventq_lock);
 
 	g_dev.open_cnt++;
-	CAM_DBG(CAM_CRM, " CRM open cnt %d", g_dev.open_cnt);
 	rc = cam_mem_mgr_init();
 	if (rc) {
 		g_dev.open_cnt--;
@@ -188,18 +186,11 @@ static int cam_req_mgr_close(struct file *filep)
 	cam_req_mgr_rwsem_write_op(CAM_SUBDEV_LOCK);
 
 	mutex_lock(&g_dev.cam_lock);
+
 	if (g_dev.open_cnt <= 0) {
 		mutex_unlock(&g_dev.cam_lock);
 		cam_req_mgr_rwsem_write_op(CAM_SUBDEV_UNLOCK);
 		return -EINVAL;
-	}
-
-	g_dev.open_cnt--;
-	CAM_DBG(CAM_CRM, "CRM open_cnt %d", g_dev.open_cnt);
-
-	if (g_dev.open_cnt > 0) {
-		mutex_unlock(&g_dev.cam_lock);
-		return 0;
 	}
 
 	cam_req_mgr_handle_core_shutdown();
@@ -214,6 +205,7 @@ static int cam_req_mgr_close(struct file *filep)
 		}
 	}
 
+	g_dev.open_cnt--;
 	v4l2_fh_release(filep);
 
 	spin_lock_bh(&g_dev.cam_eventq_lock);
@@ -611,7 +603,7 @@ static int cam_video_device_setup(void)
 
 	g_dev.video->v4l2_dev = g_dev.v4l2_dev;
 
-	strlcpy(g_dev.video->name, "cam-req-mgr",
+	strscpy(g_dev.video->name, "cam-req-mgr",
 		sizeof(g_dev.video->name));
 	g_dev.video->release = video_device_release;
 	g_dev.video->fops = &g_cam_fops;
@@ -675,8 +667,8 @@ void cam_register_subdev_fops(struct v4l2_file_operations *fops)
 EXPORT_SYMBOL(cam_register_subdev_fops);
 
 void cam_subdev_notify_message(u32 subdev_type,
-	enum cam_subdev_message_type_t message_type,
-	uint32_t data)
+		enum cam_subdev_message_type_t message_type,
+		uint32_t data)
 {
 	struct v4l2_subdev *sd = NULL;
 	struct cam_subdev *csd = NULL;
@@ -776,14 +768,21 @@ EXPORT_SYMBOL(cam_unregister_subdev);
 
 static int cam_req_mgr_remove(struct platform_device *pdev)
 {
-	cam_req_mgr_core_device_deinit();
-	cam_req_mgr_util_deinit();
-	cam_media_device_cleanup();
-	cam_video_device_cleanup();
-	cam_v4l2_device_cleanup();
-	mutex_destroy(&g_dev.dev_lock);
 	g_dev.state = false;
 	g_dev.subdev_nodes_created = false;
+	cam_req_mgr_core_device_deinit();
+	cam_req_mgr_util_deinit();
+	cam_video_device_cleanup();
+	cam_media_device_cleanup();
+	cam_v4l2_device_cleanup();
+
+	if (g_cam_req_mgr_timer_cachep) {
+		kmem_cache_destroy(g_cam_req_mgr_timer_cachep);
+		g_cam_req_mgr_timer_cachep = NULL;
+	}
+
+	mutex_destroy(&g_dev.dev_lock);
+	mutex_destroy(&g_dev.cam_lock);
 
 	return 0;
 }

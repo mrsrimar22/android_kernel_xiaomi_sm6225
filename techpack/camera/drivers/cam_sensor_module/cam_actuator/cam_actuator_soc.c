@@ -29,7 +29,7 @@ int32_t cam_actuator_parse_dt(struct cam_actuator_ctrl_t *a_ctrl,
 	rc = cam_soc_util_get_dt_properties(soc_info);
 	if (rc < 0) {
 		CAM_ERR(CAM_ACTUATOR, "parsing common soc dt(rc %d)", rc);
-		return rc;
+		goto error;
 	}
 
 	of_node = soc_info->dev->of_node;
@@ -44,7 +44,7 @@ int32_t cam_actuator_parse_dt(struct cam_actuator_ctrl_t *a_ctrl,
 				"Wrong info: rc: %d, dt CCI master:%d",
 				rc, a_ctrl->cci_i2c_master);
 			rc = -EFAULT;
-			return rc;
+			goto error;
 		}
 
 		of_parent = of_get_parent(of_node);
@@ -64,14 +64,20 @@ int32_t cam_actuator_parse_dt(struct cam_actuator_ctrl_t *a_ctrl,
 
 	if (!soc_info->gpio_data->cam_gpio_common_tbl_size) {
 		CAM_INFO(CAM_ACTUATOR, "No GPIO found");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto error;
 	}
 
 	rc = cam_sensor_util_init_gpio_pin_tbl(soc_info,
 		&power_info->gpio_num_info);
 	if ((rc < 0) || (!power_info->gpio_num_info)) {
 		CAM_ERR(CAM_ACTUATOR, "No/Error Actuator GPIOs");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto error;
 	}
+	return rc;
+
+error:
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 	return rc;
 }

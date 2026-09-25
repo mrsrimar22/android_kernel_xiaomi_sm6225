@@ -108,6 +108,8 @@ static int cam_custom_dev_remove(struct platform_device *pdev)
 	if (rc)
 		CAM_ERR(CAM_CUSTOM, "Unregister failed");
 
+	cam_custom_hw_mgr_deinit();
+	mutex_destroy(&g_custom_dev.custom_dev_mutex);
 	memset(&g_custom_dev, 0, sizeof(g_custom_dev));
 	return 0;
 }
@@ -146,7 +148,7 @@ static int cam_custom_dev_probe(struct platform_device *pdev)
 			i);
 		if (rc) {
 			CAM_ERR(CAM_CUSTOM, "Custom context init failed!");
-			goto unregister;
+			goto deinit_ctx;
 		}
 	}
 
@@ -154,7 +156,7 @@ static int cam_custom_dev_probe(struct platform_device *pdev)
 		CAM_CUSTOM_HW_MAX_INSTANCES, CAM_CUSTOM_DEV_NAME);
 	if (rc) {
 		CAM_ERR(CAM_CUSTOM, "Custom HW node init failed!");
-		goto unregister;
+		goto deinit_ctx;
 	}
 
 	cam_smmu_set_client_page_fault_handler(iommu_hdl,
@@ -165,6 +167,10 @@ static int cam_custom_dev_probe(struct platform_device *pdev)
 	CAM_DBG(CAM_CUSTOM, "Camera custom HW probe complete");
 
 	return 0;
+deinit_ctx:
+	for (--i; i >= 0; i--)
+		cam_custom_dev_context_deinit(&g_custom_dev.ctx_custom[i]);
+	cam_custom_hw_mgr_deinit();
 unregister:
 	rc = cam_subdev_remove(&g_custom_dev.sd);
 err:

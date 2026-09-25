@@ -43,7 +43,6 @@ enum cam_subdev_rwsem {
  * @ent_function:          Media entity function type. Can be:
  *                             %CAM_IFE_DEVICE_TYPE - identifies as IFE device.
  *                             %CAM_ICP_DEVICE_TYPE - identifies as ICP device.
- * @msg_cb:                Pointer to the callback function to dump PHY status.
  *
  * Each instance of a subdev driver should create this struct, either
  * stand-alone or embedded in a larger struct. This structure should be
@@ -60,24 +59,24 @@ struct cam_subdev {
 	void                                  *token;
 	u32                                    ent_function;
 	void                                  (*msg_cb)(
-				struct v4l2_subdev *sd,
-				enum cam_subdev_message_type_t msg_type,
-				uint32_t data);
+					struct v4l2_subdev *sd,
+					enum cam_subdev_message_type_t msg_type,
+					uint32_t data);
 };
 
 /**
-  * cam_subdev_notify_message()
-  *
-  * @brief:  Notify message to a subdevs of specific type
-  *
-  * @subdev_type:           Subdev type
-  * @message_type:          message type
-  * @data:                  data to be delivered.
-  *
-  */
+ * cam_subdev_notify_message()
+ *
+ * @brief:  Notify message to a subdevs of specific type
+ *
+ * @subdev_type:           Subdev type
+ * @message_type:          message type
+ * @data:                  data to be delivered.
+ *
+ */
 void cam_subdev_notify_message(u32 subdev_type,
-	enum cam_subdev_message_type_t message_type,
-	uint32_t data);
+		enum cam_subdev_message_type_t message_type,
+		uint32_t data);
 
 /**
  * cam_subdev_probe()

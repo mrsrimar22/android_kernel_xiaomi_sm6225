@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_actuator_dev.h"
@@ -72,25 +72,6 @@ static long cam_actuator_init_subdev_do_ioctl(struct v4l2_subdev *sd,
 }
 #endif
 
-static int cam_actuator_subdev_open(struct v4l2_subdev *sd,
-	struct v4l2_subdev_fh *fh)
-{
-	struct cam_actuator_ctrl_t *a_ctrl =
-		v4l2_get_subdevdata(sd);
-
-	if (!a_ctrl) {
-		CAM_ERR(CAM_ACTUATOR, "a_ctrl ptr is NULL");
-		return -EINVAL;
-	}
-
-	mutex_lock(&(a_ctrl->actuator_mutex));
-	a_ctrl->open_cnt++;
-	CAM_DBG(CAM_ACTUATOR, "actuator_dev open count %d", a_ctrl->open_cnt);
-	mutex_unlock(&(a_ctrl->actuator_mutex));
-
-	return 0;
-}
-
 static int cam_actuator_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
@@ -103,14 +84,7 @@ static int cam_actuator_subdev_close(struct v4l2_subdev *sd,
 	}
 
 	mutex_lock(&(a_ctrl->actuator_mutex));
-	if (a_ctrl->open_cnt <= 0) {
-		mutex_unlock(&(a_ctrl->actuator_mutex));
-		return -EINVAL;
-	}
-	a_ctrl->open_cnt--;
-	CAM_DBG(CAM_ACTUATOR, "actuator_dev open count %d", a_ctrl->open_cnt);
-	if (a_ctrl->open_cnt == 0)
-		cam_actuator_shutdown(a_ctrl);
+	cam_actuator_shutdown(a_ctrl);
 	mutex_unlock(&(a_ctrl->actuator_mutex));
 
 	return 0;
@@ -128,7 +102,6 @@ static struct v4l2_subdev_ops cam_actuator_subdev_ops = {
 };
 
 static const struct v4l2_subdev_internal_ops cam_actuator_internal_ops = {
-	.open  = cam_actuator_subdev_open,
 	.close = cam_actuator_subdev_close,
 };
 
@@ -140,7 +113,7 @@ static int cam_actuator_init_subdev(struct cam_actuator_ctrl_t *a_ctrl)
 		&cam_actuator_internal_ops;
 	a_ctrl->v4l2_dev_str.ops =
 		&cam_actuator_subdev_ops;
-	strlcpy(a_ctrl->device_name, CAMX_ACTUATOR_DEV_NAME,
+	strscpy(a_ctrl->device_name, CAMX_ACTUATOR_DEV_NAME,
 		sizeof(a_ctrl->device_name));
 	a_ctrl->v4l2_dev_str.name =
 		a_ctrl->device_name;
@@ -208,7 +181,7 @@ static int32_t cam_actuator_driver_i2c_probe(struct i2c_client *client,
 
 	rc = cam_actuator_init_subdev(a_ctrl);
 	if (rc)
-		goto free_soc;
+		goto free_subdev;
 
 	if (soc_private->i2c_info.slave_addr != 0)
 		a_ctrl->io_master_info.client->addr =
@@ -237,12 +210,13 @@ static int32_t cam_actuator_driver_i2c_probe(struct i2c_client *client,
 		cam_actuator_apply_request;
 	a_ctrl->last_flush_req = 0;
 	a_ctrl->cam_act_state = CAM_ACTUATOR_INIT;
-	a_ctrl->open_cnt = 0;
 
 	return rc;
 
 unreg_subdev:
 	cam_unregister_subdev(&(a_ctrl->v4l2_dev_str));
+free_subdev:
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 free_soc:
 	kfree(soc_private);
 free_ctrl:
@@ -281,6 +255,7 @@ static int32_t cam_actuator_platform_remove(struct platform_device *pdev)
 	a_ctrl->i2c_data.per_frame = NULL;
 	v4l2_set_subdevdata(&a_ctrl->v4l2_dev_str.sd, NULL);
 	platform_set_drvdata(pdev, NULL);
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 	devm_kfree(&pdev->dev, a_ctrl);
 
 	return rc;
@@ -313,6 +288,7 @@ static int32_t cam_actuator_driver_i2c_remove(struct i2c_client *client)
 	a_ctrl->i2c_data.per_frame = NULL;
 	a_ctrl->soc_info.soc_private = NULL;
 	v4l2_set_subdevdata(&a_ctrl->v4l2_dev_str.sd, NULL);
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 	kfree(a_ctrl);
 
 	return 0;
@@ -384,7 +360,7 @@ static int32_t cam_actuator_driver_platform_probe(
 
 	rc = cam_actuator_init_subdev(a_ctrl);
 	if (rc)
-		goto free_mem;
+		goto free_subdev;
 
 	a_ctrl->bridge_intf.device_hdl = -1;
 	a_ctrl->bridge_intf.link_hdl = -1;
@@ -400,10 +376,11 @@ static int32_t cam_actuator_driver_platform_probe(
 
 	platform_set_drvdata(pdev, a_ctrl);
 	a_ctrl->cam_act_state = CAM_ACTUATOR_INIT;
-	a_ctrl->open_cnt = 0;
 
 	return rc;
 
+free_subdev:
+	mutex_destroy(&(a_ctrl->actuator_mutex));
 free_mem:
 	kfree(a_ctrl->i2c_data.per_frame);
 free_soc:

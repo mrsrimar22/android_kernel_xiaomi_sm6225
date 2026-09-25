@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -96,8 +96,9 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 
 	ctx = cam_node_get_ctxt_from_free_list(node);
 	if (!ctx) {
-		CAM_ERR(CAM_CORE, "No free ctx in free list node %s",
-			node->name);
+		CAM_ERR(CAM_CORE,
+			"No free ctx in free list node %s with size:%d",
+			node->name, node->ctx_size);
 		cam_node_print_ctx_state(node);
 
 		rc = -ENOMEM;
@@ -629,8 +630,13 @@ static int __cam_node_crm_dump_req(struct cam_req_mgr_dump_info *dump)
 
 int cam_node_deinit(struct cam_node *node)
 {
-	if (node)
+	if (node) {
+		if (node->state == CAM_NODE_STATE_INIT) {
+			mutex_destroy(&node->list_mutex);
+			node->state = CAM_NODE_STATE_UNINIT;
+		}
 		memset(node, 0, sizeof(*node));
+	}
 
 	CAM_DBG(CAM_CORE, "deinit complete");
 
@@ -674,7 +680,7 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 
 	memset(node, 0, sizeof(*node));
 
-	strlcpy(node->name, name, sizeof(node->name));
+	strscpy(node->name, name, sizeof(node->name));
 
 	memcpy(&node->hw_mgr_intf, hw_mgr_intf, sizeof(node->hw_mgr_intf));
 	node->crm_node_intf.apply_req = __cam_node_crm_apply_req;
@@ -701,7 +707,9 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 	}
 
 	node->state = CAM_NODE_STATE_INIT;
+	return 0;
 err:
+	mutex_destroy(&node->list_mutex);
 	CAM_DBG(CAM_CORE, "Exit. (rc = %d)", rc);
 	return rc;
 }
@@ -796,14 +804,14 @@ int cam_node_handle_ioctl(struct cam_node *node, struct cam_control *cmd)
 			rc = __cam_node_handle_acquire_hw_v1(node, acquire_ptr);
 			if (rc) {
 				CAM_ERR(CAM_CORE,
-					"acquire device failed(rc = %d)", rc);
+					"acquire hw failed(rc = %d)", rc);
 				goto acquire_kfree;
 			}
 		} else if (api_version == 2) {
 			rc = __cam_node_handle_acquire_hw_v2(node, acquire_ptr);
 			if (rc) {
 				CAM_ERR(CAM_CORE,
-					"acquire device failed(rc = %d)", rc);
+					"acquire hw failed(rc = %d)", rc);
 				goto acquire_kfree;
 			}
 		}

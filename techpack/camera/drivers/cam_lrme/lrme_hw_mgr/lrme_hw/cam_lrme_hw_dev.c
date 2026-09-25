@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/platform_device.h>
@@ -46,13 +46,14 @@ static int cam_lrme_hw_dev_util_cdm_acquire(struct cam_lrme_core *lrme_core,
 	}
 
 	memset(&cdm_acquire, 0, sizeof(cdm_acquire));
-	strlcpy(cdm_acquire.identifier, "lrmecdm", sizeof("lrmecdm"));
+	strscpy(cdm_acquire.identifier, "lrmecdm", sizeof(cdm_acquire.identifier));
 	cdm_acquire.cell_index = lrme_hw->soc_info.index;
 	cdm_acquire.handle = 0;
 	cdm_acquire.userdata = hw_cdm_info;
 	cdm_acquire.cam_cdm_callback = NULL;
 	cdm_acquire.id = CAM_CDM_VIRTUAL;
 	cdm_acquire.base_array_cnt = lrme_hw->soc_info.num_reg_map;
+	cdm_acquire.priority = CAM_CDM_BL_FIFO_0;
 	for (i = 0; i < lrme_hw->soc_info.num_reg_map; i++)
 		cdm_acquire.base_array[i] = &lrme_hw->soc_info.reg_map[i];
 
@@ -74,11 +75,6 @@ error:
 	kfree(cdm_cmd);
 	kfree(hw_cdm_info);
 	return rc;
-}
-
-static void cam_req_mgr_process_workq_cam_lrme_hw_worker(struct work_struct *w)
-{
-	cam_req_mgr_process_workq(w);
 }
 
 static int cam_lrme_hw_dev_probe(struct platform_device *pdev)
@@ -118,11 +114,10 @@ static int cam_lrme_hw_dev_probe(struct platform_device *pdev)
 
 	rc = cam_req_mgr_workq_create("cam_lrme_hw_worker",
 		CAM_LRME_HW_WORKQ_NUM_TASK,
-		&lrme_core->work, CRM_WORKQ_USAGE_IRQ, 0, false,
-		cam_req_mgr_process_workq_cam_lrme_hw_worker);
+		&lrme_core->work, CRM_WORKQ_USAGE_IRQ, 0);
 	if (rc) {
 		CAM_ERR(CAM_LRME, "Unable to create a workq, rc=%d", rc);
-		goto free_memory;
+		goto destroy_hw_mutex;
 	}
 
 	for (i = 0; i < CAM_LRME_HW_WORKQ_NUM_TASK; i++)
@@ -223,11 +218,11 @@ release_cdm:
 deinit_platform_res:
 	if (cam_lrme_soc_deinit_resources(&lrme_hw->soc_info))
 		CAM_ERR(CAM_LRME, "Failed in soc deinit");
-	mutex_destroy(&lrme_hw->hw_mutex);
 destroy_workqueue:
 	cam_req_mgr_workq_destroy(&lrme_core->work);
-free_memory:
+destroy_hw_mutex:
 	mutex_destroy(&lrme_hw->hw_mutex);
+free_memory:
 	kfree(lrme_hw);
 	kfree(lrme_core);
 
@@ -259,6 +254,7 @@ static int cam_lrme_hw_dev_remove(struct platform_device *pdev)
 
 	kfree(lrme_core->hw_cdm_info->cdm_cmd);
 	kfree(lrme_core->hw_cdm_info);
+	cam_req_mgr_workq_destroy(&lrme_core->work);
 	kfree(lrme_core);
 
 deinit_platform_res:

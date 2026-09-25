@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -1030,53 +1030,6 @@ static int cam_soc_util_get_dt_gpio_req_tbl(struct device_node *of_node,
 			gconf->cam_gpio_req_tbl[i].label);
 	}
 
-	if (!of_get_property(of_node, "gpio-req-tbl-delay", &count)) {
-		CAM_DBG(CAM_UTIL, "no gpio-req-tbl-delay");
-		kfree(val_array);
-		return rc;
-	}
-
-	count /= sizeof(uint32_t);
-	if (!count) {
-		CAM_ERR(CAM_UTIL, "Invalid gpio count for gpio-req-tbl-delay");
-		kfree(val_array);
-		return rc;
-	}
-
-	if (count != gconf->cam_gpio_req_tbl_size) {
-		CAM_ERR(CAM_UTIL,
-			"Invalid number of gpio-req-tbl-delay entries: %d",
-			count);
-		goto free_val_array;
-	}
-
-	gconf->gpio_delay_tbl = kcalloc(count, sizeof(uint32_t),
-		GFP_KERNEL);
-	if (!gconf->gpio_delay_tbl) {
-		CAM_ERR(CAM_UTIL,
-			"Failed to allocate memory for gpio_delay_tbl");
-		rc = -ENOMEM;
-		goto free_val_array;
-	}
-
-	gconf->gpio_delay_tbl_size = count;
-
-	rc = of_property_read_u32_array(of_node, "gpio-req-tbl-delay",
-		val_array, count);
-	if (rc) {
-		CAM_ERR(CAM_UTIL, "Failed to read gpio-req-tbl-delay entry");
-		kfree(gconf->gpio_delay_tbl);
-		gconf->gpio_delay_tbl_size = 0;
-		kfree(val_array);
-		return rc;
-	}
-
-	for (i = 0; i < count; i++) {
-		gconf->gpio_delay_tbl[i] = val_array[i];
-		CAM_DBG(CAM_UTIL, "gpio_delay_tbl[%d] = %ld", i,
-			gconf->gpio_delay_tbl[i]);
-	}
-
 	kfree(val_array);
 
 	return rc;
@@ -1327,6 +1280,10 @@ int cam_soc_util_get_dt_properties(struct cam_hw_soc_info *soc_info)
 			return rc;
 		}
 	}
+
+	rc = of_property_read_string(of_node, "label", &soc_info->label_name);
+	if (rc)
+		CAM_DBG(CAM_UTIL, "Label is not available in the node: %d", rc);
 
 	if (soc_info->num_mem_block > 0) {
 		rc = of_property_read_u32_array(of_node, "reg-cam-base",
@@ -1874,7 +1831,7 @@ static int cam_soc_util_dump_cont_reg_range(
 	if (!soc_info || !dump_out_buf || !reg_read || !cmd_buf_end) {
 		CAM_ERR(CAM_UTIL,
 			"Invalid input args soc_info: %pK, dump_out_buffer: %pK reg_read: %pK cmd_buf_end: %pK",
-			soc_info, dump_out_buf, reg_read, cmd_buf_end);
+			soc_info, dump_out_buf, reg_read, (void *)cmd_buf_end);
 		rc = -EINVAL;
 		goto end;
 	}
@@ -1897,8 +1854,8 @@ static int cam_soc_util_dump_cont_reg_range(
 		(reg_read->num_values * 2 * sizeof(uint32_t)))) {
 		CAM_ERR(CAM_UTIL,
 			"Insufficient space in out buffer num_values: [%d] cmd_buf_end: %pK dump_out_buf: %pK",
-			reg_read->num_values, cmd_buf_end,
-			(uintptr_t)dump_out_buf);
+			reg_read->num_values, (void *)cmd_buf_end,
+			dump_out_buf);
 		rc = -EINVAL;
 		goto end;
 	}
@@ -1908,7 +1865,7 @@ static int cam_soc_util_dump_cont_reg_range(
 		if ((reg_read->offset + (i * sizeof(uint32_t))) >
 			(uint32_t)soc_info->reg_map[base_idx].size) {
 			CAM_ERR(CAM_UTIL,
-				"Reg offset out of range, offset: 0x%X reg_map size: 0x%X",
+				"Reg offset out of range, offset: 0x%lX reg_map size: 0x%X",
 				(reg_read->offset + (i * sizeof(uint32_t))),
 				(uint32_t)soc_info->reg_map[base_idx].size);
 			rc = -EINVAL;
@@ -1979,8 +1936,8 @@ static int cam_soc_util_dump_dmi_reg_range(
 		CAM_ERR(CAM_UTIL,
 			"Insufficient space in out buffer num_read_val: [%d] num_write_val: [%d] cmd_buf_end: %pK dump_out_buf: %pK",
 			dmi_read->dmi_data_read.num_values,
-			dmi_read->num_pre_writes, cmd_buf_end,
-			(uintptr_t)dump_out_buf);
+			dmi_read->num_pre_writes, (void *)cmd_buf_end,
+			dump_out_buf);
 		rc = -EINVAL;
 		goto end;
 	}
@@ -2232,7 +2189,7 @@ static int cam_soc_util_dump_cont_reg_range_user_buf(
 		if ((reg_read->offset + (i * sizeof(uint32_t))) >
 			(uint32_t)soc_info->reg_map[base_idx].size) {
 			CAM_ERR(CAM_UTIL,
-				"Reg offset out of range, offset: 0x%X reg_map size: 0x%X",
+				"Reg offset out of range, offset: 0x%lX reg_map size: 0x%X",
 				(reg_read->offset + (i * sizeof(uint32_t))),
 				(uint32_t)soc_info->reg_map[base_idx].size);
 			rc = -EINVAL;
@@ -2412,8 +2369,8 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 			reg_input_info->dump_set_offsets[i]) {
 			CAM_ERR(CAM_UTIL,
 				"Invalid dump set offset: [%pK], cmd_buf_start: [%pK] cmd_in_data_end: [%pK]",
-				(uintptr_t)reg_input_info->dump_set_offsets[i],
-				cmd_buf_start, cmd_in_data_end);
+				(void *)(uintptr_t)reg_input_info->dump_set_offsets[i],
+				(void *)cmd_buf_start, (void *)cmd_in_data_end);
 			rc = -EINVAL;
 			goto end;
 		}
@@ -2449,8 +2406,8 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 			sizeof(struct cam_reg_dump_out_buffer))) {
 			CAM_ERR(CAM_UTIL,
 				"Invalid out buffer offset: [%pK],  cmd_buf_start: [%pK] cmd_buf_end: [%pK]",
-				(uintptr_t)reg_dump_desc->dump_buffer_offset,
-				cmd_buf_start, cmd_buf_end);
+				(void *)(uintptr_t)reg_dump_desc->dump_buffer_offset,
+				(void *)cmd_buf_start, (void *)cmd_buf_end);
 			rc = -EINVAL;
 			goto end;
 		}
@@ -2496,7 +2453,7 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 			rc = cam_soc_util_user_reg_dump(reg_dump_desc,
 				soc_dump_args, soc_info, reg_base_idx);
 			CAM_INFO(CAM_UTIL,
-				"%s reg_base_idx %d dumped offset %u",
+				"%s reg_base_idx %d dumped offset %zu",
 				soc_info->dev_name, reg_base_idx,
 				soc_dump_args->offset);
 			goto end;
