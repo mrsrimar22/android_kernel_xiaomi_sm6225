@@ -935,13 +935,22 @@ static void thermal_release(struct device *dev)
 			    sizeof("cooling_device") - 1)) {
 		cdev = to_cooling_device(dev);
 		kfree(cdev);
+	} else if (!strncmp(dev_name(dev), "thermal_message",
+			    sizeof("thermal_message") - 1)) {
+		/*
+		 * Device created by the thermal_message platform driver via
+		 * device_create_with_groups(); drvdata is devm-managed, only
+		 * the embedded struct device has to be released here.
+		 */
+		kfree(dev);
 	}
 }
 
-static struct class thermal_class = {
+struct class thermal_class = {
 	.name = "thermal",
 	.dev_release = thermal_release,
 };
+EXPORT_SYMBOL_GPL(thermal_class);
 
 static inline
 void print_bind_err_msg(struct thermal_zone_device *tz,
