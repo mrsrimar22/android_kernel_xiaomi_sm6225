@@ -49,6 +49,9 @@ struct thermal_instance {
 #define to_cooling_device(_dev)	\
 	container_of(_dev, struct thermal_cooling_device, device)
 
+/* Thermal class, shared by the core and platform thermal devices */
+extern struct class thermal_class;
+
 int thermal_register_governor(struct thermal_governor *);
 void thermal_unregister_governor(struct thermal_governor *);
 void thermal_zone_device_rebind_exception(struct thermal_zone_device *,
