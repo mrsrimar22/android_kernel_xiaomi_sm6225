@@ -173,3 +173,16 @@ config QTI_THERMAL_QFPROM
 	  set or not. It supports to check multiple nvmem cell value for
 	  multiple condtion. In that case, if any of the nvmem-cell condition
 	  fails, driver just exits with default enabled thermal zones.
+
+config QTI_THERMAL_MESSAGE
+	bool "Xiaomi thermal message sysfs driver"
+	depends on THERMAL && ARCH_QCOM
+	depends on DRM_PANEL
+	default y
+	help
+	  Exposes the "thermal_message" sysfs node backed by the
+	  "thermal-message" device tree node. It provides per-app thermal
+	  configuration knobs (cpu_limits, sconfig, boost, temp_state,
+	  board/ambient sensor) used by the Xiaomi thermal HAL.
+
+	  Panel readiness is handled through the standard -EPROBE_DEFER path.
