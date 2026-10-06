@@ -781,7 +781,9 @@ KBUILD_CFLAGS   += $(call cc-option, -gsplit-dwarf, -g)
 else
 KBUILD_CFLAGS	+= -g
 endif
-ifeq ($(LLVM_IAS),1)
+ifeq ($(cc-name)$(LLVM_IAS),clang0)
+KBUILD_AFLAGS	+= -Wa,-gdwarf-2
+else ifeq ($(cc-name),clang)
 KBUILD_AFLAGS	+= -g
 else
 KBUILD_AFLAGS	+= -Wa,-gdwarf-2
@@ -790,6 +792,11 @@ endif
 
 ifdef CONFIG_DEBUG_INFO_DWARF4
 KBUILD_CFLAGS	+= $(call cc-option, -gdwarf-4,)
+ifneq ($(cc-name)$(LLVM_IAS),clang0)
+ifeq ($(cc-name),clang)
+KBUILD_AFLAGS	+= -gdwarf-4
+endif
+endif
 endif
 
 ifdef CONFIG_DEBUG_INFO_REDUCED
