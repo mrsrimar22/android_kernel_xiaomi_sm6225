@@ -1354,6 +1354,7 @@
 		qcom,aux-minidump-ids = <4>;
 		qcom,complete-ramdump;
 		qcom,sequential-fw-load;
+		qcom,ignore-ssr-failure;
 
 		/* Inputs from mss */
 		interrupts-extended = <&intc 0 307 1>,
