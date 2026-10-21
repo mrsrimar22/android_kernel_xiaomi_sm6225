@@ -1163,7 +1163,7 @@ err:
 	spin_unlock_irqrestore(&track->s_lock, flags);
 }
 
-static void __subsystem_restart_dev(struct subsys_device *dev)
+static void __subsystem_restart_dev(struct subsys_device *dev, int level)
 {
 	struct subsys_desc *desc = dev->desc;
 	const char *name = dev->desc->name;
@@ -1171,7 +1171,7 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 	unsigned long flags;
 
 	pr_debug("Restarting %s [level=%s]!\n", desc->name,
-			restart_levels[dev->restart_level]);
+			restart_levels[level]);
 
 	track = subsys_get_track(dev);
 	/*
@@ -1212,6 +1212,7 @@ static void device_restart_work_hdlr(struct work_struct *work)
 int subsystem_restart_dev(struct subsys_device *dev)
 {
 	const char *name;
+	int level;
 
 	if (!get_device(&dev->dev))
 		return -ENODEV;
@@ -1236,8 +1237,19 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		return -EBUSY;
 	}
 
+	level = dev->restart_level;
+
+	/*
+	 * Modem restarts frequently while the device is online
+	 * (e.g. after resume). Keep it on the RELATED restart level
+	 * so that it recovers through SSR instead of
+	 * forcing a full SYSTEM reset (SoC panic).
+	 */
+	if (!strcmp(name, "modem"))
+		level = RESET_SUBSYS_COUPLED;
+
 	pr_info("Restart sequence requested for %s, restart_level = %s.\n",
-		name, restart_levels[dev->restart_level]);
+		name, restart_levels[level]);
 
 	if (disable_restart_work == DISABLE_SSR) {
 		pr_warn("subsys-restart: Ignoring restart request for %s\n",
@@ -1245,10 +1257,10 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		return 0;
 	}
 
-	switch (dev->restart_level) {
+	switch (level) {
 
 	case RESET_SUBSYS_COUPLED:
-		__subsystem_restart_dev(dev);
+		__subsystem_restart_dev(dev, level);
 		break;
 	case RESET_SOC:
 		__pm_stay_awake(dev->ssr_wlock);
