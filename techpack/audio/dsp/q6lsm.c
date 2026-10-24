@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2020, Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/fs.h>
 #include <linux/mutex.h>
@@ -268,7 +268,7 @@ done:
 		case LSM_SESSION_CMD_SET_PARAMS_V3:
 		case LSM_SESSION_CMD_GET_PARAMS_V2:
 		case LSM_SESSION_CMD_GET_PARAMS_V3:
-			if (token != client->session &&
+			if (token != client->session && payload != NULL &&
 			    payload[0] != LSM_SESSION_CMD_DEREGISTER_SOUND_MODEL) {
 				pr_err("%s: Invalid session %d receivced expected %d\n",
 					__func__, token, client->session);
@@ -2036,15 +2036,14 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
 		lsm_common.set_custom_topology = 1;
 		return 0;
 	}
-	
+
 	/*
 	The payload_size can be either 4 or 8 bytes.
 	It has to be verified whether the payload_size is
 	atleast 4 bytes. If it is less, returns errorcode.
 
-	The opcode for 4 bytes is 0x12A80
+	The opcode for 4 bytes is 0x12A80.
 	The opcode for 8 bytes is 0x110E8.
-	 
 	*/
 
 	if (data->payload_size < (2 * sizeof(uint16_t))) {
