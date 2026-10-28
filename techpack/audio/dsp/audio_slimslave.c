@@ -18,29 +18,14 @@ static int vote_count;
 struct mutex suspend_lock;
 bool suspend;
 
+/* runtime PM vote is owned by the VOTE/UNVOTE ioctls */
 static int audio_slim_open(struct inode *inode, struct file *file)
 {
-	if (vote_count) {
-		pr_debug("%s: unvote: vote_count=%d\n", __func__, vote_count);
-		pm_runtime_mark_last_busy(slim->dev.parent);
-		pm_runtime_put(slim->dev.parent);
-		vote_count--;
-	}
 	return 0;
 };
 
 static int audio_slim_release(struct inode *inode, struct file *file)
 {
-	if (vote_count) {
-		pr_debug("%s: unvote: vote_count=%d\n", __func__, vote_count);
-		pm_runtime_mark_last_busy(slim->dev.parent);
-		pm_runtime_put(slim->dev.parent);
-		vote_count--;
-	} else {
-		pr_debug("%s: vote: vote_count=%d\n", __func__, vote_count);
-		pm_runtime_get_sync(slim->dev.parent);
-		vote_count++;
-	}
 	return 0;
 };
 
@@ -104,6 +89,14 @@ static int audio_slimslave_probe(struct slim_device *audio_slim)
 static int audio_slimslave_remove(struct slim_device *audio_slim)
 {
 	misc_deregister(&audio_slimslave_misc);
+
+	mutex_lock(&suspend_lock);
+	if (vote_count) {
+		pm_runtime_mark_last_busy(slim->dev.parent);
+		pm_runtime_put(slim->dev.parent);
+		vote_count = 0;
+	}
+	mutex_unlock(&suspend_lock);
 	return 0;
 }
 
