@@ -297,9 +297,11 @@ static int sde_rotator_update_clk(struct sde_rot_mgr *mgr)
 	unsigned long clk_rate, total_clk_rate;
 
 	total_clk_rate = 0;
-	list_for_each_entry(priv, &mgr->file_list, list) {
-		clk_rate = sde_rotator_clk_rate_calc(mgr, priv);
-		total_clk_rate += clk_rate;
+	if (!atomic_read(&mgr->device_suspended)) {
+		list_for_each_entry(priv, &mgr->file_list, list) {
+			clk_rate = sde_rotator_clk_rate_calc(mgr, priv);
+			total_clk_rate += clk_rate;
+		}
 	}
 
 	SDEROT_DBG("core_clk %lu\n", total_clk_rate);
@@ -389,6 +391,8 @@ int sde_rotator_clk_ctrl(struct sde_rot_mgr *mgr, int enable)
 			mgr->rot_enable_clk_cnt--;
 			if (mgr->rot_enable_clk_cnt == 0)
 				changed++;
+		} else if (mgr->pm_rot_enable_clk_cnt) {
+			mgr->pm_rot_enable_clk_cnt--;
 		} else {
 			SDEROT_ERR("Can not be turned off\n");
 		}
@@ -3422,6 +3426,7 @@ int sde_rotator_runtime_idle(struct device *dev)
 int sde_rotator_pm_suspend(struct device *dev)
 {
 	struct sde_rot_mgr *mgr;
+	int i;
 
 	mgr = sde_rot_mgr_from_device(dev);
 
@@ -3436,8 +3441,19 @@ int sde_rotator_pm_suspend(struct device *dev)
 	sde_rotator_suspend_cancel_rot_work(mgr);
 	mgr->minimum_bw_vote = 0;
 	sde_rotator_update_perf(mgr);
+
+	mgr->pm_rot_enable_clk_cnt = mgr->rot_enable_clk_cnt;
+	if (mgr->pm_rot_enable_clk_cnt) {
+		for (i = 0; i < mgr->pm_rot_enable_clk_cnt; i++)
+			sde_rotator_clk_ctrl(mgr, false);
+
+		sde_rotator_update_clk(mgr);
+	}
+
 	ATRACE_END("pm_active");
-	SDEROT_DBG("end pm active %d\n", atomic_read(&mgr->device_suspended));
+	SDEROT_DBG("end pm active %d clk_cnt %d\n",
+		   atomic_read(&mgr->device_suspended),
+		   mgr->pm_rot_enable_clk_cnt);
 	sde_rot_mgr_unlock(mgr);
 	return 0;
 }
@@ -3449,6 +3465,7 @@ int sde_rotator_pm_suspend(struct device *dev)
 int sde_rotator_pm_resume(struct device *dev)
 {
 	struct sde_rot_mgr *mgr;
+	int i;
 
 	mgr = sde_rot_mgr_from_device(dev);
 
@@ -3468,10 +3485,23 @@ int sde_rotator_pm_resume(struct device *dev)
 	pm_runtime_enable(dev);
 
 	sde_rot_mgr_lock(mgr);
-	SDEROT_DBG("begin pm active %d\n", atomic_read(&mgr->device_suspended));
+	SDEROT_DBG("begin pm active %d clk_cnt %d\n",
+		   atomic_read(&mgr->device_suspended),
+		   mgr->pm_rot_enable_clk_cnt);
 	ATRACE_BEGIN("pm_active");
 	atomic_dec(&mgr->device_suspended);
 	sde_rotator_update_perf(mgr);
+
+	/* Restore the clocks that were disabled in sde_rotator_pm_suspend(). */
+	if (mgr->pm_rot_enable_clk_cnt) {
+		sde_rotator_update_clk(mgr);
+		for (i = 0; i < mgr->pm_rot_enable_clk_cnt; i++) {
+			if (sde_rotator_clk_ctrl(mgr, true))
+				break;
+		}
+	}
+
+	mgr->pm_rot_enable_clk_cnt = 0;
 	sde_rot_mgr_unlock(mgr);
 	return 0;
 }
