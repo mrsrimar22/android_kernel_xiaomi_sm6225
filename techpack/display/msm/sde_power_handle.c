@@ -576,16 +576,25 @@ int sde_power_resource_init(struct platform_device *pdev,
 		}
 	}
 
-	if (of_find_property(pdev->dev.of_node, "qcom,dss-cx-ipeak", NULL))
+	if (of_find_property(pdev->dev.of_node, "qcom,dss-cx-ipeak", NULL)) {
 		phandle->dss_cx_ipeak = cx_ipeak_register(pdev->dev.of_node,
 						"qcom,dss-cx-ipeak");
-	else
+		if (IS_ERR_OR_NULL(phandle->dss_cx_ipeak)) {
+			if (IS_ERR(phandle->dss_cx_ipeak))
+				pr_err("cx ipeak register failed rc=%ld\n",
+				       PTR_ERR(phandle->dss_cx_ipeak));
+			phandle->dss_cx_ipeak = NULL;
+		}
+	} else {
+		phandle->dss_cx_ipeak = NULL;
 		pr_debug("cx ipeak client parse failed\n");
+	}
 
 	INIT_LIST_HEAD(&phandle->event_list);
 
 	phandle->rsc_client = NULL;
 	phandle->rsc_client_init = false;
+	phandle->power_on = false;
 
 	phandle->dev = &pdev->dev;
 	mutex_init(&phandle->phandle_lock);
