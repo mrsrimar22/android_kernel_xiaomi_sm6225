@@ -1680,6 +1680,11 @@ port_fail:
 mem_fail:
 	/* cleanup  port reqs in error condition */
 	swrm_cleanup_disabled_port_reqs(master);
+	/* first-port reference is taken before the loop */
+	if (!swrm_is_port_en(master)) {
+		pm_runtime_mark_last_busy(swrm->dev);
+		pm_runtime_put_autosuspend(swrm->dev);
+	}
 	mutex_unlock(&swrm->mlock);
 	return ret;
 }
