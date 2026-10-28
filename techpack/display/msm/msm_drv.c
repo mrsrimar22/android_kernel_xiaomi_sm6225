@@ -2241,8 +2241,6 @@ static int msm_pdev_remove(struct platform_device *pdev)
 	component_master_del(&pdev->dev, &msm_drm_ops);
 	of_platform_depopulate(&pdev->dev);
 
-	msm_drm_unbind(&pdev->dev);
-	component_master_del(&pdev->dev, &msm_drm_ops);
 	return 0;
 }
 
