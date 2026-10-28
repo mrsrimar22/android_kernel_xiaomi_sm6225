@@ -1451,7 +1451,7 @@ int bolero_runtime_resume(struct device *dev)
 		if (ret < 0) {
 			dev_err(dev, "%s:lpass core hw enable failed\n",
 				__func__);
-			goto audio_vote;
+			goto err_unlock;
 		}
 	}
 	priv->core_hw_vote_count++;
@@ -1467,7 +1467,11 @@ audio_vote:
 		if (ret < 0) {
 			dev_err(dev, "%s:lpass audio hw enable failed\n",
 				__func__);
-			goto done;
+			if (priv->lpass_core_hw_vote != NULL &&
+			    --priv->core_hw_vote_count == 0)
+				digital_cdc_rsc_mgr_hw_vote_disable(
+						priv->lpass_core_hw_vote);
+			goto err_unlock;
 		}
 	}
 	priv->core_audio_vote_count++;
@@ -1476,6 +1480,10 @@ done:
 	mutex_unlock(&priv->vote_lock);
 	pm_runtime_set_autosuspend_delay(priv->dev, BOLERO_AUTO_SUSPEND_DELAY);
 	return 0;
+
+err_unlock:
+	mutex_unlock(&priv->vote_lock);
+	return ret;
 }
 EXPORT_SYMBOL(bolero_runtime_resume);
 
