@@ -340,6 +340,16 @@ int sde_rsc_mode2_exit(struct sde_rsc_priv *rsc, enum sde_rsc_state state)
 	int count, reg;
 	unsigned long power_status;
 
+	/* take the GDSC vote back before touching RSC */
+	if (!rsc->sw_fs_enabled) {
+		rc = regulator_enable(rsc->fs);
+		if (rc) {
+			pr_err("vdd reg enable failed rc:%d\n", rc);
+			return rc;
+		}
+		rsc->sw_fs_enabled = true;
+	}
+
 	rsc_event_trigger(rsc, SDE_RSC_EVENT_PRE_CORE_RESTORE);
 
 	/**
