@@ -364,7 +364,7 @@ static int msm_drm_uninit(struct device *dev)
 	struct drm_device *ddev = platform_get_drvdata(pdev);
 	struct msm_drm_private *priv = ddev->dev_private;
 	struct msm_kms *kms = priv->kms;
-	int i;
+	int i, ret;
 
 	/* clean up display commit/event worker threads */
 	for (i = 0; i < priv->num_crtcs; i++) {
@@ -396,7 +396,9 @@ static int msm_drm_uninit(struct device *dev)
 #endif
 	drm_mode_config_cleanup(ddev);
 
-	pm_runtime_get_sync(dev);
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0)
+		DRM_ERROR("failed to enable power: %d\n", ret);
 	drm_irq_uninstall(ddev);
 	pm_runtime_put_sync(dev);
 
@@ -961,7 +963,12 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 		drm_crtc_vblank_reset(crtc);
 
 	if (kms) {
-		pm_runtime_get_sync(dev);
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0) {
+			dev_err(dev, "failed to enable power: %d\n", ret);
+			pm_runtime_put_noidle(dev);
+			goto fail;
+		}
 		ret = drm_irq_install(ddev, platform_get_irq(pdev, 0));
 		pm_runtime_put_sync(dev);
 		if (ret < 0) {
