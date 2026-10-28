@@ -481,11 +481,22 @@ static int sde_rotator_resource_ctrl(struct sde_rot_mgr *mgr, int enable)
 	int ret;
 
 	if (enable) {
-		mgr->res_ref_cnt++;
 		ret = pm_runtime_get_sync(&mgr->pdev->dev);
+		if (ret < 0) {
+			pm_runtime_put_noidle(&mgr->pdev->dev);
+			SDEROT_ERR("failed to enable power resources %d\n", ret);
+			return ret;
+		}
+		mgr->res_ref_cnt++;
 	} else {
+		if (mgr->res_ref_cnt <= 0) {
+			SDEROT_ERR("unbalanced power resource release\n");
+			return -EINVAL;
+		}
 		mgr->res_ref_cnt--;
 		ret = pm_runtime_put_sync(&mgr->pdev->dev);
+		if (ret < 0)
+			SDEROT_ERR("failed to suspend rotator %d\n", ret);
 	}
 
 	SDEROT_DBG("%s: res_cnt=%d pm=%d enable=%d\n",
