@@ -1326,20 +1326,20 @@ static int va_macro_enable_micbias(struct snd_soc_dapm_widget *w,
 		if (ret) {
 			dev_err(va_dev, "%s: Setting voltage failed, err = %d\n",
 				__func__, ret);
-			return ret;
+			goto err_micb_user;
 		}
 		ret = regulator_set_load(va_priv->micb_supply,
 					 va_priv->micb_current);
 		if (ret) {
 			dev_err(va_dev, "%s: Setting current failed, err = %d\n",
 				__func__, ret);
-			return ret;
+			goto err_micb_volt;
 		}
 		ret = regulator_enable(va_priv->micb_supply);
 		if (ret) {
 			dev_err(va_dev, "%s: regulator enable failed, err = %d\n",
 				__func__, ret);
-			return ret;
+			goto err_micb_load;
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
@@ -1363,6 +1363,14 @@ static int va_macro_enable_micbias(struct snd_soc_dapm_widget *w,
 		break;
 	}
 	return 0;
+
+err_micb_load:
+	regulator_set_load(va_priv->micb_supply, 0);
+err_micb_volt:
+	regulator_set_voltage(va_priv->micb_supply, 0, va_priv->micb_voltage);
+err_micb_user:
+	va_priv->micb_users--;
+	return ret;
 }
 
 static inline int va_macro_path_get(const char *wname,
