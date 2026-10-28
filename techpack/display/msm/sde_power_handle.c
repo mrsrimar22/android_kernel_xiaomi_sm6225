@@ -945,11 +945,11 @@ u64 sde_power_clk_get_rate(struct sde_power_handle *phandle, char *clock_name)
 {
 	int i;
 	struct dss_module_power *mp;
-	u64 rate = -EINVAL;
+	u64 rate = 0;
 
 	if (!phandle) {
 		pr_err("invalid input power handle\n");
-		return -EINVAL;
+		return 0;
 	}
 	mp = &phandle->mp;
 

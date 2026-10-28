@@ -218,7 +218,7 @@ int sde_power_clk_set_rate(struct sde_power_handle *pdata, char *clock_name,
  * @pdata:  power handle containing the resources
  * @clock_name: clock name to get the rate
  *
- * Return: current clock rate
+ * Return: current clock rate, or 0 if the clock is not found
  */
 u64 sde_power_clk_get_rate(struct sde_power_handle *pdata, char *clock_name);
 
