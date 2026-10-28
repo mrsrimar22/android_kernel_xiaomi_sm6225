@@ -1023,15 +1023,23 @@ static int wsa881x_startup(struct wsa881x_pdata *pdata)
 	if (ret) {
 		pr_err("%s: gpio set cannot be activated %s\n",
 			__func__, "wsa_clk");
+		pdata->enable_cnt--;
 		return ret;
 	}
 	ret = clk_prepare_enable(pdata->wsa_mclk);
 	if (ret) {
 		pr_err("%s: WSA MCLK enable failed\n",
 			__func__);
+		msm_cdc_pinctrl_select_sleep_state(pdata->wsa_clk_gpio_p);
+		pdata->enable_cnt--;
 		return ret;
 	}
 	ret = wsa881x_reset(pdata, true);
+	if (ret) {
+		clk_disable_unprepare(pdata->wsa_mclk);
+		msm_cdc_pinctrl_select_sleep_state(pdata->wsa_clk_gpio_p);
+		pdata->enable_cnt--;
+	}
 	return ret;
 }
 
