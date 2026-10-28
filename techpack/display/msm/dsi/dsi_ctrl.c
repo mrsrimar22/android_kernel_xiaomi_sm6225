@@ -994,6 +994,16 @@ static int dsi_ctrl_update_link_freqs(struct dsi_ctrl *dsi_ctrl,
 	return rc;
 }
 
+static void dsi_ctrl_put_pm_ref(struct dsi_ctrl *dsi_ctrl)
+{
+	if (!dsi_ctrl->pm_ref)
+		return;
+
+	/* clear first: put() may suspend synchronously */
+	dsi_ctrl->pm_ref = false;
+	pm_runtime_put_sync(dsi_ctrl->drm_dev->dev);
+}
+
 static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 {
 	int rc = 0;
@@ -1007,13 +1017,14 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 				"Power resource enable failed, rc=%d\n", rc);
 			goto error;
 		}
+		dsi_ctrl->pm_ref = true;
 
 		if (!dsi_ctrl->current_state.host_initialized) {
 			rc = dsi_pwr_enable_regulator(
 				&dsi_ctrl->pwr_info.host_pwr, true);
 			if (rc) {
 				DSI_CTRL_ERR(dsi_ctrl, "failed to enable host power regs\n");
-				goto error_get_sync;
+				goto error_put_ref;
 			}
 		}
 
@@ -1022,11 +1033,7 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 		if (rc) {
 			DSI_CTRL_ERR(dsi_ctrl, "failed to enable gdsc, rc=%d\n",
 					rc);
-			(void)dsi_pwr_enable_regulator(
-						&dsi_ctrl->pwr_info.host_pwr,
-						false
-						);
-			goto error_get_sync;
+			goto error_disable_host_pwr;
 		}
 		return rc;
 	}
@@ -1036,7 +1043,7 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 	if (rc) {
 		DSI_CTRL_ERR(dsi_ctrl, "failed to disable gdsc, rc=%d\n",
 				rc);
-		goto error;
+		goto error_put_ref;
 	}
 
 	if (!dsi_ctrl->current_state.host_initialized) {
@@ -1044,14 +1051,18 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 			&dsi_ctrl->pwr_info.host_pwr, false);
 		if (rc) {
 			DSI_CTRL_ERR(dsi_ctrl, "failed to disable host power regs\n");
-			goto error;
+			goto error_put_ref;
 		}
 	}
-	pm_runtime_put_sync(dsi_ctrl->drm_dev->dev);
+
+	dsi_ctrl_put_pm_ref(dsi_ctrl);
 	return rc;
 
-error_get_sync:
-	pm_runtime_put_sync(dsi_ctrl->drm_dev->dev);
+error_disable_host_pwr:
+	if (!dsi_ctrl->current_state.host_initialized)
+		dsi_pwr_enable_regulator(&dsi_ctrl->pwr_info.host_pwr, false);
+error_put_ref:
+	dsi_ctrl_put_pm_ref(dsi_ctrl);
 error:
 	return rc;
 }

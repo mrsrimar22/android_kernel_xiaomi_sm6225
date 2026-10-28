@@ -266,6 +266,7 @@ struct dsi_ctrl {
 	struct link_clk_freq clk_freq;
 	struct dsi_ctrl_power_info pwr_info;
 	struct dsi_ctrl_bus_scale_info axi_bus_info;
+	bool pm_ref;	/* runtime PM reference held while supplies are on */
 
 	struct dsi_host_config host_config;
 	struct dsi_rect mode_bounds;
