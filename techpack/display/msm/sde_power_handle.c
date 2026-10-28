@@ -884,6 +884,8 @@ int sde_power_clk_set_rate(struct sde_power_handle *phandle, char *clock_name,
 	u64 rate)
 {
 	int i, rc = -EINVAL;
+	int cx_rc;
+	bool vote_applied;
 	struct dss_module_power *mp;
 	u64 prev_clk_rate, requested_clk_rate;
 
@@ -911,13 +913,26 @@ int sde_power_clk_set_rate(struct sde_power_handle *phandle, char *clock_name,
 
 			prev_clk_rate = mp->clk_config[i].rate;
 			requested_clk_rate = rate;
-			sde_cx_ipeak_vote(phandle, &mp->clk_config[i],
-				requested_clk_rate, prev_clk_rate, true);
+			vote_applied = phandle->dss_cx_ipeak &&
+				!strcmp("core_clk", mp->clk_config[i].clk_name) &&
+				mp->clk_config[i].max_rate &&
+				(requested_clk_rate ==
+					mp->clk_config[i].max_rate) &&
+				(prev_clk_rate != requested_clk_rate);
+			cx_rc = sde_cx_ipeak_vote(phandle, &mp->clk_config[i],
+						  requested_clk_rate,
+						  prev_clk_rate, true);
 			mp->clk_config[i].rate = rate;
 			rc = msm_dss_single_clk_set_rate(&mp->clk_config[i]);
-			if (!rc)
+			if (!rc) {
 				sde_cx_ipeak_vote(phandle, &mp->clk_config[i],
 				   requested_clk_rate, prev_clk_rate, false);
+			} else {
+				mp->clk_config[i].rate = prev_clk_rate;
+				if (vote_applied && !cx_rc)
+					cx_ipeak_update(phandle->dss_cx_ipeak,
+							false);
+			}
 			break;
 		}
 	}
