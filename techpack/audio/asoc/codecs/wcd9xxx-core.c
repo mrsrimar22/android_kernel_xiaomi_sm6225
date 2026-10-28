@@ -590,10 +590,15 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx)
 		wcd9xxx->core_res.intr_reg[i] =
 			wcd9xxx->codec_type->intr_reg[i];
 
-	wcd9xxx_core_res_init(&wcd9xxx->core_res,
-			      wcd9xxx->codec_type->num_irqs,
-			      wcd9xxx_num_irq_regs(wcd9xxx),
-			      wcd9xxx->regmap);
+	ret = wcd9xxx_core_res_init(&wcd9xxx->core_res,
+				      wcd9xxx->codec_type->num_irqs,
+				      wcd9xxx_num_irq_regs(wcd9xxx),
+				      wcd9xxx->regmap);
+	if (ret) {
+		dev_err(wcd9xxx->dev,
+			"Failed to init core resources: %d\n", ret);
+		goto fail_cdc_fill;
+	}
 
 	if (wcd9xxx_core_irq_init(&wcd9xxx->core_res))
 		goto err;
