@@ -1449,6 +1449,7 @@ static int msm_anlg_cdc_codec_enable_on_demand_supply(
 				dev_err(component->dev,
 					"Setting regulator voltage(en) for micbias with err = %d\n",
 					ret);
+				atomic_dec(&supply->ref);
 				goto out;
 			}
 			ret = regulator_set_load(supply->supply,
@@ -1457,9 +1458,18 @@ static int msm_anlg_cdc_codec_enable_on_demand_supply(
 				dev_err(component->dev,
 					"Setting regulator optimum mode(en) failed for micbias with err = %d\n",
 					ret);
+				regulator_set_voltage(supply->supply, 0,
+						      supply->max_uv);
+				atomic_dec(&supply->ref);
 				goto out;
 			}
 			ret = regulator_enable(supply->supply);
+			if (ret) {
+				regulator_set_load(supply->supply, 0);
+				regulator_set_voltage(supply->supply, 0,
+						      supply->max_uv);
+				atomic_dec(&supply->ref);
+			}
 		}
 		if (ret)
 			dev_err(component->dev, "%s: Failed to enable %s\n",

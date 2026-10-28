@@ -254,12 +254,15 @@ static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (atomic_inc_return(&supply->ref) == 1)
+		if (atomic_inc_return(&supply->ref) == 1) {
 			ret = regulator_enable(supply->supply);
-		if (ret)
-			dev_err(component->card->dev,
-				"%s: Failed to enable wsa switch supply\n",
-				__func__);
+			if (ret) {
+				atomic_dec(&supply->ref);
+				dev_err(component->card->dev,
+					"%s: Failed to enable wsa switch supply\n",
+					__func__);
+			}
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		if (atomic_read(&supply->ref) == 0) {
