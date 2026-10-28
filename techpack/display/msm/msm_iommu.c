@@ -42,7 +42,13 @@ static int msm_iommu_attach(struct msm_mmu *mmu, const char * const *names,
 	struct msm_iommu *iommu = to_msm_iommu(mmu);
 	int ret;
 
-	pm_runtime_get_sync(mmu->dev);
+	ret = pm_runtime_get_sync(mmu->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		pr_err("failed to resume iommu device: %d\n", ret);
+		return ret;
+	}
+
 	ret = iommu_attach_device(iommu->domain, mmu->dev);
 	pm_runtime_put_sync(mmu->dev);
 
@@ -53,8 +59,15 @@ static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
 			     int cnt)
 {
 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+	int ret;
 
-	pm_runtime_get_sync(mmu->dev);
+	ret = pm_runtime_get_sync(mmu->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		pr_err("failed to resume iommu device: %d\n", ret);
+		return;
+	}
+
 	iommu_detach_device(iommu->domain, mmu->dev);
 	pm_runtime_put_sync(mmu->dev);
 }
@@ -77,8 +90,15 @@ static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
 		struct sg_table *sgt, unsigned int len)
 {
 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+	int ret;
 
-	pm_runtime_get_sync(mmu->dev);
+	ret = pm_runtime_get_sync(mmu->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		pr_err("failed to resume iommu device: %d\n", ret);
+		return ret;
+	}
+
 	iommu_unmap(iommu->domain, iova, len);
 	pm_runtime_put_sync(mmu->dev);
 
