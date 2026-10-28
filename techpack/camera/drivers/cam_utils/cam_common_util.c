@@ -56,7 +56,7 @@ int cam_common_mem_kdup(void **dst,
 	gfp_t flag = GFP_KERNEL;
 
 	if (!src || !dst || !size) {
-		CAM_ERR(CAM_UTIL, "Invalid params src: %pK dst: %pK size: %u",
+		CAM_ERR(CAM_UTIL, "Invalid params src: %pK dst: %pK size: %zu",
 			src, dst, size);
 		return -EINVAL;
 	}
@@ -66,12 +66,12 @@ int cam_common_mem_kdup(void **dst,
 
 	*dst = kzalloc(size, flag);
 	if (!*dst) {
-		CAM_ERR(CAM_UTIL, "Failed to allocate memory with size: %u", size);
+		CAM_ERR(CAM_UTIL, "Failed to allocate memory with size: %zu", size);
 		return -ENOMEM;
 	}
 
 	memcpy(*dst, src, size);
-	CAM_DBG(CAM_UTIL, "Allocate and copy memory with size: %u", size);
+	CAM_DBG(CAM_UTIL, "Allocate and copy memory with size: %zu", size);
 
 	return 0;
 }

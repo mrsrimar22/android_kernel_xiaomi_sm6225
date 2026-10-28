@@ -514,7 +514,7 @@ int ope_validate_buff_offset(size_t buf_len,
 	if ((buf_len <= cmd_buf->offset) ||
 	    (cmd_buf->size < cmd_buf->length) ||
 	    ((buf_len - cmd_buf->offset) < cmd_buf->length)) {
-		CAM_ERR(CAM_OPE, "invalid offset:0x%x, mem_hdl:0x%x buf_len:%llu",
+		CAM_ERR(CAM_OPE, "invalid offset:0x%x, mem_hdl:0x%x buf_len:%u",
 			cmd_buf->offset, cmd_buf->mem_handle, cmd_buf->length);
 		return -EINVAL;
 	}
