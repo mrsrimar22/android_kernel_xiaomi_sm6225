@@ -4464,9 +4464,11 @@ static ssize_t sde_dbg_reg_base_reg_write(struct file *file,
 	}
 
 	if (!list_empty(&dbg->sub_range_list)) {
-		rc = sde_dbg_reg_base_is_valid_range(dbg, off, cnt);
-		if (!rc)
+		rc = sde_dbg_reg_base_is_valid_range(dbg, off, sizeof(u32));
+		if (!rc) {
+			mutex_unlock(&sde_dbg_base.mutex);
 			return -EINVAL;
+		}
 	}
 
 	rc = pm_runtime_get_sync(sde_dbg_base.dev);
