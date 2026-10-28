@@ -7267,7 +7267,9 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	if (ret) {
 		pr_err("%s: send island/vad cfg failed, err = %d\n",
 		__func__, ret);
-		return ret;
+		if (mi2s_intf_conf[index].ref_cnt == 1)
+			goto clk_off;
+		goto clean_up;
 	}
 
 clk_off:
