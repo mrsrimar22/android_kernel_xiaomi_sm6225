@@ -148,6 +148,7 @@ struct msm_kms {
 struct msm_kms_state {
 	struct drm_atomic_state base;
 	void *state;
+	bool power_ref;	/* runtime PM reference taken by prepare_commit */
 };
 #define to_kms_state(x) container_of(x, struct msm_kms_state, base)
 

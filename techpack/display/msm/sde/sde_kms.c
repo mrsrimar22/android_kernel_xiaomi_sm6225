@@ -985,10 +985,13 @@ static void sde_kms_prepare_commit(struct msm_kms *kms,
 	SDE_ATRACE_BEGIN("prepare_commit");
 	rc = pm_runtime_get_sync(sde_kms->dev->dev);
 	if (rc < 0) {
+		pm_runtime_put_noidle(sde_kms->dev->dev);
+		to_kms_state(state)->power_ref = false;
 		SDE_ERROR("failed to enable power resources %d\n", rc);
 		SDE_EVT32(rc, SDE_EVTLOG_ERROR);
 		goto end;
 	}
+	to_kms_state(state)->power_ref = true;
 
 	if (sde_kms->first_kickoff) {
 		sde_power_scale_reg_bus(&priv->phandle, VOTE_INDEX_HIGH, false);
@@ -1028,7 +1031,7 @@ static void sde_kms_commit(struct msm_kms *kms,
 	struct sde_kms *sde_kms;
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
-	int i;
+	int i, rc;
 
 	if (!kms || !old_state)
 		return;
@@ -1038,6 +1041,23 @@ static void sde_kms_commit(struct msm_kms *kms,
 		SDE_ERROR("power resource is not enabled\n");
 		return;
 	}
+
+	/* nothing was programmed for this state */
+	if (!to_kms_state(old_state)->power_ref) {
+		SDE_ERROR("commit without power reference\n");
+		SDE_EVT32(SDE_EVTLOG_ERROR);
+		return;
+	}
+
+	/* system suspend may have powered the display down since prepare */
+	rc = pm_runtime_get_sync(sde_kms->dev->dev);
+	if (rc < 0) {
+		pm_runtime_put_noidle(sde_kms->dev->dev);
+		SDE_ERROR("failed to resume for commit %d\n", rc);
+		SDE_EVT32(rc, SDE_EVTLOG_ERROR);
+		return;
+	}
+	pm_runtime_put_noidle(sde_kms->dev->dev);
 
 	SDE_ATRACE_BEGIN("sde_kms_commit");
 	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, i) {
@@ -1158,6 +1178,7 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 	struct drm_connector *connector;
 	struct drm_connector_state *old_conn_state;
 	struct msm_display_conn_params params;
+	struct msm_kms_state *kms_state;
 	int i, rc = 0;
 
 	if (!kms || !old_state)
@@ -1167,9 +1188,21 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 	if (!sde_kms->dev || !sde_kms->dev->dev_private)
 		return;
 	priv = sde_kms->dev->dev_private;
+	kms_state = to_kms_state(old_state);
 
 	if (!sde_kms_power_resource_is_enabled(sde_kms->dev)) {
 		SDE_ERROR("power resource is not enabled\n");
+		if (kms_state->power_ref) {
+			kms_state->power_ref = false;
+			pm_runtime_put_noidle(sde_kms->dev->dev);
+		}
+		return;
+	}
+
+	/* no hardware work, no reference to drop */
+	if (!kms_state->power_ref) {
+		SDE_ERROR("commit without power reference\n");
+		SDE_EVT32(SDE_EVTLOG_ERROR);
 		return;
 	}
 
@@ -1204,6 +1237,7 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 
 	_sde_kms_drm_check_dpms(old_state, DRM_PANEL_EVENT_BLANK);
 
+	kms_state->power_ref = false;
 	pm_runtime_put_sync(sde_kms->dev->dev);
 
 	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, i)
