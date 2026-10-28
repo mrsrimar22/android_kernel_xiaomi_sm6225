@@ -187,6 +187,7 @@ struct swr_mstr_ctrl {
 	u32 wr_fifo_depth;
 	bool enable_slave_irq;
 	bool clk_stop_wakeup;
+	bool wakeup_vote_held;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_swrm_dent;
 	struct dentry *debugfs_peek;
