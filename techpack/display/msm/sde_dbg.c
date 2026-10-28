@@ -2982,6 +2982,7 @@ static void _sde_dump_reg(const char *dump_name, u32 reg_dump_flag,
 	if (_sde_power_check(sde_dbg_base.dump_mode)) {
 		rc = pm_runtime_get_sync(sde_dbg_base.dev);
 		if (rc < 0) {
+			pm_runtime_put_noidle(sde_dbg_base.dev);
 			pr_err("failed to enable power %d\n", rc);
 			return;
 		}
@@ -3307,6 +3308,7 @@ static void _sde_dbg_dump_sde_dbg_bus(struct sde_dbg_sde_debug_bus *bus)
 
 	rc = pm_runtime_get_sync(sde_dbg_base.dev);
 	if (rc < 0) {
+		pm_runtime_put_noidle(sde_dbg_base.dev);
 		pr_err("failed to enable power %d\n", rc);
 		return;
 	}
@@ -3466,6 +3468,7 @@ static void _sde_dbg_dump_vbif_dbg_bus(struct sde_dbg_vbif_debug_bus *bus)
 
 	rc = pm_runtime_get_sync(sde_dbg_base.dev);
 	if (rc < 0) {
+		pm_runtime_put_noidle(sde_dbg_base.dev);
 		pr_err("failed to enable power %d\n", rc);
 		return;
 	}
@@ -4468,6 +4471,7 @@ static ssize_t sde_dbg_reg_base_reg_write(struct file *file,
 
 	rc = pm_runtime_get_sync(sde_dbg_base.dev);
 	if (rc < 0) {
+		pm_runtime_put_noidle(sde_dbg_base.dev);
 		mutex_unlock(&sde_dbg_base.mutex);
 		pr_err("failed to enable power %d\n", rc);
 		return rc;
@@ -4536,6 +4540,7 @@ static ssize_t sde_dbg_reg_base_reg_read(struct file *file,
 
 		rc = pm_runtime_get_sync(sde_dbg_base.dev);
 		if (rc < 0) {
+			pm_runtime_put_noidle(sde_dbg_base.dev);
 			mutex_unlock(&sde_dbg_base.mutex);
 			pr_err("failed to enable power %d\n", rc);
 			return rc;
