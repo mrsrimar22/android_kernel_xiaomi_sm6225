@@ -2264,6 +2264,9 @@ static void sde_rotator_release_rotator_perf_session(
 		list_del_init(&perf->list);
 		devm_kfree(&mgr->pdev->dev, perf->work_distribution);
 		devm_kfree(&mgr->pdev->dev, perf);
+		sde_rotator_clk_ctrl(mgr, false);
+		sde_rotator_update_clk(mgr);
+		sde_rotator_resource_ctrl(mgr, false);
 	}
 }
 
@@ -2273,7 +2276,6 @@ static void sde_rotator_release_all(struct sde_rot_mgr *mgr)
 
 	list_for_each_entry_safe(priv, priv_next, &mgr->file_list, list) {
 		sde_rotator_release_rotator_perf_session(mgr, priv);
-		sde_rotator_resource_ctrl(mgr, false);
 		list_del_init(&priv->list);
 	}
 
