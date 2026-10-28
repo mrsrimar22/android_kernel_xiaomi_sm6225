@@ -5667,16 +5667,23 @@ static int tasha_codec_enable_on_demand_supply(
 			ret = wcd9xxx_vote_ondemand_regulator(wcd9xxx, pdata,
 							      supply_name,
 							      true);
-			if (ret)
+			if (ret) {
 				dev_err(component->dev, "%s: Failed to vote %s\n",
 					__func__,
 					on_demand_supply_name[w->shift]);
+				goto out;
+			}
 		}
 		ret = regulator_enable(supply->supply);
-		if (ret)
+		if (ret) {
 			dev_err(component->dev, "%s: Failed to enable %s\n",
 				__func__,
 				on_demand_supply_name[w->shift]);
+			if (pdata->vote_regulator_on_demand)
+				wcd9xxx_vote_ondemand_regulator(wcd9xxx, pdata,
+								supply_name,
+								false);
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		ret = regulator_disable(supply->supply);
