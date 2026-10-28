@@ -2836,7 +2836,13 @@ static int wsa_macro_core_vote(void *handle, bool enable)
 	}
 
 	if (enable) {
-		pm_runtime_get_sync(wsa_priv->dev);
+		rc = pm_runtime_get_sync(wsa_priv->dev);
+		if (rc < 0) {
+			pm_runtime_put_noidle(wsa_priv->dev);
+			dev_err_ratelimited(wsa_priv->dev,
+				"%s: failed to resume: %d\n", __func__, rc);
+			return rc;
+		}
 		if (bolero_check_core_votes(wsa_priv->dev))
 			rc = 0;
 		else

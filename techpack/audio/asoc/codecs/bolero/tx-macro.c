@@ -2677,7 +2677,13 @@ static int tx_macro_core_vote(void *handle, bool enable)
 	}
 
 	if (enable) {
-		pm_runtime_get_sync(tx_priv->dev);
+		rc = pm_runtime_get_sync(tx_priv->dev);
+		if (rc < 0) {
+			pm_runtime_put_noidle(tx_priv->dev);
+			dev_err_ratelimited(tx_priv->dev,
+				"%s: failed to resume: %d\n", __func__, rc);
+			return rc;
+		}
 		if (bolero_check_core_votes(tx_priv->dev))
 			rc = 0;
 		else

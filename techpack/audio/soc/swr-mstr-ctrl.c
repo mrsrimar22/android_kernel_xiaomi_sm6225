@@ -496,7 +496,10 @@ static int swrm_clk_request(struct swr_mstr_ctrl *swrm, bool enable)
 					dev_err_ratelimited(swrm->dev,
 						"%s: core vote request failed\n",
 						__func__);
-					swrm->core_vote(swrm->handle, false);
+					/* -ENOTSYNC keeps the reference held */
+					if (ret == -ENOTSYNC)
+						swrm->core_vote(swrm->handle,
+								false);
 					goto exit;
 				}
 				ret = swrm->core_vote(swrm->handle, false);

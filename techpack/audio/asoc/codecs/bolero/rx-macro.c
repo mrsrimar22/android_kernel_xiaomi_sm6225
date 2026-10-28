@@ -1232,7 +1232,13 @@ static int rx_macro_mclk_enable(struct rx_macro_priv *rx_priv,
 		if (rx_priv->rx_mclk_users == 0) {
 			if (rx_priv->is_native_on)
 				rx_priv->clk_id = RX_CORE_CLK;
-			rx_macro_core_vote(rx_priv, true);
+			ret = rx_macro_core_vote(rx_priv, true);
+			if (ret < 0 && ret != -ENOTSYNC) {
+				dev_err(rx_priv->dev,
+					"%s: rx macro core vote failed\n",
+					__func__);
+				goto exit;
+			}
 			ret = bolero_clk_rsc_request_clock(rx_priv->dev,
 							   rx_priv->default_clk_id,
 							   rx_priv->clk_id,
@@ -1287,12 +1293,14 @@ static int rx_macro_mclk_enable(struct rx_macro_priv *rx_priv,
 				0x01, 0x00);
 			bolero_clk_rsc_fs_gen_request(rx_priv->dev,
 			   false);
-			rx_macro_core_vote(rx_priv, true);
+			ret = rx_macro_core_vote(rx_priv, true);
 			bolero_clk_rsc_request_clock(rx_priv->dev,
 						 rx_priv->default_clk_id,
 						 rx_priv->clk_id,
 						 false);
-			rx_macro_core_vote(rx_priv, false);
+			if (!ret || ret == -ENOTSYNC)
+				rx_macro_core_vote(rx_priv, false);
+			ret = 0;
 			rx_priv->clk_id = rx_priv->default_clk_id;
 		}
 	}
@@ -1401,7 +1409,9 @@ static int rx_macro_event_handler(struct snd_soc_component *component,
 		}
 		break;
 	case BOLERO_MACRO_EVT_PRE_SSR_UP:
-		rx_macro_core_vote(rx_priv, true);
+		ret = rx_macro_core_vote(rx_priv, true);
+		if (ret < 0 && ret != -ENOTSYNC)
+			break;
 		/* enable&disable RX_CORE_CLK to reset GFMUX reg */
 		ret = bolero_clk_rsc_request_clock(rx_priv->dev,
 						rx_priv->default_clk_id,
@@ -3688,7 +3698,13 @@ static int rx_macro_core_vote(void *handle, bool enable)
 	}
 
 	if (enable) {
-		pm_runtime_get_sync(rx_priv->dev);
+		rc = pm_runtime_get_sync(rx_priv->dev);
+		if (rc < 0) {
+			pm_runtime_put_noidle(rx_priv->dev);
+			dev_err_ratelimited(rx_priv->dev,
+				"%s: failed to resume: %d\n", __func__, rc);
+			return rc;
+		}
 		if (bolero_check_core_votes(rx_priv->dev))
 			rc = 0;
 		else

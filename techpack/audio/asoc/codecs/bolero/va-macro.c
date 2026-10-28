@@ -679,7 +679,13 @@ static int va_macro_core_vote(void *handle, bool enable)
 	}
 
 	if (enable) {
-		pm_runtime_get_sync(va_priv->dev);
+		rc = pm_runtime_get_sync(va_priv->dev);
+		if (rc < 0) {
+			pm_runtime_put_noidle(va_priv->dev);
+			dev_err_ratelimited(va_priv->dev,
+				"%s: failed to resume: %d\n", __func__, rc);
+			return rc;
+		}
 		if (bolero_check_core_votes(va_priv->dev))
 			rc = 0;
 		else
