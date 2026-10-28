@@ -1288,7 +1288,7 @@ void sde_rotator_pm_qos_add(struct sde_rot_data_type *rot_mdata)
 
 	req = &rot_mdata->pm_qos_rot_cpu_req;
 	req->type = PM_QOS_REQ_AFFINE_CORES;
-	cpumask_empty(&req->cpus_affine);
+	cpumask_clear(&req->cpus_affine);
 	for_each_possible_cpu(cpu) {
 		if ((1 << cpu) & cpu_mask)
 			cpumask_set_cpu(cpu, &req->cpus_affine);
