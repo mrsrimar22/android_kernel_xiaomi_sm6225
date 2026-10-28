@@ -504,9 +504,10 @@ void sde_core_irq_uninstall(struct sde_kms *sde_kms)
 
 	rc = pm_runtime_get_sync(sde_kms->dev->dev);
 	if (rc < 0) {
+		/* get_sync() keeps its reference on failure */
 		SDE_ERROR("failed to enable power resource %d\n", rc);
 		SDE_EVT32(rc, SDE_EVTLOG_ERROR);
-		return;
+		goto free_irq_tables;
 	}
 
 	for (i = 0; i < sde_kms->irq_obj.total_irqs; i++)
@@ -518,6 +519,7 @@ void sde_core_irq_uninstall(struct sde_kms *sde_kms)
 	sde_disable_all_irqs(sde_kms);
 	pm_runtime_put_sync(sde_kms->dev->dev);
 
+free_irq_tables:
 	spin_lock_irqsave(&sde_kms->irq_obj.cb_lock, irq_flags);
 	kfree(sde_kms->irq_obj.irq_cb_tbl);
 	kfree(sde_kms->irq_obj.enable_counts);
