@@ -2415,6 +2415,7 @@ static void swrm_device_wakeup_vote(struct swr_master *mstr)
 	mutex_unlock(&swrm->reslock);
 
 	pm_runtime_get_sync(swrm->dev);
+	swrm->wakeup_vote_held = true;
 }
 
 static void swrm_device_wakeup_unvote(struct swr_master *mstr)
@@ -2426,6 +2427,10 @@ static void swrm_device_wakeup_unvote(struct swr_master *mstr)
 			__func__);
 		return;
 	}
+	/* only drop a vote that was taken */
+	if (!swrm->wakeup_vote_held)
+		return;
+	swrm->wakeup_vote_held = false;
 	pm_runtime_mark_last_busy(swrm->dev);
 	pm_runtime_put_autosuspend(swrm->dev);
 
