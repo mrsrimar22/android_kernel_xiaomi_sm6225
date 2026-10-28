@@ -155,11 +155,18 @@ static int lpi_gpio_read(struct lpi_gpio_pad *pad, unsigned int addr)
 				   __func__);
 		return 0;
 	}
-	pm_runtime_get_sync(lpi_dev);
+	ret = pm_runtime_get_sync(lpi_dev);
+	if (ret < 0) {
+		/* get_sync() keeps its reference on failure */
+		pm_runtime_put_noidle(lpi_dev);
+		pr_err_ratelimited("%s: failed to resume LPI: %d\n",
+				   __func__, ret);
+		return ret;
+	}
 	mutex_lock(&state->core_hw_vote_lock);
 	if (!state->core_hw_vote_status) {
 		pr_err_ratelimited("%s: core hw vote clk is not enabled\n",
-				__func__);
+				   __func__);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -186,11 +193,18 @@ static int lpi_gpio_write(struct lpi_gpio_pad *pad, unsigned int addr,
 				  __func__);
 		return 0;
 	}
-	pm_runtime_get_sync(lpi_dev);
+	ret = pm_runtime_get_sync(lpi_dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(lpi_dev);
+		pr_err_ratelimited("%s: failed to resume LPI: %d\n",
+				  __func__, ret);
+		return ret;
+	}
+	ret = 0;
 	mutex_lock(&state->core_hw_vote_lock);
 	if (!state->core_hw_vote_status) {
 		pr_err_ratelimited("%s: core hw vote clk is not enabled\n",
-				__func__);
+				   __func__);
 		ret = -EINVAL;
 		goto err;
 	}
