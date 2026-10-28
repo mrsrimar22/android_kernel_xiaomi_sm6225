@@ -945,7 +945,14 @@ static int swrm_read(struct swr_master *master, u8 dev_num, u16 reg_addr,
 	}
 	mutex_unlock(&swrm->devlock);
 
-	pm_runtime_get_sync(swrm->dev);
+	ret = pm_runtime_get_sync(swrm->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(swrm->dev);
+		dev_err_ratelimited(swrm->dev,
+				      "%s: failed to resume swrm: %d\n",
+				      __func__, ret);
+		return ret;
+	}
 	if (swrm->req_clk_switch)
 		swrm_runtime_resume(swrm->dev);
 	ret = swrm_cmd_fifo_rd_cmd(swrm, &val, dev_num, 0, reg_addr, len);
@@ -980,7 +987,14 @@ static int swrm_write(struct swr_master *master, u8 dev_num, u16 reg_addr,
 	}
 	mutex_unlock(&swrm->devlock);
 
-	pm_runtime_get_sync(swrm->dev);
+	ret = pm_runtime_get_sync(swrm->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(swrm->dev);
+		dev_err_ratelimited(swrm->dev,
+				      "%s: failed to resume swrm: %d\n",
+				      __func__, ret);
+		return ret;
+	}
 	if (swrm->req_clk_switch)
 		swrm_runtime_resume(swrm->dev);
 	ret = swrm_cmd_fifo_wr_cmd(swrm, reg_val, dev_num, 0, reg_addr);
