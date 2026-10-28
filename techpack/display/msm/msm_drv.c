@@ -399,8 +399,13 @@ static int msm_drm_uninit(struct device *dev)
 	ret = pm_runtime_get_sync(dev);
 	if (ret < 0)
 		DRM_ERROR("failed to enable power: %d\n", ret);
+
 	drm_irq_uninstall(ddev);
-	pm_runtime_put_sync(dev);
+
+	if (ret < 0)
+		pm_runtime_put_noidle(dev);
+	else
+		pm_runtime_put_sync(dev);
 
 	flush_workqueue(priv->wq);
 	destroy_workqueue(priv->wq);
