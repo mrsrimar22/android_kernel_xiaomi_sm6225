@@ -188,6 +188,8 @@ struct swr_mstr_ctrl {
 	bool enable_slave_irq;
 	bool clk_stop_wakeup;
 	bool wakeup_vote_held;
+	bool wakeup_hw_vote_held;
+	bool wakeup_aud_vote_held;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_swrm_dent;
 	struct dentry *debugfs_peek;
