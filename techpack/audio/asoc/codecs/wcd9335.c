@@ -984,6 +984,7 @@ static int tasha_cdc_req_mclk_enable(struct tasha_priv *tasha,
 		if (ret) {
 			dev_err(tasha->dev, "%s: ext clk enable failed\n",
 				__func__);
+			tasha_cdc_sido_ccl_enable(tasha, false);
 			goto unlock_mutex;
 		}
 		/* get BG */
