@@ -76,7 +76,15 @@ static int msm_smmu_attach(struct msm_mmu *mmu, const char * const *names,
 		dev_dbg(client->dev, "iommu domain ops restored\n");
 	}
 
+	rc = pm_runtime_get_sync(mmu->dev);
+	if (rc < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		dev_err(client->dev, "failed to resume smmu device (%d)\n", rc);
+		return rc;
+	}
+
 	rc = iommu_attach_device(client->domain, client->dev);
+	pm_runtime_put_sync(mmu->dev);
 	if (rc) {
 		dev_err(client->dev, "iommu attach dev failed (%d)\n", rc);
 		return rc;
@@ -94,6 +102,7 @@ static void msm_smmu_detach(struct msm_mmu *mmu, const char * const *names,
 {
 	struct msm_smmu *smmu = to_msm_smmu(mmu);
 	struct msm_smmu_client *client = msm_smmu_to_client(smmu);
+	int rc;
 
 	if (!client) {
 		pr_err("undefined smmu client\n");
@@ -103,7 +112,13 @@ static void msm_smmu_detach(struct msm_mmu *mmu, const char * const *names,
 	if (!client->domain_attached)
 		return;
 
-	pm_runtime_get_sync(mmu->dev);
+	rc = pm_runtime_get_sync(mmu->dev);
+	if (rc < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		dev_err(client->dev, "failed to resume smmu device (%d)\n", rc);
+		return;
+	}
+
 	msm_dma_unmap_all_for_dev(client->dev);
 	iommu_detach_device(client->domain, client->dev);
 
@@ -146,7 +161,15 @@ static int msm_smmu_one_to_one_unmap(struct msm_mmu *mmu,
 	if (!client || !client->domain)
 		return -ENODEV;
 
+	ret = pm_runtime_get_sync(mmu->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		dev_err(client->dev, "failed to resume smmu device (%d)\n", ret);
+		return ret;
+	}
+
 	ret = iommu_unmap(client->domain, dest_address, size);
+	pm_runtime_put_sync(mmu->dev);
 	if (ret != size)
 		pr_err("smmu unmap failed\n");
 
@@ -194,8 +217,18 @@ static int msm_smmu_unmap(struct msm_mmu *mmu, uint64_t iova,
 {
 	struct msm_smmu *smmu = to_msm_smmu(mmu);
 	struct msm_smmu_client *client = msm_smmu_to_client(smmu);
+	int ret;
 
-	pm_runtime_get_sync(mmu->dev);
+	if (!client || !client->domain)
+		return -ENODEV;
+
+	ret = pm_runtime_get_sync(mmu->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(mmu->dev);
+		dev_err(client->dev, "failed to resume smmu device (%d)\n", ret);
+		return ret;
+	}
+
 	iommu_unmap(client->domain, iova, len);
 	pm_runtime_put_sync(mmu->dev);
 
