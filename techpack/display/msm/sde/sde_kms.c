@@ -3354,8 +3354,13 @@ static int sde_kms_pd_enable(struct generic_pm_domain *genpd)
 	SDE_DEBUG("\n");
 
 	rc = pm_runtime_get_sync(sde_kms->dev->dev);
-	if (rc > 0)
+	if (rc < 0) {
+		/* genpd won't call power_off() after a failed power_on() */
+		pm_runtime_put_noidle(sde_kms->dev->dev);
+		SDE_ERROR("failed to enable power %d\n", rc);
+	} else {
 		rc = 0;
+	}
 
 	SDE_EVT32(rc, genpd->device_count);
 
