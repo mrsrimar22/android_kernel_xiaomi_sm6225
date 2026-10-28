@@ -7087,20 +7087,20 @@ static int qcs405_tdm_snd_startup(struct snd_pcm_substream *substream)
 			if (ret) {
 				pr_err("%s: Setting voltage failed, err = %d\n",
 					__func__, ret);
-				return ret;
+				goto err_gpio;
 			}
 			ret = regulator_set_load(pdata->tdm_micb_supply,
 						pdata->tdm_micb_current);
 			if (ret) {
 				pr_err("%s: Setting current failed, err = %d\n",
 					__func__, ret);
-				return ret;
+				goto err_volt;
 			}
 			ret = regulator_enable(pdata->tdm_micb_supply);
 			if (ret) {
 				pr_err("%s: regulator enable failed, err = %d\n",
 					__func__, ret);
-				return ret;
+				goto err_load;
 			}
 		}
 	}
@@ -7109,9 +7109,28 @@ static int qcs405_tdm_snd_startup(struct snd_pcm_substream *substream)
 	if (ret) {
 		pr_err("%s: send island/vad cfg failed, err = %d\n",
 		__func__, ret);
-		return ret;
+		goto err_reg_dis;
 	}
 
+	return 0;
+
+err_reg_dis:
+	if (cpu_dai->id == AFE_PORT_ID_QUINARY_TDM_TX &&
+	    pdata->tdm_micb_supply)
+		regulator_disable(pdata->tdm_micb_supply);
+err_load:
+	if (cpu_dai->id == AFE_PORT_ID_QUINARY_TDM_TX &&
+	    pdata->tdm_micb_supply)
+		regulator_set_load(pdata->tdm_micb_supply, 0);
+err_volt:
+	if (cpu_dai->id == AFE_PORT_ID_QUINARY_TDM_TX &&
+	    pdata->tdm_micb_supply)
+		regulator_set_voltage(pdata->tdm_micb_supply, 0,
+				      pdata->tdm_micb_voltage);
+err_gpio:
+	if (pdata->mi2s_gpio_p[tdm_mode])
+		msm_cdc_pinctrl_select_sleep_state(
+			pdata->mi2s_gpio_p[tdm_mode]);
 	return ret;
 }
 

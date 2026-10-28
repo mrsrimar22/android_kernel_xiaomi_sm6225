@@ -2122,6 +2122,7 @@ static int msm_dig_cdc_enable_on_demand_supply(
 				dev_err(component->dev,
 				"Setting regulator voltage(en) %s %d\n",
 					err_msg, ret);
+				atomic_dec(&supply->ref);
 				goto out;
 			}
 			ret = regulator_set_load(supply->supply,
@@ -2130,13 +2131,21 @@ static int msm_dig_cdc_enable_on_demand_supply(
 				dev_err(component->dev,
 				"Setting regulator optimum mode(en) %s %d\n",
 					err_msg, ret);
+				regulator_set_voltage(supply->supply, 0,
+						      supply->max_uv);
+				atomic_dec(&supply->ref);
 				goto out;
 			}
 			ret = regulator_enable(supply->supply);
-			if (ret)
+			if (ret) {
 				dev_err(component->dev,
 					"%s: Failed to enable %s\n", __func__,
 					on_demand_supply_name[w->shift]);
+				regulator_set_load(supply->supply, 0);
+				regulator_set_voltage(supply->supply, 0,
+						      supply->max_uv);
+				atomic_dec(&supply->ref);
+			}
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
