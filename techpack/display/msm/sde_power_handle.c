@@ -644,6 +644,10 @@ void sde_power_resource_deinit(struct platform_device *pdev,
 	}
 	mutex_unlock(&phandle->phandle_lock);
 
+	/* Drop the references taken by the last successful power up. */
+	if (phandle->power_on)
+		sde_power_resource_enable(phandle, false);
+
 	if (phandle->dss_cx_ipeak)
 		cx_ipeak_unregister(phandle->dss_cx_ipeak);
 
@@ -726,6 +730,12 @@ int sde_power_resource_enable(struct sde_power_handle *phandle, bool enable)
 
 	mutex_lock(&phandle->phandle_lock);
 
+	if (phandle->power_on == enable) {
+		pr_debug("power already %s\n", enable ? "enabled" : "disabled");
+		mutex_unlock(&phandle->phandle_lock);
+		return 0;
+	}
+
 	pr_debug("enable:%d\n", enable);
 
 	SDE_ATRACE_BEGIN("sde_power_resource_enable");
@@ -746,14 +756,14 @@ int sde_power_resource_enable(struct sde_power_handle *phandle, bool enable)
 			if (rc) {
 				pr_err("failed to set data bus vote id=%d rc=%d\n",
 						i, rc);
-				goto vreg_err;
+				goto data_bus_err;
 			}
 		}
 		rc = msm_dss_enable_vreg(mp->vreg_config, mp->num_vreg,
 				enable);
 		if (rc) {
 			pr_err("failed to enable vregs rc=%d\n", rc);
-			goto vreg_err;
+			goto data_bus_err;
 		}
 
 		rc = sde_power_scale_reg_bus(phandle, VOTE_INDEX_LOW, true);
@@ -802,6 +812,8 @@ int sde_power_resource_enable(struct sde_power_handle *phandle, bool enable)
 				SDE_POWER_EVENT_POST_DISABLE);
 	}
 
+	phandle->power_on = enable;
+
 	SDE_EVT32_VERBOSE(enable, SDE_EVTLOG_FUNC_EXIT);
 	SDE_ATRACE_END("sde_power_resource_enable");
 	mutex_unlock(&phandle->phandle_lock);
@@ -813,7 +825,7 @@ rsc_err:
 	sde_power_scale_reg_bus(phandle, VOTE_INDEX_DISABLE, true);
 reg_bus_hdl_err:
 	msm_dss_enable_vreg(mp->vreg_config, mp->num_vreg, 0);
-vreg_err:
+data_bus_err:
 	for (i-- ; i >= 0 && phandle->data_bus_handle[i].data_bus_hdl; i--)
 		_sde_power_data_bus_set_quota(
 			&phandle->data_bus_handle[i],

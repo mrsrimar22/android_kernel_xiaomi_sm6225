@@ -130,6 +130,7 @@ struct sde_power_event {
  * @rsc_client_init: boolean to control rsc client create
  * @dss_cx_ipeak: client pointer for cx ipeak driver
  * @is_ext_vote_en: flag to check if external vote is present
+ * @power_on: true if the module clocks and regulators are enabled
  * @ext_client_lock: external client vote mutex
  */
 struct sde_power_handle {
@@ -146,6 +147,7 @@ struct sde_power_handle {
 	bool rsc_client_init;
 	struct cx_ipeak_client *dss_cx_ipeak;
 	bool is_ext_vote_en;
+	bool power_on;
 	struct mutex ext_client_lock;
 };
 
