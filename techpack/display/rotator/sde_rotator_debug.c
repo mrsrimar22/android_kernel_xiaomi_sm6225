@@ -1107,6 +1107,7 @@ static ssize_t sde_rotator_debug_base_reg_write(struct file *file,
 	size_t off;
 	u32 data, cnt;
 	char buf[24];
+	int rc;
 
 	if (!dbg)
 		return -ENODEV;
@@ -1136,10 +1137,16 @@ static ssize_t sde_rotator_debug_base_reg_write(struct file *file,
 	sde_rot_mgr_lock(dbg->mgr);
 	if (!sde_rotator_resource_ctrl_enabled(dbg->mgr)) {
 		SDEROT_WARN("resource ctrl is not enabled\n");
+		rc = -EPERM;
 		sde_rot_mgr_unlock(dbg->mgr);
 		goto debug_write_error;
 	}
-	sde_rotator_clk_ctrl(dbg->mgr, true);
+	rc = sde_rotator_clk_ctrl(dbg->mgr, true);
+	if (rc) {
+		SDEROT_ERR("failed to enable clocks %d\n", rc);
+		sde_rot_mgr_unlock(dbg->mgr);
+		goto debug_write_error;
+	}
 
 	writel_relaxed(data, dbg->base + off);
 
@@ -1155,7 +1162,7 @@ static ssize_t sde_rotator_debug_base_reg_write(struct file *file,
 
 debug_write_error:
 	mutex_unlock(&dbg->buflock);
-	return 0;
+	return rc;
 }
 
 static ssize_t sde_rotator_debug_base_reg_read(struct file *file,
@@ -1198,10 +1205,17 @@ static ssize_t sde_rotator_debug_base_reg_read(struct file *file,
 		sde_rot_mgr_lock(dbg->mgr);
 		if (!sde_rotator_resource_ctrl_enabled(dbg->mgr)) {
 			SDEROT_WARN("resource ctrl is not enabled\n");
+			/* let the caller free dbg->buf */
+			rc = -EPERM;
 			sde_rot_mgr_unlock(dbg->mgr);
 			goto debug_read_error;
 		}
-		sde_rotator_clk_ctrl(dbg->mgr, true);
+		rc = sde_rotator_clk_ctrl(dbg->mgr, true);
+		if (rc) {
+			SDEROT_ERR("failed to enable clocks %d\n", rc);
+			sde_rot_mgr_unlock(dbg->mgr);
+			goto debug_read_error;
+		}
 
 		for (cnt = dbg->cnt; cnt > 0; cnt -= ROW_BYTES) {
 			hex_dump_to_buffer(ptr, min(cnt, ROW_BYTES),
@@ -1243,6 +1257,12 @@ static ssize_t sde_rotator_debug_base_reg_read(struct file *file,
 	return len;
 
 debug_read_error:
+	/* drop the dump so the next read retries */
+	if (rc && dbg->buf) {
+		kfree(dbg->buf);
+		dbg->buf = NULL;
+		dbg->buf_len = 0;
+	}
 	mutex_unlock(&dbg->buflock);
 	return rc;
 }

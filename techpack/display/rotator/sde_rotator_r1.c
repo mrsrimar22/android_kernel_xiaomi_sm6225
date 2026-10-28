@@ -724,8 +724,10 @@ int sde_rotator_r1_init(struct sde_rot_mgr *mgr)
 
 	hw_data->mdp_hw = sde_rotator_hw_alloc(mgr, hw_data->ctl_id,
 			hw_data->wb_id, hw_data->irq_num);
-	if (IS_ERR_OR_NULL(hw_data->mdp_hw))
+	if (IS_ERR_OR_NULL(hw_data->mdp_hw)) {
+		ret = PTR_ERR(hw_data->mdp_hw) ?: -ENOMEM;
 		goto error_hw_alloc;
+	}
 
 	ret = sde_rotator_hw_rev_init(sde_rot_get_mdata());
 	if (ret)
@@ -735,11 +737,13 @@ int sde_rotator_r1_init(struct sde_rot_mgr *mgr)
 
 	return 0;
 error_hw_rev_init:
-	if (hw_data->irq_num >= 0)
-		devm_free_irq(&mgr->pdev->dev, hw_data->irq_num, mdata);
 	sde_rotator_hw_free(mgr, hw_data->mdp_hw);
 error_hw_alloc:
-	devm_kfree(&mgr->pdev->dev, mgr->hw_data);
+	/* IRQ is requested before hw_alloc() */
+	if (hw_data->irq_num >= 0)
+		devm_free_irq(&mgr->pdev->dev, hw_data->irq_num, mdata);
 error_parse_dt:
+	devm_kfree(&mgr->pdev->dev, mgr->hw_data);
+	mgr->hw_data = NULL;
 	return ret;
 }

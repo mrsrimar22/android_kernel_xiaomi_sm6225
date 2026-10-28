@@ -1048,8 +1048,16 @@ struct sde_rotator_ctx *sde_rotator_ctx_open(
 
 	return ctx;
 error_ctrl_handler:
-error_open_session:
+	/* undo the session opened above */
+	sde_rot_mgr_lock(rot_dev->mgr);
+	sde_rotator_pm_qos_request(rot_dev, SDE_ROTATOR_REMOVE_REQUEST);
+	sde_rotator_session_close(rot_dev->mgr, ctx->private, ctx->session_id);
 	sde_rot_mgr_unlock(rot_dev->mgr);
+	goto error_session_teardown;
+error_open_session:
+	sde_rotator_pm_qos_request(rot_dev, SDE_ROTATOR_REMOVE_REQUEST);
+	sde_rot_mgr_unlock(rot_dev->mgr);
+error_session_teardown:
 	sde_rotator_destroy_timeline(ctx->work_queue.timeline);
 	rot_dev->kthread_free[ctx->kthread_id] = true;
 	ctx->kthread_id = -1;
@@ -3666,6 +3674,7 @@ error_alloc_video_device:
 error_v4l2_register:
 	v4l2_m2m_release(rot_dev->m2m_dev);
 error_m2m_init:
+	sde_rotator_pm_qos_remove(rot_dev->mdata);
 	sde_rotator_core_destroy(rot_dev->mgr);
 error_rotator_core_init:
 	sde_rotator_base_destroy(rot_dev->mdata);

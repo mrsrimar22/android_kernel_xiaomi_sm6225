@@ -4080,7 +4080,8 @@ int sde_rotator_r3_init(struct sde_rot_mgr *mgr)
 	mdata->sde_rot_hw = rot;
 	return 0;
 error_hw_rev_init:
-	devm_kfree(&mgr->pdev->dev, mgr->hw_data);
 error_parse_dt:
+	devm_kfree(&mgr->pdev->dev, mgr->hw_data);
+	mgr->hw_data = NULL;
 	return ret;
 }
