@@ -448,12 +448,14 @@ static int msm_transcode_loopback_set_params(struct snd_compr_stream *cstream,
 	rtd = snd_pcm_substream_chip(cstream);
 	if (!rtd) {
 		pr_err("%s: rtd is NULL\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto exit;
 	}
 	component = snd_soc_rtdcom_lookup(rtd, DRV_NAME);
 	if (!component) {
 		pr_err("%s: component is NULL\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto exit;
 	}
 	pdata = snd_soc_component_get_drvdata(component);
 
