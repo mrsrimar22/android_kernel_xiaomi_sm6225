@@ -906,8 +906,11 @@ int sde_rsc_client_state_update(struct sde_rsc_client *caller_client,
 		__builtin_return_address(0), rsc->current_state,
 		caller_client->name, state);
 
-	if (rsc->current_state == SDE_RSC_IDLE_STATE)
-		sde_rsc_resource_enable(rsc);
+	if (rsc->current_state == SDE_RSC_IDLE_STATE) {
+		rc = sde_rsc_resource_enable(rsc);
+		if (rc < 0)
+			goto end;
+	}
 
 	switch (state) {
 	case SDE_RSC_IDLE_STATE:
