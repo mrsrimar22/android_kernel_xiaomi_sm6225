@@ -465,6 +465,11 @@ error_gcc_axi:
 error_gcc_ahb:
 	sde_rotator_disable_clk(mgr, SDE_ROTATOR_CLK_MNOC_AHB);
 error_mnoc_ahb:
+	/*
+	 * All clocks have been disabled again, so undo the reference taken
+	 * above. Otherwise runtime suspend would keep returning -EBUSY.
+	 */
+	mgr->rot_enable_clk_cnt--;
 	return ret;
 }
 
