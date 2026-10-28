@@ -26,7 +26,11 @@ struct dp_power_private {
 	bool link_clks_on;
 	bool strm0_clks_on;
 	bool strm1_clks_on;
+	bool pm_ref;		/* runtime PM reference taken by dp_power_init() */
+	bool client_init;	/* dp_power_client_init() succeeded */
 };
+
+static int dp_power_deinit(struct dp_power *dp_power);
 
 static int dp_power_regulator_init(struct dp_power_private *power)
 {
@@ -570,6 +574,16 @@ static u64 dp_power_clk_get_rate(struct dp_power *dp_power, char *clk_name)
 	return rate;
 }
 
+static void dp_power_put_pm_ref(struct dp_power_private *power)
+{
+	if (!power->pm_ref)
+		return;
+
+	/* clear first: put() may suspend synchronously */
+	power->pm_ref = false;
+	pm_runtime_put_sync(power->dp_power.drm_dev->dev);
+}
+
 static int dp_power_init(struct dp_power *dp_power, bool flip)
 {
 	int rc = 0;
@@ -603,9 +617,11 @@ static int dp_power_init(struct dp_power *dp_power, bool flip)
 
 	rc = pm_runtime_get_sync(dp_power->drm_dev->dev);
 	if (rc < 0) {
-		DP_ERR("Power resource enable failed\n");
+		pm_runtime_put_noidle(dp_power->drm_dev->dev);
+		DP_ERR("Power resource enable failed: %d\n", rc);
 		goto err_sde_power;
 	}
+	power->pm_ref = true;
 
 	rc = dp_power_clk_enable(dp_power, DP_CORE_PM, true);
 	if (rc) {
@@ -616,7 +632,7 @@ static int dp_power_init(struct dp_power *dp_power, bool flip)
 	return 0;
 
 err_clk:
-	pm_runtime_put_sync(dp_power->drm_dev->dev);
+	dp_power_put_pm_ref(power);
 err_sde_power:
 	dp_power_config_gpios(power, flip, false);
 err_gpio:
@@ -640,11 +656,14 @@ static int dp_power_deinit(struct dp_power *dp_power)
 
 	power = container_of(dp_power, struct dp_power_private, dp_power);
 
+	if (!power->pm_ref)
+		goto exit;
+
 	if (power->link_clks_on)
 		dp_power_clk_enable(dp_power, DP_LINK_PM, false);
 
 	dp_power_clk_enable(dp_power, DP_CORE_PM, false);
-	pm_runtime_put_sync(dp_power->drm_dev->dev);
+	dp_power_put_pm_ref(power);
 
 	dp_power_config_gpios(power, false, false);
 	dp_power_pinctrl_set(power, false);
