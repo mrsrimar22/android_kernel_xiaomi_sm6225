@@ -1137,6 +1137,7 @@ static void sde_kms_check_for_ext_vote(struct sde_kms *sde_kms,
 	struct drm_crtc *crtc;
 	struct drm_device *dev;
 	bool crtc_enabled = false;
+	int rc;
 
 	if (!sde_kms->catalog->allow_gdsc_toggle)
 		return;
@@ -1160,9 +1161,11 @@ static void sde_kms_check_for_ext_vote(struct sde_kms *sde_kms,
 	if (!crtc_enabled && (phandle->is_ext_vote_en ||
 				!dev->dev->power.runtime_auto)) {
 		pm_runtime_put_sync(sde_kms->dev->dev);
-		pm_runtime_get_sync(sde_kms->dev->dev);
+		rc = pm_runtime_get_sync(sde_kms->dev->dev);
+		if (rc < 0)
+			SDE_ERROR("failed to restore power %d\n", rc);
 		SDE_EVT32(phandle->is_ext_vote_en,
-				dev->dev->power.runtime_auto);
+				dev->dev->power.runtime_auto, rc);
 	}
 
 	mutex_unlock(&phandle->ext_client_lock);
