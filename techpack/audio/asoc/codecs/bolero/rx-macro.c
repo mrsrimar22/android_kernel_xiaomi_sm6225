@@ -3732,7 +3732,16 @@ static int rx_swrm_clock(void *handle, bool enable)
 	dev_dbg(rx_priv->dev, "%s: swrm clock %s\n",
 		__func__, (enable ? "enable" : "disable"));
 	if (enable) {
-		pm_runtime_get_sync(rx_priv->dev);
+		ret = pm_runtime_get_sync(rx_priv->dev);
+		if (ret < 0 && ret != -ENOTSYNC) {
+			dev_err_ratelimited(rx_priv->dev,
+				"%s: pm_runtime_get_sync failed, err = %d\n",
+				__func__, ret);
+			pm_runtime_put_noidle(rx_priv->dev);
+			pm_runtime_set_suspended(rx_priv->dev);
+			goto exit;
+		}
+		ret = 0;
 		if (rx_priv->swr_clk_users == 0) {
 			ret = msm_cdc_pinctrl_select_active_state(
 						rx_priv->rx_swr_gpio_p);

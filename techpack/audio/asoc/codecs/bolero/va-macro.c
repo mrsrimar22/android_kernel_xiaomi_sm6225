@@ -715,7 +715,16 @@ static int va_macro_swrm_clock(void *handle, bool enable)
 		va_priv->tx_swr_clk_cnt, va_priv->va_swr_clk_cnt);
 
 	if (enable) {
-		pm_runtime_get_sync(va_priv->dev);
+		ret = pm_runtime_get_sync(va_priv->dev);
+		if (ret < 0 && ret != -ENOTSYNC) {
+			dev_err_ratelimited(va_priv->dev,
+				"%s: pm_runtime_get_sync failed, err = %d\n",
+				__func__, ret);
+			pm_runtime_put_noidle(va_priv->dev);
+			pm_runtime_set_suspended(va_priv->dev);
+			goto done;
+		}
+		ret = 0;
 		if (va_priv->va_swr_clk_cnt && !va_priv->tx_swr_clk_cnt) {
 			ret = va_macro_tx_va_mclk_enable(va_priv, regmap,
 							VA_MCLK, enable);

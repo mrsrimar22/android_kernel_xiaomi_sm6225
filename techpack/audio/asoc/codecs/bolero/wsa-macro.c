@@ -2870,7 +2870,16 @@ static int wsa_swrm_clock(void *handle, bool enable)
 	dev_dbg(wsa_priv->dev, "%s: swrm clock %s\n",
 		__func__, (enable ? "enable" : "disable"));
 	if (enable) {
-		pm_runtime_get_sync(wsa_priv->dev);
+		ret = pm_runtime_get_sync(wsa_priv->dev);
+		if (ret < 0 && ret != -ENOTSYNC) {
+			dev_err_ratelimited(wsa_priv->dev,
+				"%s: pm_runtime_get_sync failed, err = %d\n",
+				__func__, ret);
+			pm_runtime_put_noidle(wsa_priv->dev);
+			pm_runtime_set_suspended(wsa_priv->dev);
+			goto exit;
+		}
+		ret = 0;
 		if (wsa_priv->swr_clk_users == 0) {
 			ret = msm_cdc_pinctrl_select_active_state(
 						wsa_priv->wsa_swr_gpio_p);
