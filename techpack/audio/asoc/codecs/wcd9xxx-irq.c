@@ -69,11 +69,13 @@ static void wcd9xxx_irq_sync_unlock(struct irq_data *data)
 	     (ARRAY_SIZE(wcd9xxx_res->irq_masks_cache) >
 	      WCD9XXX_MAX_IRQ_REGS)) {
 		pr_err("%s: Array Size out of bound\n", __func__);
+		mutex_unlock(&wcd9xxx_res->irq_lock);
 		return;
 	}
 	if (!wcd9xxx_res->wcd_core_regmap) {
 		pr_err("%s: Codec core regmap not defined\n",
 			__func__);
+		mutex_unlock(&wcd9xxx_res->irq_lock);
 		return;
 	}
 
