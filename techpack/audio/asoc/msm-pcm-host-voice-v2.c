@@ -666,6 +666,8 @@ static void hpcm_copy_playback_data_from_queue(struct dai_data *dai_data,
 		if (*len > HPCM_MAX_VOC_PKT_SIZE) {
 			pr_err("%s: Playback data len %d overflow\n",
 					__func__, *len);
+			list_add_tail(&buf_node->list, &dai_data->free_queue);
+			spin_unlock_irqrestore(&dai_data->dsp_lock, dsp_flags);
 			return;
 		}
 		memcpy((u8 *)dai_data->vocpcm_ion_buffer.kvaddr,
