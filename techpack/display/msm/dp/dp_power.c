@@ -158,6 +158,7 @@ static int dp_power_pinctrl_set(struct dp_power_private *power, bool active)
 static int dp_power_clk_init(struct dp_power_private *power, bool enable)
 {
 	int rc = 0;
+	int i;
 	struct device *dev;
 	enum dp_pm_type module;
 
@@ -175,7 +176,7 @@ static int dp_power_clk_init(struct dp_power_private *power, bool enable)
 			if (rc) {
 				DP_ERR("failed to get %s clk. err=%d\n",
 					dp_parser_pm_name(module), rc);
-				goto exit;
+				goto error_put_clk;
 			}
 		}
 
@@ -225,7 +226,15 @@ static int dp_power_clk_init(struct dp_power_private *power, bool enable)
 			msm_dss_put_clk(pm->clk_config, pm->num_clk);
 		}
 	}
-exit:
+
+	return rc;
+
+error_put_clk:
+	/* get_clk() only unwinds the failed module */
+	for (i = DP_CORE_PM; i < DP_MAX_PM; i++)
+		msm_dss_put_clk(power->parser->mp[i].clk_config,
+				power->parser->mp[i].num_clk);
+
 	return rc;
 }
 
