@@ -132,7 +132,14 @@ static int lpi_gpio_read(struct lpi_gpio_pad *pad, unsigned int addr)
 		return 0;
 	}
 
-	pm_runtime_get_sync(lpi_dev);
+	ret = pm_runtime_get_sync(lpi_dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(lpi_dev);
+		pr_err_ratelimited("%s: failed to resume LPI: %d\n",
+				   __func__, ret);
+		mutex_unlock(&state->lpi_mutex);
+		return ret;
+	}
 
 	ret = ioread32(pad->base + pad->offset + addr);
 	if (ret < 0)
@@ -148,15 +155,23 @@ static int lpi_gpio_write(struct lpi_gpio_pad *pad, unsigned int addr,
 			  unsigned int val)
 {
 	struct lpi_gpio_state *state = dev_get_drvdata(lpi_dev);
+	int ret;
 
 	mutex_lock(&state->lpi_mutex);
 	if (!lpi_dev_up) {
 		pr_err_ratelimited("%s: ADSP is down due to SSR, return\n",
-				   __func__);
+				  __func__);
 		mutex_unlock(&state->lpi_mutex);
 		return 0;
 	}
-	pm_runtime_get_sync(lpi_dev);
+	ret = pm_runtime_get_sync(lpi_dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(lpi_dev);
+		pr_err_ratelimited("%s: failed to resume LPI: %d\n",
+				  __func__, ret);
+		mutex_unlock(&state->lpi_mutex);
+		return ret;
+	}
 
 	iowrite32(val, pad->base + pad->offset + addr);
 
