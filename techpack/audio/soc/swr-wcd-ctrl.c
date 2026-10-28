@@ -1003,8 +1003,19 @@ static int swrm_connect_port(struct swr_master *master,
 	}
 
 	mutex_lock(&swrm->mlock);
-	if (!swrm_is_port_en(master))
-		pm_runtime_get_sync(&swrm->pdev->dev);
+	if (!swrm_is_port_en(master)) {
+		ret = pm_runtime_get_sync(&swrm->pdev->dev);
+		if (ret < 0 && ret != -ENOTSYNC && ret != -EACCES) {
+			dev_err_ratelimited(&master->dev,
+				"%s: pm_runtime_get_sync failed, err = %d\n",
+				__func__, ret);
+			pm_runtime_put_noidle(&swrm->pdev->dev);
+			pm_runtime_set_suspended(&swrm->pdev->dev);
+			mutex_unlock(&swrm->mlock);
+			return ret;
+		}
+		ret = 0;
+	}
 
 	for (i = 0; i < portinfo->num_port; i++) {
 		mport = kzalloc(sizeof(struct swrm_mports), GFP_KERNEL);
@@ -1298,6 +1309,7 @@ static int swrm_get_logical_dev_num(struct swr_master *mstr, u64 dev_id,
 	struct swr_mstr_ctrl *swrm = swr_get_ctrl_data(mstr);
 	struct swr_device *swr_dev;
 	u32 num_dev = 0;
+	bool pm_get = false;
 
 	if (!swrm) {
 		pr_err("%s: Invalid handle to swr controller\n",
@@ -1309,7 +1321,22 @@ static int swrm_get_logical_dev_num(struct swr_master *mstr, u64 dev_id,
 	else
 		num_dev = mstr->num_dev;
 
-	pm_runtime_get_sync(&swrm->pdev->dev);
+	if (pm_runtime_enabled(&swrm->pdev->dev)) {
+		ret = pm_runtime_get_sync(&swrm->pdev->dev);
+		if (ret < 0 && ret != -ENOTSYNC && ret != -EACCES) {
+			dev_err_ratelimited(swrm->dev,
+				"%s: pm_runtime_get_sync failed, err = %d\n",
+				__func__, ret);
+			pm_runtime_put_noidle(&swrm->pdev->dev);
+			pm_runtime_set_suspended(&swrm->pdev->dev);
+			return ret;
+		}
+		if (ret >= 0 || ret == -ENOTSYNC)
+			pm_get = true;
+		else
+			pm_runtime_put_noidle(&swrm->pdev->dev);
+	}
+	ret = -EINVAL;
 	for (i = 1; i < (num_dev + 1); i++) {
 		id = ((u64)(swrm->read(swrm->handle,
 			    SWRM_ENUMERATOR_SLAVE_DEV_ID_2(i))) << 32);
@@ -1339,8 +1366,10 @@ static int swrm_get_logical_dev_num(struct swr_master *mstr, u64 dev_id,
 		dev_err(swrm->dev, "%s: device 0x%llx is not ready\n",
 			__func__, dev_id);
 
-	pm_runtime_mark_last_busy(&swrm->pdev->dev);
-	pm_runtime_put_autosuspend(&swrm->pdev->dev);
+	if (pm_get) {
+		pm_runtime_mark_last_busy(&swrm->pdev->dev);
+		pm_runtime_put_autosuspend(&swrm->pdev->dev);
+	}
 	return ret;
 }
 static int swrm_master_init(struct swr_mstr_ctrl *swrm)
@@ -1801,7 +1830,17 @@ int swrm_wcd_notify(struct platform_device *pdev, u32 id, void *data)
 		} else {
 			pm_runtime_mark_last_busy(&pdev->dev);
 			mutex_unlock(&swrm->reslock);
-			pm_runtime_get_sync(&pdev->dev);
+			ret = pm_runtime_get_sync(&pdev->dev);
+			if (ret < 0 && ret != -ENOTSYNC && ret != -EACCES) {
+				dev_err_ratelimited(swrm->dev,
+					"%s: pm_runtime_get_sync failed, err = %d\n",
+					__func__, ret);
+				pm_runtime_put_noidle(&pdev->dev);
+				pm_runtime_set_suspended(&pdev->dev);
+				mutex_unlock(&swrm->mlock);
+				break;
+			}
+			ret = 0;
 			mutex_lock(&swrm->reslock);
 			list_for_each_entry(swr_dev, &mstr->devices, dev_list) {
 				ret = swr_reset_device(swr_dev);
