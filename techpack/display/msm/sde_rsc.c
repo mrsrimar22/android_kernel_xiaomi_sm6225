@@ -1395,7 +1395,8 @@ static void sde_rsc_deinit(struct platform_device *pdev,
 	if (!rsc)
 		return;
 
-	sde_rsc_resource_disable(rsc);
+	if (atomic_read(&rsc->resource_refcount))
+		sde_rsc_resource_disable(rsc);
 	if (rsc->sw_fs_enabled)
 		regulator_disable(rsc->fs);
 	if (rsc->fs)
