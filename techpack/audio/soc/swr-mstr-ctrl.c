@@ -2290,6 +2290,7 @@ static irqreturn_t swrm_wakeup_interrupt(int irq, void *dev)
 	if (swrm->wake_irq > 0) {
 		if (unlikely(!irq_get_irq_data(swrm->wake_irq))) {
 			pr_err("%s: irq data is NULL\n", __func__);
+			swrm_unlock_sleep(swrm);
 			return IRQ_NONE;
 		}
 		mutex_lock(&swrm->irq_lock);
