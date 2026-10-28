@@ -471,6 +471,7 @@ static int _sde_kms_sui_misr_ctrl(struct sde_kms *sde_kms,
 	if (enable) {
 		ret = pm_runtime_get_sync(sde_kms->dev->dev);
 		if (ret < 0) {
+			pm_runtime_put_noidle(sde_kms->dev->dev);
 			SDE_ERROR("failed to enable resource, ret:%d\n", ret);
 			return ret;
 		}
@@ -1162,8 +1163,10 @@ static void sde_kms_check_for_ext_vote(struct sde_kms *sde_kms,
 				!dev->dev->power.runtime_auto)) {
 		pm_runtime_put_sync(sde_kms->dev->dev);
 		rc = pm_runtime_get_sync(sde_kms->dev->dev);
-		if (rc < 0)
+		if (rc < 0) {
+			pm_runtime_put_noidle(sde_kms->dev->dev);
 			SDE_ERROR("failed to restore power %d\n", rc);
+		}
 		SDE_EVT32(phandle->is_ext_vote_en,
 				dev->dev->power.runtime_auto, rc);
 	}
@@ -3861,6 +3864,7 @@ static int sde_kms_hw_init(struct msm_kms *kms)
 
 	rc = pm_runtime_get_sync(sde_kms->dev->dev);
 	if (rc < 0) {
+		pm_runtime_put_noidle(sde_kms->dev->dev);
 		SDE_ERROR("resource enable failed: %d\n", rc);
 		goto error;
 	}
