@@ -1073,6 +1073,10 @@ mem_fail:
 			}
 		}
 	}
+	if (!swrm_is_port_en(master)) {
+		pm_runtime_mark_last_busy(&swrm->pdev->dev);
+		pm_runtime_put_autosuspend(&swrm->pdev->dev);
+	}
 	mutex_unlock(&swrm->mlock);
 	return ret;
 }
