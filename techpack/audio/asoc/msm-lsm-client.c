@@ -99,7 +99,6 @@ struct lsm_priv {
 	int xrun_count;
 	int xrun_index;
 	spinlock_t xrun_lock;
-	struct wakeup_source *ws;
 };
 
 enum { /* lsm session states */
@@ -226,7 +225,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 	}
 	rtd = substream->private_data;
 
-	pm_wakeup_ws_event(prtd->ws, WAKELOCK_TIMEOUT, true);
+	pm_wakeup_dev_event(rtd->dev, WAKELOCK_TIMEOUT, true);
 	dev_dbg(rtd->dev, "%s: opcode %x\n", __func__, opcode);
 	switch (opcode) {
 	case LSM_DATA_EVENT_READ_DONE: {
@@ -241,13 +240,13 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 				"%s: EVENT_READ_DONE invalid callback, session %d callback %d payload %pK",
 				__func__, prtd->lsm_client->session,
 				token, read_done);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		if (atomic_read(&prtd->read_abort)) {
 			dev_dbg(rtd->dev,
 				"%s: read abort set skip data\n", __func__);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		if (!lsm_lab_buffer_sanity(prtd, read_done, &buf_index)) {
@@ -260,7 +259,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 					"%s: Invalid index %d buf_index max cnt %d\n",
 					__func__, buf_index,
 				prtd->lsm_client->out_hw_params.period_count);
-				__pm_relax(prtd->ws);
+				pm_relax(rtd->dev);
 				return;
 			}
 			spin_lock_irqsave(&prtd->xrun_lock, flags);
@@ -298,7 +297,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 			dev_err(rtd->dev,
 					"%s: client_size has invalid size[%d]\n",
 					__func__, client_size);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		status = (uint16_t)((uint8_t *)payload)[0];
@@ -314,7 +313,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 			dev_err(rtd->dev,
 					"%s: client_size has invalid size[%d]\n",
 					__func__, client_size);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		status = (uint16_t)((uint8_t *)payload)[0];
@@ -330,7 +329,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 			dev_err(rtd->dev,
 					"%s: client_size has invalid size[%d]\n",
 					__func__, client_size);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		event_ts_lsw = ((uint32_t *)payload)[0];
@@ -351,7 +350,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 			dev_err(rtd->dev,
 					"%s: client_size has invalid size[%d]\n",
 					__func__, client_size);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 
@@ -370,7 +369,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 				"LSM_SESSION_DETECTION_ENGINE_GENERIC_EVENT",
 				sizeof(struct snd_lsm_event_status) +
 				payload_size);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 
@@ -385,7 +384,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 			dev_err(rtd->dev,
 				"%s: Failed to copy memory with invalid size = %d\n",
 				__func__, payload_size);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		prtd->event_avail = 1;
@@ -418,7 +417,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 			dev_err(rtd->dev, "%s: no memory for event status\n",
 				__func__);
 			spin_unlock_irqrestore(&prtd->event_lock, flags);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return;
 		}
 		/*
@@ -445,7 +444,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 				dev_err(rtd->dev,
 						"%s: Failed to copy memory with invalid size = %d\n",
 						__func__, payload_size);
-				__pm_relax(prtd->ws);
+				pm_relax(rtd->dev);
 				return;
 			}
 		} else {
@@ -1241,7 +1240,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			dev_err(rtd->dev,
 				"%s: lsm open failed, %d\n",
 				__func__, ret);
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return ret;
 		}
 		prtd->lsm_client->opened = true;
@@ -1586,14 +1585,14 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		if (prtd->lsm_client->num_stages > 1) {
 			dev_err(rtd->dev, "%s: %s: not supported for multi stage session\n",
 				__func__, "LSM_LAB_CONTROL");
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return -EINVAL;
 		}
 
 		if (copy_from_user(&enable, arg, sizeof(enable))) {
 			dev_err(rtd->dev, "%s: %s: copy_frm_user failed\n",
 				__func__, "LSM_LAB_CONTROL");
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return -EFAULT;
 		}
 
@@ -1648,7 +1647,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		if (copy_from_user(&mode, arg, sizeof(mode))) {
 			dev_err(rtd->dev, "%s: %s: copy_frm_user failed\n",
 				__func__, "LSM_SET_FWK_MODE_CONFIG");
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return -EFAULT;
 		}
 
@@ -1679,7 +1678,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		if (copy_from_user(&params, arg, sizeof(params))) {
 			dev_err(rtd->dev, "%s: %s: copy_from_user failed\n",
 				__func__, "LSM_SET_INPUT_HW_PARAMS");
-			__pm_relax(prtd->ws);
+			pm_relax(rtd->dev);
 			return -EFAULT;
 		}
 
@@ -1706,7 +1705,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		dev_err(rtd->dev, "%s: cmd 0x%x failed %d\n",
 			__func__, cmd, rc);
 
-	__pm_relax(prtd->ws);
+	pm_relax(rtd->dev);
 	return rc;
 }
 
@@ -2802,7 +2801,6 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 	prtd->lsm_client->event_type = LSM_DET_EVENT_TYPE_LEGACY;
 	prtd->lsm_client->fe_id = rtd->dai_link->id;
 	prtd->lsm_client->unprocessed_data = 0;
-	prtd->ws = wakeup_source_register(rtd->dev, "lsm-client");
 	return 0;
 }
 
@@ -3067,7 +3065,6 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 
 	q6lsm_client_free(prtd->lsm_client);
 
-	wakeup_source_unregister(prtd->ws);
 	spin_lock_irqsave(&prtd->event_lock, flags);
 	kfree(prtd->event_status);
 	prtd->event_status = NULL;
@@ -3455,8 +3452,16 @@ static int msm_asoc_lsm_new(struct snd_soc_pcm_runtime *rtd)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
 	ret = msm_lsm_add_controls(rtd);
-	if (ret)
+	if (ret) {
 		pr_err("%s, kctl add failed:%d\n", __func__, ret);
+		return ret;
+	}
+
+	/* PM core releases it on unregister */
+	ret = device_init_wakeup(rtd->dev, true);
+	if (ret)
+		dev_err(rtd->dev, "%s: device_init_wakeup failed, ret %d\n",
+			__func__, ret);
 
 	return ret;
 }
