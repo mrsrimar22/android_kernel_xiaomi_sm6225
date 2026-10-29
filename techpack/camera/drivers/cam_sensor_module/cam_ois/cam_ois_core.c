@@ -480,7 +480,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			goto put_ref;
 		}
 	} else {
-		CAM_ERR(CAM_OIS, "Invalid packet header size %u",
+		CAM_ERR(CAM_OIS, "Invalid packet header size %zu",
 			packet_size);
 		rc = -EINVAL;
 		goto put_ref;
