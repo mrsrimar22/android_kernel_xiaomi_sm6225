@@ -1139,6 +1139,8 @@ int dsi_clk_req_state(void *client, enum dsi_clk_type clk,
 	struct dsi_clk_client_info *c = client;
 	struct dsi_clk_mngr *mngr;
 	bool changed = false;
+	u32 link_refcount;
+	enum dsi_clk_state link_clk_state;
 
 	if (!client || !clk || clk > (DSI_CORE_CLK | DSI_LINK_CLK) ||
 	    state > DSI_CLK_EARLY_GATE) {
@@ -1149,6 +1151,9 @@ int dsi_clk_req_state(void *client, enum dsi_clk_type clk,
 
 	mngr = c->mngr;
 	mutex_lock(&mngr->clk_mutex);
+
+	link_refcount = c->link_refcount;
+	link_clk_state = c->link_clk_state;
 
 	DSI_DEBUG("[%s]%s: CLK=%d, new_state=%d, core=%d, linkl=%d\n",
 	       mngr->name, c->name, clk, state, c->core_clk_state,
@@ -1224,8 +1229,19 @@ int dsi_clk_req_state(void *client, enum dsi_clk_type clk,
 
 	if (changed) {
 		rc = dsi_recheck_clk_state(mngr);
-		if (rc)
+		if (rc) {
 			DSI_ERR("Failed to adjust clock state rc = %d\n", rc);
+			/*
+			 * The link clocks never came up, so the request was not
+			 * honored. Drop it from the client state, otherwise the
+			 * next ON request sees the state already set and skips
+			 * the hardware enable, leaving the link clocks off.
+			 */
+			if (state == DSI_CLK_ON && (clk & DSI_LINK_CLK)) {
+				c->link_refcount = link_refcount;
+				c->link_clk_state = link_clk_state;
+			}
+		}
 	}
 
 	mutex_unlock(&mngr->clk_mutex);
