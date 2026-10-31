@@ -504,6 +504,16 @@ static void complete_commit(struct msm_commit *c)
 
 	kms->funcs->prepare_commit(kms, state);
 
+	/*
+	 * prepare_commit() could not take the power reference, so nothing was
+	 * programmed for this state. Hold the commit back instead of running
+	 * the modeset stages against a block that system suspend has already
+	 * powered down. The planes and the state are still released below so
+	 * the commit thread and its fences keep moving.
+	 */
+	if (!to_kms_state(state)->power_ref)
+		goto cleanup;
+
 	msm_atomic_helper_commit_modeset_disables(dev, state);
 
 	drm_atomic_helper_commit_planes(dev, state,
@@ -526,9 +536,11 @@ static void complete_commit(struct msm_commit *c)
 
 	msm_atomic_wait_for_commit_done(dev, state);
 
+cleanup:
 	drm_atomic_helper_cleanup_planes(dev, state);
 
-	kms->funcs->complete_commit(kms, state);
+	if (to_kms_state(state)->power_ref)
+		kms->funcs->complete_commit(kms, state);
 
 	drm_atomic_state_put(state);
 
@@ -806,17 +818,20 @@ void msm_atomic_commit_tail(struct drm_atomic_state *state)
 
 	kms->funcs->prepare_commit(kms, state);
 
-	drm_atomic_helper_commit_modeset_disables(dev, state);
+	/* no power reference, nothing was programmed for this state */
+	if (to_kms_state(state)->power_ref) {
+		drm_atomic_helper_commit_modeset_disables(dev, state);
 
-	drm_atomic_helper_commit_planes(dev, state, 0);
+		drm_atomic_helper_commit_planes(dev, state, 0);
 
-	drm_atomic_helper_commit_modeset_enables(dev, state);
+		drm_atomic_helper_commit_modeset_enables(dev, state);
 
-	msm_atomic_wait_for_commit_done(dev, state);
+		msm_atomic_wait_for_commit_done(dev, state);
 
-	kms->funcs->complete_commit(kms, state);
+		kms->funcs->complete_commit(kms, state);
 
-	drm_atomic_helper_wait_for_vblanks(dev, state);
+		drm_atomic_helper_wait_for_vblanks(dev, state);
+	}
 
 	drm_atomic_helper_commit_hw_done(state);
 
