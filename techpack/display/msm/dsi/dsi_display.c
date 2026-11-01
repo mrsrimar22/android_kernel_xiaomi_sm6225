@@ -4890,6 +4890,8 @@ int dsi_display_cont_splash_config(void *dsi_display)
 	if (rc) {
 		DSI_ERR("[%s] failed to enable DSI link clocks, rc=%d\n",
 		       display->name, rc);
+		(void)dsi_display_clk_ctrl(display->dsi_clk_handle,
+				DSI_CORE_CLK, DSI_CLK_OFF);
 		goto clk_manager_update;
 	}
 
