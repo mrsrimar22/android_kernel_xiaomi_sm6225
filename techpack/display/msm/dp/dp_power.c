@@ -494,6 +494,7 @@ static int dp_power_client_init(struct dp_power *dp_power,
 	}
 	dp_power->phandle = phandle;
 	dp_power->drm_dev = drm_dev;
+	power->client_init = true;
 
 	return 0;
 
@@ -514,6 +515,9 @@ static void dp_power_client_deinit(struct dp_power *dp_power)
 
 	power = container_of(dp_power, struct dp_power_private, dp_power);
 
+	dp_power_deinit(dp_power);
+
+	power->client_init = false;
 	dp_power_clk_init(power, false);
 	dp_power_regulator_deinit(power);
 }
@@ -723,6 +727,9 @@ void dp_power_put(struct dp_power *dp_power)
 		return;
 
 	power = container_of(dp_power, struct dp_power_private, dp_power);
+
+	if (power->client_init)
+		dp_power_client_deinit(dp_power);
 
 	devm_kfree(&power->pdev->dev, power);
 }
