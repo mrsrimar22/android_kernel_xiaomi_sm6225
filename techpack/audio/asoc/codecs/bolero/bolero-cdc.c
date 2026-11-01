@@ -106,7 +106,7 @@ static int __bolero_reg_read(struct bolero_priv *priv,
 	if (priv->macro_params[VA_MACRO].dev) {
 		pm_runtime_get_sync(priv->macro_params[VA_MACRO].dev);
 		if (!bolero_check_core_votes(priv->macro_params[VA_MACRO].dev))
-			goto ssr_err;
+			goto err;
 	}
 
 	if (priv->version < BOLERO_VERSION_2_0) {
@@ -157,7 +157,7 @@ static int __bolero_reg_write(struct bolero_priv *priv,
 	if (priv->macro_params[VA_MACRO].dev) {
 		pm_runtime_get_sync(priv->macro_params[VA_MACRO].dev);
 		if (!bolero_check_core_votes(priv->macro_params[VA_MACRO].dev))
-			goto ssr_err;
+			goto err;
 	}
 
 	if (priv->version < BOLERO_VERSION_2_0) {
