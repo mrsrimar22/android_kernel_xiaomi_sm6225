@@ -854,14 +854,15 @@ static void dp_display_process_mst_hpd_high(struct dp_display_private *dp,
 	DP_MST_DEBUG("mst_hpd_high. mst_active:%d\n", dp->mst.mst_active);
 }
 
-static void dp_display_host_init(struct dp_display_private *dp)
+static int dp_display_host_init(struct dp_display_private *dp)
 {
 	bool flip = false;
 	bool reset;
+	int rc;
 
 	if (dp_display_state_is(DP_STATE_INITIALIZED)) {
 		dp_display_state_log("[already initialized]");
-		return;
+		return 0;
 	}
 
 	if (dp->hpd->orientation == ORIENTATION_CC2)
@@ -870,7 +871,12 @@ static void dp_display_host_init(struct dp_display_private *dp)
 	reset = dp->debug->sim_mode ? false :
 		(!dp->hpd->multi_func || !dp->hpd->peer_usb_comm);
 
-	dp->power->init(dp->power, flip);
+	rc = dp->power->init(dp->power, flip);
+	if (rc) {
+		DP_ERR("failed to init power: %d\n", rc);
+		return rc;
+	}
+
 	dp->hpd->host_init(dp->hpd, &dp->catalog->hpd);
 	dp->ctrl->init(dp->ctrl, flip, reset);
 	enable_irq(dp->irq);
@@ -880,6 +886,8 @@ static void dp_display_host_init(struct dp_display_private *dp)
 
 	/* log this as it results from user action of cable connection */
 	DP_INFO("[OK]\n");
+
+	return 0;
 }
 
 static void dp_display_host_ready(struct dp_display_private *dp)
@@ -1000,7 +1008,12 @@ static int dp_display_process_hpd_high(struct dp_display_private *dp)
 	 */
 	if (dp_display_state_is(DP_STATE_SRC_PWRDN) &&
 			dp_display_state_is(DP_STATE_CONFIGURED)) {
-		dp_display_host_init(dp);
+		rc = dp_display_host_init(dp);
+		if (rc) {
+			dp_display_state_remove(DP_STATE_CONNECTED);
+			mutex_unlock(&dp->session_lock);
+			return rc;
+		}
 		dp_display_state_remove(DP_STATE_SRC_PWRDN);
 	}
 
@@ -1146,7 +1159,12 @@ static int dp_display_usbpd_configure_cb(struct device *dev)
 	dp_display_state_remove(DP_STATE_ABORTED);
 	dp_display_state_add(DP_STATE_CONFIGURED);
 
-	dp_display_host_init(dp);
+	rc = dp_display_host_init(dp);
+	if (rc) {
+		dp_display_state_remove(DP_STATE_CONFIGURED);
+		mutex_unlock(&dp->session_lock);
+		goto end;
+	}
 
 	/* check for hpd high */
 	if (dp->hpd->hpd_high)
@@ -1859,7 +1877,9 @@ static int dp_display_prepare(struct dp_display *dp_display, void *panel)
 	 */
 	if (dp_display_state_is(DP_STATE_SRC_PWRDN) &&
 			dp_display_state_is(DP_STATE_CONFIGURED)) {
-		dp_display_host_init(dp);
+		rc = dp_display_host_init(dp);
+		if (rc)
+			goto end;
 		dp_display_state_remove(DP_STATE_SRC_PWRDN);
 	}
 
