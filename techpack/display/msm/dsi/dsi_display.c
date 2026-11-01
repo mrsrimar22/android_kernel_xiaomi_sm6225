@@ -3817,16 +3817,19 @@ static int dsi_display_res_init(struct dsi_display *display)
 	rc = dsi_display_parse_lane_map(display);
 	if (rc) {
 		DSI_ERR("Lane map not found, rc=%d\n", rc);
-		goto error_ctrl_put;
+		goto error_panel_put;
 	}
 
 	rc = dsi_display_clocks_init(display);
 	if (rc) {
 		DSI_ERR("Failed to parse clock data, rc=%d\n", rc);
-		goto error_ctrl_put;
+		goto error_panel_put;
 	}
 
 	return 0;
+error_panel_put:
+	dsi_panel_put(display->panel);
+	display->panel = NULL;
 error_ctrl_put:
 	for (i = i - 1; i >= 0; i--) {
 		ctrl = &display->ctrl[i];
