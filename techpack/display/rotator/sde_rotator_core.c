@@ -3197,10 +3197,12 @@ int sde_rotator_core_init(struct sde_rot_mgr **pmgr,
 		goto error_fs_en_fail;
 	}
 
-	/* enable power and clock before h/w initialization/query */
 	sde_rotator_update_clk(mgr);
-	sde_rotator_resource_ctrl(mgr, true);
-	sde_rotator_clk_ctrl(mgr, true);
+	ret = sde_rotator_clk_ctrl(mgr, true);
+	if (ret) {
+		SDEROT_ERR("failed to enable rotator clocks %d\n", ret);
+		goto error_clk_en_fail;
+	}
 
 	mdata->mdss_version = SDE_REG_READ(mdata, SDE_REG_HW_VERSION);
 	SDEROT_DBG("mdss revision %x\n", mdata->mdss_version);
@@ -3251,17 +3253,15 @@ int sde_rotator_core_init(struct sde_rot_mgr **pmgr,
 		goto error_hw_init;
 	}
 
-	sde_rotator_pm_qos_add(mdata);
-
 	ret = sde_rotator_init_queue(mgr);
 	if (ret) {
 		SDEROT_ERR("fail to init queue\n");
 		goto error_init_queue;
 	}
 
+	sde_rotator_pm_qos_add(mdata);
 	/* disable power and clock after h/w initialization/query */
 	sde_rotator_clk_ctrl(mgr, false);
-	sde_rotator_resource_ctrl(mgr, false);
 	sde_rotator_footswitch_ctrl(mgr, false);
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -3273,7 +3273,7 @@ error_init_queue:
 error_hw_init:
 error_map_hw_ops:
 	sde_rotator_clk_ctrl(mgr, false);
-	sde_rotator_resource_ctrl(mgr, false);
+error_clk_en_fail:
 	sde_rotator_footswitch_ctrl(mgr, false);
 error_fs_en_fail:
 	sde_rotator_res_destroy(mgr);
@@ -3309,18 +3309,32 @@ void sde_rotator_core_destroy(struct sde_rot_mgr *mgr)
 
 void sde_rotator_core_dump(struct sde_rot_mgr *mgr)
 {
+	int ret;
+
 	if (!mgr) {
 		SDEROT_ERR("null parameters\n");
 		return;
 	}
 
-	sde_rotator_resource_ctrl(mgr, true);
+	ret = sde_rotator_resource_ctrl(mgr, true);
+	if (ret < 0) {
+		SDEROT_ERR("failed to enable power resources %d\n", ret);
+		return;
+	}
+
+	ret = sde_rotator_clk_ctrl(mgr, true);
+	if (ret) {
+		SDEROT_ERR("failed to enable clocks %d\n", ret);
+		sde_rotator_resource_ctrl(mgr, false);
+		return;
+	}
 
 	if (mgr->ops_hw_dump_status)
 		mgr->ops_hw_dump_status(mgr);
 
 	SDEROT_EVTLOG_TOUT_HANDLER("rot", "rot_dbg_bus", "vbif_dbg_bus");
 
+	sde_rotator_clk_ctrl(mgr, false);
 	sde_rotator_resource_ctrl(mgr, false);
 }
 
