@@ -911,12 +911,18 @@ int sde_power_clk_set_rate(struct sde_power_handle *phandle, char *clock_name,
 			prev_clk_rate = mp->clk_config[i].rate;
 			requested_clk_rate = rate;
 			sde_cx_ipeak_vote(phandle, &mp->clk_config[i],
-				requested_clk_rate, prev_clk_rate, true);
+					  requested_clk_rate,
+					  prev_clk_rate, true);
 			mp->clk_config[i].rate = rate;
 			rc = msm_dss_single_clk_set_rate(&mp->clk_config[i]);
-			if (!rc)
+			if (!rc) {
 				sde_cx_ipeak_vote(phandle, &mp->clk_config[i],
 				   requested_clk_rate, prev_clk_rate, false);
+			} else {
+				mp->clk_config[i].rate = prev_clk_rate;
+				sde_cx_ipeak_vote(phandle, &mp->clk_config[i],
+				   prev_clk_rate, requested_clk_rate, false);
+			}
 			break;
 		}
 	}
