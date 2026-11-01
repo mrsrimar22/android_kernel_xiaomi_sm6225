@@ -465,6 +465,7 @@ error_gcc_axi:
 error_gcc_ahb:
 	sde_rotator_disable_clk(mgr, SDE_ROTATOR_CLK_MNOC_AHB);
 error_mnoc_ahb:
+	mgr->rot_enable_clk_cnt--;
 	return ret;
 }
 

@@ -399,8 +399,7 @@ int sde_rot_enable_clk(struct sde_clk *clk_arry, int num_clk, int enable)
 			}
 
 			if (rc) {
-				sde_rot_enable_clk(&clk_arry[i],
-					i, false);
+				sde_rot_enable_clk(clk_arry, i, false);
 				break;
 			}
 		}
