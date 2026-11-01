@@ -2335,6 +2335,7 @@ static int sde_rotator_open_session(struct sde_rot_mgr *mgr,
 	ret = sde_rotator_resource_ctrl(mgr, true);
 	if (ret < 0) {
 		SDEROT_ERR("Failed to acquire rotator resources\n");
+		sde_rotator_resource_ctrl(mgr, false);
 		goto resource_err;
 	}
 
