@@ -76,7 +76,9 @@ static int msm_smmu_attach(struct msm_mmu *mmu, const char * const *names,
 		dev_dbg(client->dev, "iommu domain ops restored\n");
 	}
 
+	pm_runtime_get_sync(mmu->dev);
 	rc = iommu_attach_device(client->domain, client->dev);
+	pm_runtime_put_sync(mmu->dev);
 	if (rc) {
 		dev_err(client->dev, "iommu attach dev failed (%d)\n", rc);
 		return rc;
@@ -146,7 +148,9 @@ static int msm_smmu_one_to_one_unmap(struct msm_mmu *mmu,
 	if (!client || !client->domain)
 		return -ENODEV;
 
+	pm_runtime_get_sync(mmu->dev);
 	ret = iommu_unmap(client->domain, dest_address, size);
+	pm_runtime_put_sync(mmu->dev);
 	if (ret != size)
 		pr_err("smmu unmap failed\n");
 
@@ -194,6 +198,9 @@ static int msm_smmu_unmap(struct msm_mmu *mmu, uint64_t iova,
 {
 	struct msm_smmu *smmu = to_msm_smmu(mmu);
 	struct msm_smmu_client *client = msm_smmu_to_client(smmu);
+
+	if (!client || !client->domain)
+		return -ENODEV;
 
 	pm_runtime_get_sync(mmu->dev);
 	iommu_unmap(client->domain, iova, len);
