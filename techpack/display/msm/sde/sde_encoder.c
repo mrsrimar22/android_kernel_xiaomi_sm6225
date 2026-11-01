@@ -2112,12 +2112,13 @@ static int _sde_encoder_update_rsc_client(
 
 	if (rsc_state != SDE_RSC_IDLE_STATE && !sde_enc->rsc_state_init
 			&& (disp_info->display_type == SDE_CONNECTOR_PRIMARY)) {
-		/* update it only once */
-		sde_enc->rsc_state_init = true;
-
 		ret = sde_rsc_client_state_update(sde_enc->rsc_client,
 			rsc_state, rsc_config, crtc->base.id,
 			&wait_vblank_crtc_id);
+
+		/* update it only once */
+		if (!ret)
+			sde_enc->rsc_state_init = true;
 	} else {
 		ret = sde_rsc_client_state_update(sde_enc->rsc_client,
 			rsc_state, NULL, crtc->base.id,

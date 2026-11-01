@@ -870,6 +870,7 @@ int sde_rsc_client_state_update(struct sde_rsc_client *caller_client,
 	int *wait_vblank_crtc_id)
 {
 	int rc = 0;
+	enum sde_rsc_state prev_state;
 	struct sde_rsc_priv *rsc;
 
 	if (!caller_client) {
@@ -890,6 +891,7 @@ int sde_rsc_client_state_update(struct sde_rsc_client *caller_client,
 	mutex_lock(&rsc->client_lock);
 	SDE_EVT32_VERBOSE(caller_client->id, caller_client->current_state,
 			state, rsc->current_state, SDE_EVTLOG_FUNC_ENTRY);
+	prev_state = caller_client->current_state;
 	caller_client->crtc_id = crtc_id;
 	caller_client->current_state = state;
 
@@ -906,8 +908,13 @@ int sde_rsc_client_state_update(struct sde_rsc_client *caller_client,
 		__builtin_return_address(0), rsc->current_state,
 		caller_client->name, state);
 
-	if (rsc->current_state == SDE_RSC_IDLE_STATE)
-		sde_rsc_resource_enable(rsc);
+	if (rsc->current_state == SDE_RSC_IDLE_STATE) {
+		rc = sde_rsc_resource_enable(rsc);
+		if (rc < 0) {
+			caller_client->current_state = prev_state;
+			goto end;
+		}
+	}
 
 	switch (state) {
 	case SDE_RSC_IDLE_STATE:
