@@ -923,8 +923,13 @@ static int dsi_update_clk_state(struct dsi_clk_mngr *mngr,
 
 			rc = dsi_clk_update_link_clk_state(mngr, l_clks,
 				DSI_LINK_HS_CLK, l_state, true);
-			if (rc)
+			if (rc) {
+				dsi_display_link_clk_disable(l_clks,
+						DSI_LINK_LP_CLK,
+						mngr->dsi_ctrl_count,
+						mngr->master_ndx);
 				goto error;
+			}
 		} else {
 			/*
 			 * Two conditions that need to be checked for Link
