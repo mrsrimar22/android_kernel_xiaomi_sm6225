@@ -49,13 +49,15 @@ static int smmu_aspace_map_vma(struct msm_gem_address_space *aspace,
 
 	ret = aspace->mmu->funcs->map_dma_buf(aspace->mmu, sgt,
 			DMA_BIDIRECTIONAL, flags);
-	if (!ret)
-		vma->iova = sg_dma_address(sgt->sgl);
+	if (ret)
+		return ret;
+
+	vma->iova = sg_dma_address(sgt->sgl);
 
 	/* Get a reference to the aspace to keep it around */
 	kref_get(&aspace->kref);
 
-	return ret;
+	return 0;
 }
 
 static void smmu_aspace_destroy(struct msm_gem_address_space *aspace)
@@ -269,12 +271,19 @@ static int iommu_aspace_map_vma(struct msm_gem_address_space *aspace,
 
 		ret = aspace->mmu->funcs->map(aspace->mmu, vma->iova, sgt,
 				size, IOMMU_READ | IOMMU_WRITE);
+		if (ret) {
+			spin_lock(&aspace->lock);
+			drm_mm_remove_node(&vma->node);
+			spin_unlock(&aspace->lock);
+			vma->iova = 0;
+			return ret;
+		}
 	}
 
 	/* Get a reference to the aspace to keep it around */
 	kref_get(&aspace->kref);
 
-	return ret;
+	return 0;
 }
 
 static void iommu_aspace_destroy(struct msm_gem_address_space *aspace)
