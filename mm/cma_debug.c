@@ -181,7 +181,7 @@ DEFINE_SIMPLE_ATTRIBUTE(cma_alloc_fops, NULL, cma_alloc_write, "%llu\n");
 static void cma_debugfs_add_one(struct cma *cma, int idx)
 {
 	struct dentry *tmp;
-	char name[16];
+	char name[CMA_MAX_NAME + 4];
 
 	scnprintf(name, sizeof(name), "cma-%s", cma->name);
 
