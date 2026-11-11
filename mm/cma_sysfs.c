@@ -8,6 +8,7 @@
 #include <linux/cma.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 
 #include "cma.h"
 
@@ -90,20 +91,32 @@ static int __init cma_sysfs_init(void)
 	struct kobject *cma_kobj_root;
 	struct cma_kobject *cma_kobj;
 	struct cma *cma;
-	int i, err;
+	int i, j, err;
 
 	cma_kobj_root = kobject_create_and_add("cma", mm_kobj);
 	if (!cma_kobj_root)
 		return -ENOMEM;
 
 	for (i = 0; i < cma_area_count; i++) {
+		cma = &cma_areas[i];
+
+		for (j = 0; j < i; j++) {
+			if (!strcmp(cma_areas[j].name, cma->name))
+				break;
+		}
+
+		if (j != i) {
+			pr_warn("cma: duplicate area name '%s' for area %d, skipping\n",
+				cma->name, i);
+			continue;
+		}
+
 		cma_kobj = kzalloc(sizeof(*cma_kobj), GFP_KERNEL);
 		if (!cma_kobj) {
 			err = -ENOMEM;
 			goto out;
 		}
 
-		cma = &cma_areas[i];
 		cma->cma_kobj = cma_kobj;
 		cma_kobj->cma = cma;
 		err = kobject_init_and_add(&cma_kobj->kobj, &cma_ktype,
@@ -118,6 +131,8 @@ static int __init cma_sysfs_init(void)
 out:
 	while (--i >= 0) {
 		cma = &cma_areas[i];
+		if (!cma->cma_kobj)
+			continue;
 		kobject_put(&cma->cma_kobj->kobj);
 	}
 	kobject_put(cma_kobj_root);
