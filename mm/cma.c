@@ -417,14 +417,23 @@ static void cma_debug_show_areas(struct cma *cma)
 	unsigned long start = 0;
 	unsigned long nr_part, nr_total = 0;
 	unsigned long nbits = cma_bitmap_maxno(cma);
+	unsigned long *bitmap;
+	unsigned long flags;
 
-	spin_lock_irq(&cma->lock);
+	bitmap = bitmap_alloc(nbits, GFP_KERNEL);
+	if (!bitmap)
+		return;
+
+	spin_lock_irqsave(&cma->lock, flags);
+	bitmap_copy(bitmap, cma->bitmap, nbits);
+	spin_unlock_irqrestore(&cma->lock, flags);
+
 	pr_info("number of available pages: ");
 	for (;;) {
-		next_zero_bit = find_next_zero_bit(cma->bitmap, nbits, start);
+		next_zero_bit = find_next_zero_bit(bitmap, nbits, start);
 		if (next_zero_bit >= nbits)
 			break;
-		next_set_bit = find_next_bit(cma->bitmap, nbits, next_zero_bit);
+		next_set_bit = find_next_bit(bitmap, nbits, next_zero_bit);
 		nr_zero = next_set_bit - next_zero_bit;
 		nr_part = nr_zero << cma->order_per_bit;
 		pr_cont("%s%lu@%lu", nr_total ? "+" : "", nr_part,
@@ -433,7 +442,8 @@ static void cma_debug_show_areas(struct cma *cma)
 		start = next_zero_bit + nr_zero;
 	}
 	pr_cont("=> %lu free of %lu total pages\n", nr_total, cma->count);
-	spin_unlock_irq(&cma->lock);
+
+	bitmap_free(bitmap);
 }
 #else
 static inline void cma_debug_show_areas(struct cma *cma) { }
