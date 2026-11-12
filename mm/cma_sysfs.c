@@ -41,7 +41,7 @@ static ssize_t alloc_pages_success_show(struct kobject *kobj,
 	struct cma *cma = cma_from_kobj(kobj);
 
 	return sysfs_emit(buf, "%llu\n",
-			  atomic64_read(&cma->nr_pages_succeeded));
+			  (u64)atomic64_read(&cma->nr_pages_succeeded));
 }
 CMA_ATTR_RO(alloc_pages_success);
 
@@ -50,7 +50,8 @@ static ssize_t alloc_pages_fail_show(struct kobject *kobj,
 {
 	struct cma *cma = cma_from_kobj(kobj);
 
-	return sysfs_emit(buf, "%llu\n", atomic64_read(&cma->nr_pages_failed));
+	return sysfs_emit(buf, "%llu\n",
+			  (u64)atomic64_read(&cma->nr_pages_failed));
 }
 CMA_ATTR_RO(alloc_pages_fail);
 
@@ -59,7 +60,8 @@ static ssize_t release_pages_success_show(struct kobject *kobj,
 {
 	struct cma *cma = cma_from_kobj(kobj);
 
-	return sysfs_emit(buf, "%llu\n", atomic64_read(&cma->nr_pages_released));
+	return sysfs_emit(buf, "%llu\n",
+			  (u64)atomic64_read(&cma->nr_pages_released));
 }
 CMA_ATTR_RO(release_pages_success);
 
