@@ -561,7 +561,7 @@ static int csid_set_power(struct v4l2_subdev *sd, int on)
 	if (on) {
 		u32 hw_version;
 
-		ret = pm_runtime_get_sync(dev);
+		ret = pm_runtime_resume_and_get(dev);
 		if (ret < 0)
 			return ret;
 
