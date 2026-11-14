@@ -979,11 +979,9 @@ static int dsps_suspend(struct device *dev)
 		/* This can happen if the musb device is in -EPROBE_DEFER */
 		return 0;
 
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(dev);
+	ret = pm_runtime_resume_and_get(dev);
+	if (ret < 0)
 		return ret;
-	}
 
 	del_timer_sync(&musb->dev_timer);
 
