@@ -749,11 +749,10 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 		return -EACCES;
 	}
 
-	ret = pm_runtime_get_sync(gi2c->dev);
+	ret = pm_runtime_resume_and_get(gi2c->dev);
 	if (ret < 0) {
 		GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
 			    "error turning SE resources:%d\n", ret);
-		pm_runtime_put_noidle(gi2c->dev);
 		/* Set device in suspended since resume failed */
 		pm_runtime_set_suspended(gi2c->dev);
 		return ret;
