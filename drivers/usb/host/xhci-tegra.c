@@ -1144,7 +1144,7 @@ static int tegra_xusb_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(&pdev->dev);
 	if (pm_runtime_enabled(&pdev->dev))
-		err = pm_runtime_get_sync(&pdev->dev);
+		err = pm_runtime_resume_and_get(&pdev->dev);
 	else
 		err = tegra_xusb_runtime_resume(&pdev->dev);
 
