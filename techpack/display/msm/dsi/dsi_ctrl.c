@@ -1008,10 +1008,8 @@ static int dsi_ctrl_enable_supplies(struct dsi_ctrl *dsi_ctrl, bool enable)
 	int rc = 0;
 
 	if (enable) {
-		rc = pm_runtime_get_sync(dsi_ctrl->drm_dev->dev);
+		rc = pm_runtime_resume_and_get(dsi_ctrl->drm_dev->dev);
 		if (rc < 0) {
-			/* usage_count is still incremented on failure */
-			pm_runtime_put_noidle(dsi_ctrl->drm_dev->dev);
 			DSI_CTRL_ERR(dsi_ctrl,
 				"Power resource enable failed, rc=%d\n", rc);
 			goto error;

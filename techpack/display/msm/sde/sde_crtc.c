@@ -3719,12 +3719,10 @@ static int _sde_crtc_vblank_enable_no_lock(
 
 		/* drop lock since power crtc cb may try to re-acquire lock */
 		mutex_unlock(&sde_crtc->crtc_lock);
-		ret = pm_runtime_get_sync(crtc->dev->dev);
+		ret = pm_runtime_resume_and_get(crtc->dev->dev);
 		mutex_lock(&sde_crtc->crtc_lock);
-		if (ret < 0) {
-			pm_runtime_put_noidle(crtc->dev->dev);
+		if (ret < 0)
 			return ret;
-		}
 
 		drm_for_each_encoder_mask(enc, crtc->dev,
 			crtc->state->encoder_mask) {
@@ -5836,11 +5834,9 @@ static ssize_t _sde_crtc_misr_setup(struct file *file,
 		return -EINVAL;
 	}
 
-	rc = pm_runtime_get_sync(crtc->dev->dev);
-	if (rc < 0) {
-		pm_runtime_put_noidle(crtc->dev->dev);
+	rc = pm_runtime_resume_and_get(crtc->dev->dev);
+	if (rc < 0)
 		return rc;
-	}
 
 	sde_crtc->misr_enable_debugfs = enable;
 	sde_crtc_misr_setup(crtc, enable, frame_count);
@@ -5872,11 +5868,9 @@ static ssize_t _sde_crtc_misr_read(struct file *file,
 	if (!sde_kms)
 		return -EINVAL;
 
-	rc = pm_runtime_get_sync(crtc->dev->dev);
-	if (rc < 0) {
-		pm_runtime_put_noidle(crtc->dev->dev);
+	rc = pm_runtime_resume_and_get(crtc->dev->dev);
+	if (rc < 0)
 		return rc;
-	}
 
 	if (sde_kms_is_secure_session_inprogress(sde_kms)) {
 		SDE_DEBUG("crtc:%d misr read not allowed\n", DRMID(crtc));
@@ -6468,9 +6462,8 @@ static int _sde_crtc_event_enable(struct sde_kms *kms,
 
 	ret = 0;
 	if (crtc_drm->enabled) {
-		ret = pm_runtime_get_sync(crtc_drm->dev->dev);
+		ret = pm_runtime_resume_and_get(crtc_drm->dev->dev);
 		if (ret < 0) {
-			pm_runtime_put_noidle(crtc_drm->dev->dev);
 			SDE_EVT32(ret, SDE_EVTLOG_ERROR);
 			kfree(node);
 			return ret;
@@ -6537,9 +6530,8 @@ static int _sde_crtc_event_disable(struct sde_kms *kms,
 		kfree(node);
 		return 0;
 	}
-	ret = pm_runtime_get_sync(crtc_drm->dev->dev);
+	ret = pm_runtime_resume_and_get(crtc_drm->dev->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(crtc_drm->dev->dev);
 		SDE_ERROR("failed to enable power resource %d\n", ret);
 		SDE_EVT32(ret, SDE_EVTLOG_ERROR);
 		kfree(node);
