@@ -758,13 +758,12 @@ static int spi_geni_prepare_message(struct spi_master *spi,
 				return -EACCES;
 			}
 
-			ret = pm_runtime_get_sync(mas->dev);
+			ret = pm_runtime_resume_and_get(mas->dev);
 			if (ret < 0) {
 				dev_err(mas->dev,
-					"%s:pm_runtime_get_sync failed %d\n",
+					"%s:pm_runtime_resume_and_get failed %d\n",
 							__func__, ret);
 				WARN_ON_ONCE(1);
-				pm_runtime_put_noidle(mas->dev);
 				/* Set device in suspended since resume
 				 * failed
 				 */
@@ -793,12 +792,11 @@ static int spi_geni_prepare_message(struct spi_master *spi,
 			return -EACCES;
 		}
 
-		ret = pm_runtime_get_sync(mas->dev);
+		ret = pm_runtime_resume_and_get(mas->dev);
 		if (ret < 0) {
 			dev_err(mas->dev,
-			"%s:pm_runtime_get_sync failed %d\n", __func__, ret);
+			"%s:pm_runtime_resume_and_get failed %d\n", __func__, ret);
 			WARN_ON_ONCE(1);
-			pm_runtime_put_noidle(mas->dev);
 			/* Set device in suspended since resume failed */
 			pm_runtime_set_suspended(mas->dev);
 			return ret;
@@ -935,13 +933,12 @@ static int spi_geni_prepare_transfer_hardware(struct spi_master *spi)
 	}
 
 	if (!mas->setup || !mas->shared_ee) {
-		ret = pm_runtime_get_sync(mas->dev);
+		ret = pm_runtime_resume_and_get(mas->dev);
 		if (ret < 0) {
 			dev_err(mas->dev,
-				"%s:pm_runtime_get_sync failed %d\n",
+				"%s:pm_runtime_resume_and_get failed %d\n",
 							__func__, ret);
 			WARN_ON_ONCE(1);
-			pm_runtime_put_noidle(mas->dev);
 			/* Set device in suspended since resume failed */
 			pm_runtime_set_suspended(mas->dev);
 			goto exit_prepare_transfer_hardware;
