@@ -1262,14 +1262,13 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 		return -ENODEV;
 	}
 
-	result = pm_runtime_get_sync(&device->pdev->dev);
+	result = pm_runtime_resume_and_get(&device->pdev->dev);
 	if (result < 0) {
 		dev_err(device->dev,
 			     "Runtime PM: Unable to wake up the device, rc = %d\n",
 			     result);
 		return result;
 	}
-	result = 0;
 
 	dev_priv = device->ftbl->device_private_create();
 	if (dev_priv == NULL) {
