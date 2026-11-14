@@ -4862,9 +4862,8 @@ int dsi_display_cont_splash_config(void *dsi_display)
 		return -EINVAL;
 	}
 
-	rc = pm_runtime_get_sync(display->drm_dev->dev);
+	rc = pm_runtime_resume_and_get(display->drm_dev->dev);
 	if (rc < 0) {
-		pm_runtime_put_noidle(display->drm_dev->dev);
 		DSI_ERR("failed to vote gdsc for continuous splash, rc=%d\n",
 							rc);
 		return rc;

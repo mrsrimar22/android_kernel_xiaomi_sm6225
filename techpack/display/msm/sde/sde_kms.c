@@ -469,9 +469,8 @@ static int _sde_kms_sui_misr_ctrl(struct sde_kms *sde_kms,
 	int ret;
 
 	if (enable) {
-		ret = pm_runtime_get_sync(sde_kms->dev->dev);
+		ret = pm_runtime_resume_and_get(sde_kms->dev->dev);
 		if (ret < 0) {
-			pm_runtime_put_noidle(sde_kms->dev->dev);
 			SDE_ERROR("failed to enable resource, ret:%d\n", ret);
 			return ret;
 		}
@@ -3357,9 +3356,7 @@ static int sde_kms_pd_enable(struct generic_pm_domain *genpd)
 
 	SDE_DEBUG("\n");
 
-	rc = pm_runtime_get_sync(sde_kms->dev->dev);
-	if (rc > 0)
-		rc = 0;
+	rc = pm_runtime_resume_and_get(sde_kms->dev->dev);
 
 	SDE_EVT32(rc, genpd->device_count);
 
@@ -3821,9 +3818,8 @@ static int sde_kms_hw_init(struct msm_kms *kms)
 	if (rc)
 		SDE_DEBUG("sde splash data fetch failed: %d\n", rc);
 
-	rc = pm_runtime_get_sync(sde_kms->dev->dev);
+	rc = pm_runtime_resume_and_get(sde_kms->dev->dev);
 	if (rc < 0) {
-		pm_runtime_put_noidle(sde_kms->dev->dev);
 		SDE_ERROR("resource enable failed: %d\n", rc);
 		goto error;
 	}
