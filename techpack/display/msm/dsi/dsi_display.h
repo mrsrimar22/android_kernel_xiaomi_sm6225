@@ -662,6 +662,30 @@ int dsi_display_cmd_transfer(struct drm_connector *connector,
 		u32 cmd_buf_len);
 
 /**
+ * dsi_display_cmd_engine_enable() - enable the DSI command engine
+ * @display:         Handle to display
+ *
+ * Return: error code
+ */
+int dsi_display_cmd_engine_enable(struct dsi_display *display);
+
+/**
+ * dsi_display_cmd_engine_disable() - disable the DSI command engine
+ * @display:         Handle to display
+ *
+ * Return: error code
+ */
+int dsi_display_cmd_engine_disable(struct dsi_display *display);
+
+/**
+ * dsi_host_alloc_cmd_tx_buffer() - allocate the command tx buffer
+ * @display:         Handle to display
+ *
+ * Return: error code
+ */
+int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display);
+
+/**
  * dsi_display_soft_reset() - perform a soft reset on DSI controller
  * @display:         Handle to display
  *

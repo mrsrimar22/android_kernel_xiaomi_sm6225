@@ -367,6 +367,47 @@ int drm_bridge_get_dynamic_fps(struct drm_bridge *bridge, char *buf, size_t size
 EXPORT_SYMBOL(drm_bridge_get_dynamic_fps);
 
 /**
+ * drm_bridge_get_mipi_reg - read back the last MIPI DSI register value
+ * @bridge: bridge to query
+ * @buf: destination buffer
+ * @size: size of @buf
+ *
+ * Returns bytes written (0 if empty), or a negative error code.
+ */
+int drm_bridge_get_mipi_reg(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->get_mipi_reg)
+		return bridge->funcs->get_mipi_reg(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_get_mipi_reg);
+
+/**
+ * drm_bridge_set_mipi_reg - run one MIPI DSI register access
+ * @bridge: bridge to operate on
+ * @buf: userspace command string
+ * @size: length of @buf
+ *
+ * Returns bytes consumed, or a negative error code.
+ */
+int drm_bridge_set_mipi_reg(struct drm_bridge *bridge, const char *buf,
+			    size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->set_mipi_reg)
+		return bridge->funcs->set_mipi_reg(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_set_mipi_reg);
+
+/**
  * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  *
