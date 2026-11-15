@@ -293,6 +293,37 @@ static ssize_t mipi_reg_store(struct device *device,
 	return drm_bridge_set_mipi_reg(connector->encoder->bridge, buf, count);
 }
 
+static ssize_t disp_param_show(struct device *device,
+			       struct device_attribute *attr,
+			       char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	int ret;
+
+	if (!connector->encoder || !connector->encoder->bridge)
+		return -ENODEV;
+
+	ret = drm_bridge_get_disp_param(connector->encoder->bridge, buf,
+					PAGE_SIZE);
+	if (ret <= 0)
+		return ret < 0 ? ret : -ENODATA;
+
+	return ret;
+}
+
+static ssize_t disp_param_store(struct device *device,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+
+	if (!connector->encoder || !connector->encoder->bridge)
+		return -ENODEV;
+
+	return drm_bridge_set_disp_param(connector->encoder->bridge, buf,
+					 count);
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
@@ -300,6 +331,7 @@ static DEVICE_ATTR_RO(modes);
 static DEVICE_ATTR_RO(panel_info);
 static DEVICE_ATTR_RO(dynamic_fps);
 static DEVICE_ATTR_RW(mipi_reg);
+static DEVICE_ATTR_RW(disp_param);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
@@ -309,6 +341,7 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_panel_info.attr,
 	&dev_attr_dynamic_fps.attr,
 	&dev_attr_mipi_reg.attr,
+	&dev_attr_disp_param.attr,
 	NULL
 };
 

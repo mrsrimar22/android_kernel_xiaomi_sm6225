@@ -281,6 +281,16 @@ enum dsi_dyn_clk_feature_type {
  * @DSI_CMD_SET_POST_TIMING_SWITCH:        Post timing switch
  * @DSI_CMD_SET_QSYNC_ON                   Enable qsync mode
  * @DSI_CMD_SET_QSYNC_OFF                  Disable qsync mode
+ * @DSI_CMD_SET_DISP_BC_90HZ:              Backlight control for 90 Hz
+ * @DSI_CMD_SET_DISP_BC_60HZ:              Backlight control for 60 Hz
+ * @DSI_CMD_SET_DISP_HBM_ON:               Display HBM on
+ * @DSI_CMD_SET_DISP_HBM_OFF:              Display HBM off
+ * @DSI_CMD_SET_HBM1_ON:                   HBM level 1 on
+ * @DSI_CMD_SET_HBM2_ON:                   HBM level 2 on
+ * @DSI_CMD_SET_DOZE_HBM:                  Doze high brightness mode
+ * @DSI_CMD_SET_DOZE_LBM:                  Doze low brightness mode
+ * @DSI_CMD_SET_DISP_FLAT_ON:              Flat mode on
+ * @DSI_CMD_SET_DISP_FLAT_OFF:             Flat mode off
  * @DSI_CMD_SET_MAX
  */
 enum dsi_cmd_set_type {
@@ -307,6 +317,16 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_POST_TIMING_SWITCH,
 	DSI_CMD_SET_QSYNC_ON,
 	DSI_CMD_SET_QSYNC_OFF,
+	DSI_CMD_SET_DISP_BC_90HZ,
+	DSI_CMD_SET_DISP_BC_60HZ,
+	DSI_CMD_SET_DISP_HBM_ON,
+	DSI_CMD_SET_DISP_HBM_OFF,
+	DSI_CMD_SET_HBM1_ON,
+	DSI_CMD_SET_HBM2_ON,
+	DSI_CMD_SET_DOZE_HBM,
+	DSI_CMD_SET_DOZE_LBM,
+	DSI_CMD_SET_DISP_FLAT_ON,
+	DSI_CMD_SET_DISP_FLAT_OFF,
 	DSI_CMD_SET_MAX
 };
 
@@ -320,6 +340,38 @@ enum dsi_cmd_set_state {
 	DSI_CMD_SET_STATE_LP = 0,
 	DSI_CMD_SET_STATE_HS,
 	DSI_CMD_SET_STATE_MAX
+};
+
+/**
+ * enum dsi_disp_param - display parameters of the disp_param attribute
+ * @DSI_DISP_PARAM_HBM_ON:        High brightness mode on
+ * @DSI_DISP_PARAM_BC_90HZ:       Backlight control for 90 Hz
+ * @DSI_DISP_PARAM_BC_60HZ:       Backlight control for 60 Hz
+ * @DSI_DISP_PARAM_HBM_OFF:       High brightness mode off
+ * @DSI_DISP_PARAM_HBM_L1:        High brightness mode level 1
+ * @DSI_DISP_PARAM_HBM_L2:        High brightness mode level 2
+ * @DSI_DISP_PARAM_HBM_OFF_ALT:   High brightness mode off, second encoding
+ * @DSI_DISP_PARAM_DOZE_HBM:      Doze high brightness mode
+ * @DSI_DISP_PARAM_DOZE_LBM:      Doze low brightness mode
+ * @DSI_DISP_PARAM_DOZE_OFF:      Doze off
+ * @DSI_DISP_PARAM_FLAT_ON:       Flat mode on
+ * @DSI_DISP_PARAM_FLAT_OFF:      Flat mode off
+ *
+ * Each group is a nibble of the value written to the disp_param attribute.
+ */
+enum dsi_disp_param {
+	DSI_DISP_PARAM_HBM_ON		= 0x00010000,
+	DSI_DISP_PARAM_BC_90HZ		= 0x00060000,
+	DSI_DISP_PARAM_BC_60HZ		= 0x00070000,
+	DSI_DISP_PARAM_HBM_OFF		= 0x000A0000,
+	DSI_DISP_PARAM_HBM_L1		= 0x000B0000,
+	DSI_DISP_PARAM_HBM_L2		= 0x000C0000,
+	DSI_DISP_PARAM_HBM_OFF_ALT	= 0x000F0000,
+	DSI_DISP_PARAM_DOZE_HBM		= 0x00500000,
+	DSI_DISP_PARAM_DOZE_LBM		= 0x00600000,
+	DSI_DISP_PARAM_DOZE_OFF		= 0x00700000,
+	DSI_DISP_PARAM_FLAT_ON		= 0x05000000,
+	DSI_DISP_PARAM_FLAT_OFF		= 0x06000000,
 };
 
 /**
