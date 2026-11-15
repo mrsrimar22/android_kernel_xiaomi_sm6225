@@ -376,6 +376,28 @@ struct drm_bridge_funcs {
 	 */
 	int (*set_mipi_reg)(struct drm_bridge *bridge, const char *buf,
 			    size_t size);
+
+	/**
+	 * @get_disp_param:
+	 *
+	 * Return the last display parameter applied to the panel. Returns
+	 * the number of bytes written to the buffer, or a negative error
+	 * code if there is no value to report.
+	 *
+	 * This callback is optional.
+	 */
+	int (*get_disp_param)(struct drm_bridge *bridge, char *buf, size_t size);
+
+	/**
+	 * @set_disp_param:
+	 *
+	 * Apply a display parameter described by a userspace string. Returns
+	 * the number of bytes consumed from @buf, or a negative error code.
+	 *
+	 * This callback is optional.
+	 */
+	int (*set_disp_param)(struct drm_bridge *bridge, const char *buf,
+			      size_t size);
 };
 
 /**
@@ -466,6 +488,9 @@ int drm_bridge_get_dynamic_fps(struct drm_bridge *bridge, char *buf, size_t size
 int drm_bridge_get_mipi_reg(struct drm_bridge *bridge, char *buf, size_t size);
 int drm_bridge_set_mipi_reg(struct drm_bridge *bridge, const char *buf,
 			    size_t size);
+int drm_bridge_get_disp_param(struct drm_bridge *bridge, char *buf, size_t size);
+int drm_bridge_set_disp_param(struct drm_bridge *bridge, const char *buf,
+			      size_t size);
 
 void drm_atomic_bridge_disable(struct drm_bridge *bridge,
 			       struct drm_atomic_state *state);

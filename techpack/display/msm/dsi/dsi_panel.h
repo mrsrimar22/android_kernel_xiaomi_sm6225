@@ -250,6 +250,9 @@ struct dsi_panel {
 	enum dsi_panel_physical_type panel_type;
 
 	struct dsi_read_config read_config;
+
+	bool dispparam_enabled;
+	u32 disp_param;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -383,5 +386,11 @@ ssize_t dsi_panel_mipi_reg_write(struct dsi_panel *panel, const char *buf,
 				 size_t count);
 ssize_t dsi_panel_mipi_reg_read(struct dsi_panel *panel, char *buf,
 				size_t size);
+
+int dsi_panel_disp_param_send(struct dsi_panel *panel, u32 param);
+ssize_t dsi_panel_disp_param_write(struct dsi_panel *panel, const char *buf,
+				   size_t count);
+ssize_t dsi_panel_disp_param_read(struct dsi_panel *panel, char *buf,
+				  size_t size);
 
 #endif /* _DSI_PANEL_H_ */

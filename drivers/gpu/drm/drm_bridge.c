@@ -408,6 +408,47 @@ int drm_bridge_set_mipi_reg(struct drm_bridge *bridge, const char *buf,
 EXPORT_SYMBOL(drm_bridge_set_mipi_reg);
 
 /**
+ * drm_bridge_get_disp_param - read back the last display parameter applied
+ * @bridge: bridge to query
+ * @buf: destination buffer
+ * @size: size of @buf
+ *
+ * Returns the number of bytes written to @buf, or a negative error code.
+ */
+int drm_bridge_get_disp_param(struct drm_bridge *bridge, char *buf, size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->get_disp_param)
+		return bridge->funcs->get_disp_param(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_get_disp_param);
+
+/**
+ * drm_bridge_set_disp_param - apply a display parameter
+ * @bridge: bridge to operate on
+ * @buf: userspace supplied parameter string
+ * @size: length of @buf
+ *
+ * Returns the number of bytes consumed from @buf, or a negative error code.
+ */
+int drm_bridge_set_disp_param(struct drm_bridge *bridge, const char *buf,
+			      size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->set_disp_param)
+		return bridge->funcs->set_disp_param(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_set_disp_param);
+
+/**
  * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  *

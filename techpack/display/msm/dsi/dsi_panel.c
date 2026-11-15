@@ -1841,6 +1841,16 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-qsync-on-commands",
 	"qcom,mdss-dsi-qsync-off-commands",
+	"qcom,mdss-dsi-dispparam-bc-90hz-command",
+	"qcom,mdss-dsi-dispparam-bc-60hz-command",
+	"qcom,mdss-dsi-dispparam-hbm-on-command",
+	"qcom,mdss-dsi-dispparam-hbm-off-command",
+	"qcom,mdss-dsi-hbm1-on-command",
+	"qcom,mdss-dsi-hbm2-on-command",
+	"qcom,mdss-dsi-doze-hbm-command",
+	"qcom,mdss-dsi-doze-lbm-command",
+	"qcom,mdss-dsi-flat-on-command",
+	"qcom,mdss-dsi-flat-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1867,6 +1877,16 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-qsync-on-commands-state",
 	"qcom,mdss-dsi-qsync-off-commands-state",
+	"qcom,mdss-dsi-dispparam-bc-90hz-command-state",
+	"qcom,mdss-dsi-dispparam-bc-60hz-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-on-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-off-command-state",
+	"qcom,mdss-dsi-hbm1-on-command-state",
+	"qcom,mdss-dsi-hbm2-on-command-state",
+	"qcom,mdss-dsi-doze-hbm-command-state",
+	"qcom,mdss-dsi-doze-lbm-command-state",
+	"qcom,mdss-dsi-flat-on-command-state",
+	"qcom,mdss-dsi-flat-off-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -2166,6 +2186,9 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	panel->reset_gpio_always_on = utils->read_bool(utils->data,
 			"qcom,platform-reset-gpio-always-on");
+
+	panel->dispparam_enabled = utils->read_bool(utils->data,
+			"qcom,dispparam-enabled");
 
 	return 0;
 }
@@ -5022,4 +5045,158 @@ ssize_t dsi_panel_mipi_reg_read(struct dsi_panel *panel, char *buf,
 	mutex_unlock(&panel->panel_lock);
 
 	return len;
+}
+
+/**
+ * dsi_panel_disp_param_dispatch() - run the command set of a disp_param group
+ * @panel:  DSI panel
+ * @param:  nibble encoded display parameter
+ *
+ * Only the groups the panel actually provides commands for are handled:
+ *
+ *   0x000F0000  HBM on / off / level 1 / level 2 and backlight control
+ *   0x00F00000  doze high / low brightness and doze off
+ *   0x0F000000  flat mode on / off
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+static int dsi_panel_disp_param_dispatch(struct dsi_panel *panel, u32 param)
+{
+	int rc = 0;
+
+	switch (param & 0x000F0000) {
+	case DSI_DISP_PARAM_HBM_ON:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_ON);
+		break;
+	case DSI_DISP_PARAM_BC_90HZ:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_BC_90HZ);
+		break;
+	case DSI_DISP_PARAM_BC_60HZ:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_BC_60HZ);
+		break;
+	case DSI_DISP_PARAM_HBM_OFF:
+	case DSI_DISP_PARAM_HBM_OFF_ALT:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_OFF);
+		break;
+	case DSI_DISP_PARAM_HBM_L1:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_HBM1_ON);
+		break;
+	case DSI_DISP_PARAM_HBM_L2:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_HBM2_ON);
+		break;
+	default:
+		break;
+	}
+
+	switch (param & 0x00F00000) {
+	case DSI_DISP_PARAM_DOZE_HBM:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DOZE_HBM);
+		break;
+	case DSI_DISP_PARAM_DOZE_LBM:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DOZE_LBM);
+		break;
+	case DSI_DISP_PARAM_DOZE_OFF:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
+		break;
+	default:
+		break;
+	}
+
+	switch (param & 0x0F000000) {
+	case DSI_DISP_PARAM_FLAT_ON:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_FLAT_ON);
+		break;
+	case DSI_DISP_PARAM_FLAT_OFF:
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_FLAT_OFF);
+		break;
+	default:
+		break;
+	}
+
+	return rc;
+}
+
+/**
+ * dsi_panel_disp_param_send() - apply a display parameter
+ * @panel:  DSI panel
+ * @param:  nibble encoded display parameter
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+int dsi_panel_disp_param_send(struct dsi_panel *panel, u32 param)
+{
+	int rc;
+
+	if (!panel)
+		return -EINVAL;
+
+	if (!panel->dispparam_enabled)
+		return -EOPNOTSUPP;
+
+	mutex_lock(&panel->panel_lock);
+
+	if (!panel->panel_initialized) {
+		mutex_unlock(&panel->panel_lock);
+		return -EAGAIN;
+	}
+
+	rc = dsi_panel_disp_param_dispatch(panel, param);
+	if (!rc)
+		panel->disp_param = param;
+
+	mutex_unlock(&panel->panel_lock);
+
+	return rc;
+}
+
+/**
+ * dsi_panel_disp_param_write() - apply a userspace display parameter
+ * @panel:  DSI panel
+ * @buf:    "0x<param>"
+ * @count:  length of @buf
+ *
+ * Return: @count on success, negative error code otherwise.
+ */
+ssize_t dsi_panel_disp_param_write(struct dsi_panel *panel, const char *buf,
+				   size_t count)
+{
+	u32 param;
+	int rc;
+
+	if (!panel || !buf || !count)
+		return -EINVAL;
+
+	rc = kstrtouint(buf, 0, &param);
+	if (rc)
+		return rc;
+
+	rc = dsi_panel_disp_param_send(panel, param);
+
+	return rc ? rc : count;
+}
+
+/**
+ * dsi_panel_disp_param_read() - return the last display parameter applied
+ * @panel:  DSI panel
+ * @buf:    destination buffer
+ * @size:   size of @buf
+ *
+ * Return: number of bytes written to @buf, or a negative error code.
+ */
+ssize_t dsi_panel_disp_param_read(struct dsi_panel *panel, char *buf,
+				  size_t size)
+{
+	u32 param;
+
+	if (!panel || !buf || !size)
+		return -EINVAL;
+
+	if (!panel->dispparam_enabled)
+		return -EOPNOTSUPP;
+
+	mutex_lock(&panel->panel_lock);
+	param = panel->disp_param;
+	mutex_unlock(&panel->panel_lock);
+
+	return scnprintf(buf, size, "0x%x\n", param);
 }
