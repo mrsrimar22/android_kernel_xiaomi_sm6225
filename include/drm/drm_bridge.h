@@ -356,6 +356,26 @@ struct drm_bridge_funcs {
 	 * This callback is optional.
 	 */
 	int (*get_dynamic_fps)(struct drm_bridge *bridge, char *buf, size_t size);
+
+	/**
+	 * @get_mipi_reg:
+	 *
+	 * Return the last value read from the panel through @set_mipi_reg,
+	 * or 0 if no read data is available.
+	 *
+	 * This callback is optional.
+	 */
+	int (*get_mipi_reg)(struct drm_bridge *bridge, char *buf, size_t size);
+
+	/**
+	 * @set_mipi_reg:
+	 *
+	 * Run one MIPI DSI register access described by a userspace string.
+	 *
+	 * This callback is optional.
+	 */
+	int (*set_mipi_reg)(struct drm_bridge *bridge, const char *buf,
+			    size_t size);
 };
 
 /**
@@ -443,6 +463,9 @@ void drm_bridge_pre_enable(struct drm_bridge *bridge);
 void drm_bridge_enable(struct drm_bridge *bridge);
 int drm_bridge_get_panel_info(struct drm_bridge *bridge, char *buf, size_t size);
 int drm_bridge_get_dynamic_fps(struct drm_bridge *bridge, char *buf, size_t size);
+int drm_bridge_get_mipi_reg(struct drm_bridge *bridge, char *buf, size_t size);
+int drm_bridge_set_mipi_reg(struct drm_bridge *bridge, const char *buf,
+			    size_t size);
 
 void drm_atomic_bridge_disable(struct drm_bridge *bridge,
 			       struct drm_atomic_state *state);

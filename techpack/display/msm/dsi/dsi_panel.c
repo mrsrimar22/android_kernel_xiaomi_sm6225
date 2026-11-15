@@ -13,6 +13,7 @@
 #include <video/mipi_display.h>
 
 #include "dsi_panel.h"
+#include "dsi_display.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
 #include "sde_dbg.h"
@@ -4757,4 +4758,268 @@ int dsi_panel_post_unprepare(struct dsi_panel *panel)
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
+}
+
+static int dsi_panel_tx_cmd_set_raw(struct dsi_panel *panel,
+				    struct dsi_panel_cmd_set *cmd_set)
+{
+	const struct mipi_dsi_host_ops *ops;
+	struct dsi_cmd_desc *cmds;
+	u32 count, i;
+	ssize_t len;
+	int rc = 0;
+
+	if (!panel || !panel->host || !cmd_set || !cmd_set->cmds)
+		return -EINVAL;
+
+	ops = panel->host->ops;
+	count = cmd_set->count;
+	cmds = cmd_set->cmds;
+
+	for (i = 0; i < count; i++) {
+		if (cmd_set->state == DSI_CMD_SET_STATE_LP)
+			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
+
+		if (cmds->last_command)
+			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+
+		len = ops->transfer(panel->host, &cmds->msg);
+		if (len < 0) {
+			rc = len;
+			DSI_ERR("[%s] failed to send cmd, rc=%d\n",
+				panel->name, rc);
+			break;
+		}
+
+		if (cmds->post_wait_ms)
+			usleep_range(cmds->post_wait_ms * 1000,
+				     cmds->post_wait_ms * 1000 + 10);
+		cmds++;
+	}
+
+	return rc;
+}
+
+static int dsi_panel_read_cmd_set(struct dsi_panel *panel,
+				  struct dsi_panel_cmd_set *cmd_set)
+{
+	struct dsi_display_ctrl *ctrl;
+	struct dsi_display *display;
+	struct dsi_cmd_desc *cmds;
+	struct dsi_read_config *cfg;
+	u32 flags = 0;
+	int rc;
+
+	if (!panel || !panel->host || !cmd_set || !cmd_set->cmds ||
+	    !cmd_set->count)
+		return -EINVAL;
+
+	display = to_dsi_display(panel->host);
+	if (!display)
+		return -EINVAL;
+
+	if (!panel->panel_initialized)
+		return -EAGAIN;
+
+	cfg = &panel->read_config;
+	cmds = cmd_set->cmds;
+	if (display->cmd_master_idx >= display->ctrl_count)
+		return -EINVAL;
+
+	ctrl = &display->ctrl[display->cmd_master_idx];
+	if (!ctrl->ctrl)
+		return -EINVAL;
+
+	rc = dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS,
+				  DSI_CLK_ON);
+	if (rc)
+		return rc;
+
+	rc = dsi_display_cmd_engine_enable(display);
+	if (rc) {
+		DSI_ERR("[%s] failed to enable cmd engine, rc=%d\n",
+			panel->name, rc);
+		goto exit_clk;
+	}
+
+	if (!display->tx_cmd_buf) {
+		rc = dsi_host_alloc_cmd_tx_buffer(display);
+		if (rc) {
+			DSI_ERR("[%s] failed to allocate cmd tx buffer, rc=%d\n",
+				panel->name, rc);
+			goto exit_engine;
+		}
+	}
+
+	if (cmds->last_command) {
+		cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+		flags |= DSI_CTRL_CMD_LAST_COMMAND;
+	}
+	if (cmd_set->state == DSI_CMD_SET_STATE_LP)
+		cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
+
+	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ |
+		  DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
+
+	memset(cfg->rbuf, 0, sizeof(cfg->rbuf));
+	cmds->msg.rx_buf = cfg->rbuf;
+	cmds->msg.rx_len = cfg->cmds_rlen;
+
+	rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds->msg, &flags);
+	if (rc <= 0) {
+		DSI_ERR("[%s] read cmd transfer failed, rc=%d\n",
+			panel->name, rc);
+		goto exit_engine;
+	}
+
+exit_engine:
+	dsi_display_cmd_engine_disable(display);
+exit_clk:
+	dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS,
+			     DSI_CLK_OFF);
+
+	return rc;
+}
+
+/**
+ * dsi_panel_mipi_reg_write() - run one MIPI DSI register access
+ * @panel:  DSI panel
+ * @buf:    "<enabled> <read length> <hex bytes...>"
+ * @count:  length of @buf
+ *
+ * Return: @count on success, negative error code otherwise.
+ */
+ssize_t dsi_panel_mipi_reg_write(struct dsi_panel *panel, const char *buf,
+				 size_t count)
+{
+	struct dsi_panel_cmd_set cmd_set = { 0 };
+	struct dsi_read_config *cfg;
+	char *input, *cursor, *token;
+	u32 packet_count = 0;
+	u32 val, len = 0;
+	bool enabled;
+	u32 rlen;
+	u8 *bytes;
+	ssize_t rc = -EINVAL;
+
+	if (!panel || !buf || !count)
+		return -EINVAL;
+
+	if (!panel->panel_initialized)
+		return -EAGAIN;
+
+	bytes = kcalloc(count, sizeof(*bytes), GFP_KERNEL);
+	if (!bytes)
+		return -ENOMEM;
+
+	input = kstrdup(buf, GFP_KERNEL);
+	if (!input) {
+		kfree(bytes);
+		return -ENOMEM;
+	}
+
+	cfg = &panel->read_config;
+	cursor = strim(input);
+
+	token = strsep(&cursor, " ");
+	if (!token || kstrtouint(token, 10, &val))
+		goto exit_free;
+	enabled = !!val;
+
+	if (!cursor)
+		goto exit_free;
+	cursor = skip_spaces(cursor);
+
+	token = strsep(&cursor, " ");
+	if (!token || kstrtouint(token, 10, &val))
+		goto exit_free;
+	if (val > sizeof(cfg->rbuf))
+		goto exit_free;
+	rlen = val;
+
+	while (cursor) {
+		token = strsep(&cursor, " ");
+		if (!token || !*token)
+			continue;
+		if (len >= count || kstrtou8(token, 16, &bytes[len]))
+			goto exit_free;
+		len++;
+	}
+
+	if (!len)
+		goto exit_free;
+
+	if (dsi_panel_get_cmd_pkt_count((const char *)bytes, len,
+					&packet_count) || !packet_count)
+		goto exit_free;
+
+	rc = dsi_panel_alloc_cmd_packets(&cmd_set, packet_count);
+	if (rc)
+		goto exit_free;
+
+	rc = dsi_panel_create_cmd_packets((const char *)bytes, len,
+					  packet_count, cmd_set.cmds);
+	if (rc)
+		goto exit_dealloc;
+
+	mutex_lock(&panel->panel_lock);
+	cfg->enabled = enabled;
+	cfg->cmds_rlen = rlen;
+	if (enabled) {
+		rc = dsi_panel_read_cmd_set(panel, &cmd_set);
+		if (rc <= 0) {
+			cfg->enabled = false;
+			if (!rc)
+				rc = -EIO;
+		} else {
+			rc = count;
+		}
+	} else {
+		rc = dsi_panel_tx_cmd_set_raw(panel, &cmd_set);
+		if (!rc)
+			rc = count;
+	}
+	mutex_unlock(&panel->panel_lock);
+
+	dsi_panel_destroy_cmd_packets(&cmd_set);
+exit_dealloc:
+	dsi_panel_dealloc_cmd_packets(&cmd_set);
+exit_free:
+	kfree(input);
+	kfree(bytes);
+
+	return rc;
+}
+
+/**
+ * dsi_panel_mipi_reg_read() - return the last MIPI DSI register read-back
+ * @panel:  DSI panel
+ * @buf:    destination buffer
+ * @size:   size of @buf
+ *
+ * Return: bytes written (0 if no read data), or a negative error code.
+ */
+ssize_t dsi_panel_mipi_reg_read(struct dsi_panel *panel, char *buf,
+				size_t size)
+{
+	struct dsi_read_config *cfg;
+	ssize_t len = 0;
+	u32 i;
+
+	if (!panel || !buf || !size)
+		return -EINVAL;
+
+	cfg = &panel->read_config;
+
+	mutex_lock(&panel->panel_lock);
+	if (cfg->enabled && cfg->cmds_rlen) {
+		for (i = 0; i < cfg->cmds_rlen && len < size; i++)
+			len += scnprintf(buf + len, size - len,
+					 i == cfg->cmds_rlen - 1 ?
+						"0x%02x\n" : "0x%02x ",
+					 cfg->rbuf[i]);
+	}
+	mutex_unlock(&panel->panel_lock);
+
+	return len;
 }

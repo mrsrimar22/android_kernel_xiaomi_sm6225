@@ -182,6 +182,18 @@ struct dsi_panel_esd_cb {
 	void *ctx;
 };
 
+/**
+ * struct dsi_read_config - state of the mipi_reg sysfs read-back
+ * @enabled: true if the last mipi_reg write requested a read
+ * @cmds_rlen: number of bytes to read back
+ * @rbuf: last value read back from the panel
+ */
+struct dsi_read_config {
+	bool enabled;
+	u32 cmds_rlen;
+	u8 rbuf[64];
+};
+
 struct dsi_panel {
 	const char *name;
 	const char *type;
@@ -236,6 +248,8 @@ struct dsi_panel {
 	int panel_test_gpio;
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
+
+	struct dsi_read_config read_config;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -364,5 +378,10 @@ void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 int dsi_panel_esd_err_irq_register(struct dsi_panel *panel,
 				   const struct dsi_panel_esd_cb *cb);
 void dsi_panel_esd_err_irq_unregister(struct dsi_panel *panel);
+
+ssize_t dsi_panel_mipi_reg_write(struct dsi_panel *panel, const char *buf,
+				 size_t count);
+ssize_t dsi_panel_mipi_reg_read(struct dsi_panel *panel, char *buf,
+				size_t size);
 
 #endif /* _DSI_PANEL_H_ */
