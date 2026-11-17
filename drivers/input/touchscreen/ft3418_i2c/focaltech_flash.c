@@ -903,6 +903,7 @@ err_bin:
 #endif
 	fts_irq_disable(ts_data, false);
 	WRITE_ONCE(ts_data->fw_loading, 0);
+	fts_lct_invalidate_lockdown(ts_data);
 
 	kvfree(fw_file_buf);
 	return ret;
@@ -1282,6 +1283,7 @@ static void fts_fwupg_work(struct work_struct *work)
 		fts_esdcheck_switch(ts_data->esdcheck, ENABLE);
 #endif
 	WRITE_ONCE(ts_data->fw_loading, 0);
+	fts_lct_invalidate_lockdown(ts_data);
 	fts_irq_disable(ts_data, false);
 }
 
