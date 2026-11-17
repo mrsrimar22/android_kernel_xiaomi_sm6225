@@ -253,6 +253,8 @@ struct dsi_panel {
 
 	bool dispparam_enabled;
 	u32 disp_param;
+	u32 hbm_param;
+	bool hbm_active;	/* HBM level currently applied */
 
 	int doze_brightness;	/* selected doze level, 0 = doze off */
 	bool doze_active;	/* doze level currently applied */

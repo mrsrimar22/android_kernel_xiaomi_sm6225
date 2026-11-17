@@ -808,6 +808,92 @@ static int dsi_panel_disp_param_tx(struct dsi_panel *panel,
 }
 
 /**
+ * dsi_panel_hbm_enabled() - check whether a display parameter enables HBM
+ * @param:  nibble encoded display parameter
+ *
+ * Return: true if the HBM group of @param is an enabled HBM level.
+ */
+static bool dsi_panel_hbm_enabled(u32 param)
+{
+	switch (param & 0x000F0000) {
+	case DSI_DISP_PARAM_HBM_ON:
+	case DSI_DISP_PARAM_HBM_L1:
+	case DSI_DISP_PARAM_HBM_L2:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/**
+ * dsi_panel_hbm_cmd_set() - command set of a selected HBM level
+ * @param:  nibble encoded display parameter
+ *
+ * Return: command set type, or DSI_CMD_SET_MAX if @param is not an
+ *         enabled HBM level.
+ */
+static enum dsi_cmd_set_type dsi_panel_hbm_cmd_set(u32 param)
+{
+	switch (param & 0x000F0000) {
+	case DSI_DISP_PARAM_HBM_ON:
+		return DSI_CMD_SET_DISP_HBM_ON;
+	case DSI_DISP_PARAM_HBM_L1:
+		return DSI_CMD_SET_HBM1_ON;
+	case DSI_DISP_PARAM_HBM_L2:
+		return DSI_CMD_SET_HBM2_ON;
+	default:
+		return DSI_CMD_SET_MAX;
+	}
+}
+
+/**
+ * dsi_panel_hbm_apply() - apply the selected HBM level
+ * @panel:  DSI panel, panel_lock held
+ *
+ * Called when the panel is on, so the selected level is restored after a
+ * doze cycle or a full off/on cycle without userspace writing it again.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+static int dsi_panel_hbm_apply(struct dsi_panel *panel)
+{
+	enum dsi_cmd_set_type type = dsi_panel_hbm_cmd_set(panel->hbm_param);
+	int rc;
+
+	if (type == DSI_CMD_SET_MAX)
+		return 0;
+
+	rc = dsi_panel_disp_param_tx(panel, type);
+	if (!rc)
+		panel->hbm_active = true;
+
+	return rc;
+}
+
+/**
+ * dsi_panel_hbm_off() - turn HBM off
+ * @panel:  DSI panel, panel_lock held
+ *
+ * HBM is only applied while the panel is on. Called when the panel enters
+ * LP1/LP2, before the doze level is applied.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+static int dsi_panel_hbm_off(struct dsi_panel *panel)
+{
+	int rc;
+
+	if (!panel->hbm_active)
+		return 0;
+
+	rc = dsi_panel_disp_param_tx(panel, DSI_CMD_SET_DISP_HBM_OFF);
+	if (!rc)
+		panel->hbm_active = false;
+
+	return rc;
+}
+
+/**
  * dsi_panel_doze_enter() - apply the selected doze brightness
  * @panel:  DSI panel, panel_lock held
  *
@@ -815,11 +901,20 @@ static int dsi_panel_disp_param_tx(struct dsi_panel *panel,
  * Called when the panel enters LP1/LP2, so a mode selected while the
  * display is running does not touch the brightness register.
  *
+ * HBM is turned off first: its display control register bit is not
+ * touched by the doze commands, so leaving it set would apply the doze
+ * level in HBM mode. The selected HBM level is kept, so it can be
+ * restored when the panel is back on.
+ *
  * Return: 0 on success, negative error code otherwise.
  */
 static int dsi_panel_doze_enter(struct dsi_panel *panel)
 {
 	int rc;
+
+	rc = dsi_panel_hbm_off(panel);
+	if (rc)
+		return rc;
 
 	if (panel->doze_brightness == DSI_DOZE_BRIGHTNESS_INVALID ||
 	    panel->doze_active)
@@ -4451,6 +4546,11 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	if (doze_rc)
 		DSI_ERR("[%s] failed to leave doze, rc=%d\n",
 		       panel->name, doze_rc);
+
+	doze_rc = dsi_panel_hbm_apply(panel);
+	if (doze_rc)
+		DSI_ERR("[%s] failed to restore HBM, rc=%d\n",
+		       panel->name, doze_rc);
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4876,6 +4976,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	}
 	panel->panel_initialized = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
+	panel->hbm_active = false;
 	panel->doze_active = false;
 
 	mutex_unlock(&panel->panel_lock);
@@ -5286,6 +5387,9 @@ static int dsi_panel_disp_param_dispatch(struct dsi_panel *panel, u32 param)
  */
 int dsi_panel_disp_param_send(struct dsi_panel *panel, u32 param)
 {
+	u32 bl_level = 0;
+	u32 group;
+	bool restore_bl;
 	int rc;
 
 	if (!panel)
@@ -5301,9 +5405,56 @@ int dsi_panel_disp_param_send(struct dsi_panel *panel, u32 param)
 		return -EAGAIN;
 	}
 
-	rc = dsi_panel_disp_param_dispatch(panel, param);
-	if (!rc)
+	group = param & 0x000F0000;
+
+	/*
+	 * HBM is only applied while the panel is on. Keep the selection and
+	 * apply it when the panel leaves doze.
+	 */
+	if (dsi_panel_hbm_enabled(param) &&
+	    (panel->power_mode == SDE_MODE_DPMS_LP1 ||
+	     panel->power_mode == SDE_MODE_DPMS_LP2)) {
 		panel->disp_param = param;
+		panel->hbm_param = group;
+		mutex_unlock(&panel->panel_lock);
+		return 0;
+	}
+
+	restore_bl = panel->hbm_active &&
+		     (group == DSI_DISP_PARAM_HBM_OFF ||
+		      group == DSI_DISP_PARAM_HBM_OFF_ALT);
+	if (restore_bl)
+		bl_level = dsi_panel_get_bl_level(panel);
+
+	rc = dsi_panel_disp_param_dispatch(panel, param);
+	if (!rc) {
+		panel->disp_param = param;
+
+		switch (group) {
+		case DSI_DISP_PARAM_HBM_ON:
+		case DSI_DISP_PARAM_HBM_OFF:
+		case DSI_DISP_PARAM_HBM_L1:
+		case DSI_DISP_PARAM_HBM_L2:
+		case DSI_DISP_PARAM_HBM_OFF_ALT:
+			panel->hbm_param = group;
+			break;
+		default:
+			break;
+		}
+
+		if (dsi_panel_hbm_enabled(param))
+			panel->hbm_active = true;
+		else if (group == DSI_DISP_PARAM_HBM_OFF ||
+			 group == DSI_DISP_PARAM_HBM_OFF_ALT)
+			panel->hbm_active = false;
+
+		if (restore_bl) {
+			rc = dsi_panel_set_backlight(panel, bl_level);
+			if (rc)
+				DSI_ERR("[%s] failed to restore backlight, rc=%d\n",
+				       panel->name, rc);
+		}
+	}
 
 	mutex_unlock(&panel->panel_lock);
 
