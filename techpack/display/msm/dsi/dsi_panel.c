@@ -774,6 +774,140 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	return rc;
 }
 
+/**
+ * dsi_panel_disp_param_supported() - check if a group has a command set
+ * @panel:  DSI panel
+ * @type:   command set type
+ *
+ * Return: true if the panel provides commands for @type.
+ */
+static bool dsi_panel_disp_param_supported(struct dsi_panel *panel,
+					   enum dsi_cmd_set_type type)
+{
+	struct dsi_display_mode *mode = panel->cur_mode;
+
+	return mode && mode->priv_info &&
+	       mode->priv_info->cmd_sets[type].count;
+}
+
+/**
+ * dsi_panel_disp_param_tx() - send the command set of a group
+ * @panel:  DSI panel
+ * @type:   command set type
+ *
+ * Return: 0 on success, -EOPNOTSUPP if the panel has no commands for
+ *         @type, negative error code otherwise.
+ */
+static int dsi_panel_disp_param_tx(struct dsi_panel *panel,
+				   enum dsi_cmd_set_type type)
+{
+	if (!dsi_panel_disp_param_supported(panel, type))
+		return -EOPNOTSUPP;
+
+	return dsi_panel_tx_cmd_set(panel, type);
+}
+
+/**
+ * dsi_panel_doze_enter() - apply the selected doze brightness
+ * @panel:  DSI panel, panel_lock held
+ *
+ * Applies the doze brightness selected through the disp_param doze group.
+ * Called when the panel enters LP1/LP2, so a mode selected while the
+ * display is running does not touch the brightness register.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+static int dsi_panel_doze_enter(struct dsi_panel *panel)
+{
+	int rc;
+
+	if (panel->doze_brightness == DSI_DOZE_BRIGHTNESS_INVALID ||
+	    panel->doze_active)
+		return 0;
+
+	rc = dsi_panel_disp_param_tx(panel,
+			panel->doze_brightness == DSI_DOZE_BRIGHTNESS_HBM ?
+				DSI_CMD_SET_DOZE_HBM : DSI_CMD_SET_DOZE_LBM);
+	if (rc)
+		return rc;
+
+	panel->doze_active = true;
+
+	return 0;
+}
+
+/**
+ * dsi_panel_doze_exit() - leave doze and restore the backlight level
+ * @panel:  DSI panel, panel_lock held
+ *
+ * The doze command sets only write the brightness register and this panel
+ * has no nolp command, so leaving doze means writing the current backlight
+ * level again.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+static int dsi_panel_doze_exit(struct dsi_panel *panel)
+{
+	int rc;
+
+	if (!panel->doze_active)
+		return 0;
+
+	rc = dsi_panel_set_backlight(panel, dsi_panel_get_bl_level(panel));
+	if (!rc)
+		panel->doze_active = false;
+
+	return rc;
+}
+
+/**
+ * dsi_panel_doze_set() - select the doze brightness
+ * @panel:  DSI panel, panel_lock held
+ * @doze_brightness:  HBM, LBM, or INVALID to leave doze
+ *
+ * Only selects the mode. The command set is applied when the panel enters
+ * LP1/LP2, so a mode selected while the display is running does not touch
+ * the brightness register. If the panel is already in doze the new mode is
+ * applied immediately.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+static int dsi_panel_doze_set(struct dsi_panel *panel, int doze_brightness)
+{
+	int old = panel->doze_brightness;
+	int rc;
+
+	if (doze_brightness != DSI_DOZE_BRIGHTNESS_INVALID &&
+	    !dsi_panel_disp_param_supported(panel,
+			doze_brightness == DSI_DOZE_BRIGHTNESS_HBM ?
+				DSI_CMD_SET_DOZE_HBM : DSI_CMD_SET_DOZE_LBM))
+		return -EOPNOTSUPP;
+
+	if (old == doze_brightness)
+		return 0;
+
+	panel->doze_brightness = doze_brightness;
+
+	if (!panel->doze_active)
+		return 0;
+
+	if (doze_brightness == DSI_DOZE_BRIGHTNESS_INVALID) {
+		rc = dsi_panel_doze_exit(panel);
+		if (rc)
+			panel->doze_brightness = old;
+		return rc;
+	}
+
+	/* switch level while the panel is already showing doze */
+	rc = dsi_panel_disp_param_tx(panel,
+			doze_brightness == DSI_DOZE_BRIGHTNESS_HBM ?
+				DSI_CMD_SET_DOZE_HBM : DSI_CMD_SET_DOZE_LBM);
+	if (rc)
+		panel->doze_brightness = old;
+
+	return rc;
+}
+
 static u32 dsi_panel_get_brightness(struct dsi_backlight_config *bl)
 {
 	u32 cur_bl_level;
@@ -4218,7 +4352,7 @@ error:
 
 int dsi_panel_set_lp1(struct dsi_panel *panel)
 {
-	int rc = 0;
+	int rc = 0, doze_rc;
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
@@ -4241,9 +4375,16 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_IDLE);
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP1);
-	if (rc)
+	if (rc) {
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
+		goto exit;
+	}
+
+	doze_rc = dsi_panel_doze_enter(panel);
+	if (doze_rc)
+		DSI_ERR("[%s] failed to apply doze, rc=%d\n",
+		       panel->name, doze_rc);
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4251,7 +4392,7 @@ exit:
 
 int dsi_panel_set_lp2(struct dsi_panel *panel)
 {
-	int rc = 0;
+	int rc = 0, doze_rc;
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
@@ -4263,9 +4404,16 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 		goto exit;
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP2);
-	if (rc)
+	if (rc) {
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
+		goto exit;
+	}
+
+	doze_rc = dsi_panel_doze_enter(panel);
+	if (doze_rc)
+		DSI_ERR("[%s] failed to apply doze, rc=%d\n",
+		       panel->name, doze_rc);
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4273,7 +4421,7 @@ exit:
 
 int dsi_panel_set_nolp(struct dsi_panel *panel)
 {
-	int rc = 0;
+	int rc = 0, doze_rc;
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
@@ -4293,9 +4441,16 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_NORMAL);
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
-	if (rc)
+	if (rc) {
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
+		goto exit;
+	}
+
+	doze_rc = dsi_panel_doze_exit(panel);
+	if (doze_rc)
+		DSI_ERR("[%s] failed to leave doze, rc=%d\n",
+		       panel->name, doze_rc);
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4721,6 +4876,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	}
 	panel->panel_initialized = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
+	panel->doze_active = false;
 
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -5058,6 +5214,11 @@ ssize_t dsi_panel_mipi_reg_read(struct dsi_panel *panel, char *buf,
  *   0x00F00000  doze high / low brightness and doze off
  *   0x0F000000  flat mode on / off
  *
+ * The doze group only selects the mode. The command set is applied when
+ * the panel enters LP1/LP2 and the backlight level is restored when it
+ * leaves doze, so the brightness register is not touched while the
+ * display is running.
+ *
  * Return: 0 on success, negative error code otherwise.
  */
 static int dsi_panel_disp_param_dispatch(struct dsi_panel *panel, u32 param)
@@ -5090,13 +5251,13 @@ static int dsi_panel_disp_param_dispatch(struct dsi_panel *panel, u32 param)
 
 	switch (param & 0x00F00000) {
 	case DSI_DISP_PARAM_DOZE_HBM:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DOZE_HBM);
+		rc = dsi_panel_doze_set(panel, DSI_DOZE_BRIGHTNESS_HBM);
 		break;
 	case DSI_DISP_PARAM_DOZE_LBM:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DOZE_LBM);
+		rc = dsi_panel_doze_set(panel, DSI_DOZE_BRIGHTNESS_LBM);
 		break;
 	case DSI_DISP_PARAM_DOZE_OFF:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
+		rc = dsi_panel_doze_set(panel, DSI_DOZE_BRIGHTNESS_INVALID);
 		break;
 	default:
 		break;
@@ -5234,7 +5395,7 @@ int dsi_panel_set_doze_backlight(struct dsi_panel *panel, int doze_brightness)
 }
 
 /**
- * dsi_panel_get_doze_backlight() - return the doze brightness mode applied
+ * dsi_panel_get_doze_backlight() - return the selected doze brightness mode
  * @panel:  DSI panel
  * @buf:    destination buffer
  * @size:   size of @buf
@@ -5244,27 +5405,14 @@ int dsi_panel_set_doze_backlight(struct dsi_panel *panel, int doze_brightness)
 ssize_t dsi_panel_get_doze_backlight(struct dsi_panel *panel, char *buf,
 				     size_t size)
 {
-	u32 param;
 	int doze_brightness;
 
 	if (!panel || !buf || !size)
 		return -EINVAL;
 
 	mutex_lock(&panel->panel_lock);
-	param = panel->disp_param;
+	doze_brightness = panel->doze_brightness;
 	mutex_unlock(&panel->panel_lock);
-
-	switch (param & 0x00F00000) {
-	case DSI_DISP_PARAM_DOZE_HBM:
-		doze_brightness = DSI_DOZE_BRIGHTNESS_HBM;
-		break;
-	case DSI_DISP_PARAM_DOZE_LBM:
-		doze_brightness = DSI_DOZE_BRIGHTNESS_LBM;
-		break;
-	default:
-		doze_brightness = DSI_DOZE_BRIGHTNESS_INVALID;
-		break;
-	}
 
 	return scnprintf(buf, size, "%d\n", doze_brightness);
 }

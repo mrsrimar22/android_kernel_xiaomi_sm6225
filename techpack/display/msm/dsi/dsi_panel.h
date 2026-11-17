@@ -253,6 +253,9 @@ struct dsi_panel {
 
 	bool dispparam_enabled;
 	u32 disp_param;
+
+	int doze_brightness;	/* selected doze level, 0 = doze off */
+	bool doze_active;	/* doze level currently applied */
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
