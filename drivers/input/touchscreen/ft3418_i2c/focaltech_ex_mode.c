@@ -387,11 +387,19 @@ int fts_ex_mode_recovery(struct fts_ts_data *ts_data)
 			FTS_ERROR("restore cover mode fail");
 	}
 
-	if (ts_data->charger_mode) {
-		ret = fts_ex_mode_switch(ts_data, MODE_CHARGER, ENABLE);
-		if (ret < 0)
-			FTS_ERROR("restore charger mode fail");
+	if (ts_data->usb_psy) {
+		union power_supply_propval pval = {0};
+
+		if (!power_supply_get_property(ts_data->usb_psy,
+					       POWER_SUPPLY_PROP_PRESENT,
+					       &pval))
+			ts_data->charger_mode = pval.intval > 0;
 	}
+
+	ret = fts_ex_mode_switch(ts_data, MODE_CHARGER,
+				 ts_data->charger_mode ? ENABLE : DISABLE);
+	if (ret < 0)
+		FTS_ERROR("restore charger mode fail");
 
 	return ret;
 }
@@ -410,6 +418,47 @@ static void fts_ex_mode_init_flag(struct fts_ts_data *ts_data,
 		*flag = !!val;
 	else
 		*flag = DISABLE;
+}
+
+static void fts_charger_mode_work(struct work_struct *work)
+{
+	struct fts_ts_data *ts_data =
+		container_of(work, struct fts_ts_data, charger_work);
+	union power_supply_propval pval = {0};
+	bool present;
+	int ret;
+
+	ret = power_supply_get_property(ts_data->usb_psy,
+					POWER_SUPPLY_PROP_PRESENT,
+					&pval);
+	if (ret < 0)
+		return;
+
+	present = pval.intval > 0;
+
+	mutex_lock(&ts_data->state_lock);
+	if (ts_data->charger_mode != present &&
+	    !ts_data->suspended &&
+	    !READ_ONCE(ts_data->pm_suspend) &&
+	    !READ_ONCE(ts_data->fw_loading)) {
+		if (!fts_ex_mode_switch(ts_data, MODE_CHARGER,
+					present ? ENABLE : DISABLE))
+			ts_data->charger_mode = present;
+	}
+	mutex_unlock(&ts_data->state_lock);
+}
+
+static int fts_psy_notifier_callback(struct notifier_block *nb,
+				     unsigned long event, void *data)
+{
+	struct fts_ts_data *ts_data =
+		container_of(nb, struct fts_ts_data, psy_notif);
+
+	if (event != PSY_EVENT_PROP_CHANGED || data != ts_data->usb_psy)
+		return NOTIFY_DONE;
+
+	queue_work(system_power_efficient_wq, &ts_data->charger_work);
+	return NOTIFY_OK;
 }
 
 /*****************************************************************************
@@ -432,6 +481,12 @@ int fts_ex_mode_init(struct fts_ts_data *ts_data)
 		return -EINVAL;
 	}
 
+	ts_data->usb_psy = power_supply_get_by_name("usb");
+	if (!ts_data->usb_psy) {
+		FTS_INFO("usb power supply not ready, deferring");
+		return -EPROBE_DEFER;
+	}
+
 	/* Ensure glove, cover, and charger modes start disabled in HW and SW */
 	fts_ex_mode_init_flag(ts_data, MODE_GLOVE, FTS_REG_GLOVE_MODE_EN,
 			      &ts_data->glove_mode);
@@ -444,8 +499,21 @@ int fts_ex_mode_init(struct fts_ts_data *ts_data)
 	ret = sysfs_create_group(&ts_data->dev->kobj, &fts_touch_mode_group);
 	if (ret < 0) {
 		FTS_ERROR("create sysfs(ex_mode) fail: %d", ret);
+		power_supply_put(ts_data->usb_psy);
 		return ret;
 	}
+
+	INIT_WORK(&ts_data->charger_work, fts_charger_mode_work);
+	ts_data->psy_notif.notifier_call = fts_psy_notifier_callback;
+	ret = power_supply_reg_notifier(&ts_data->psy_notif);
+	if (ret < 0) {
+		FTS_ERROR("register psy notifier fail: %d", ret);
+		sysfs_remove_group(&ts_data->dev->kobj, &fts_touch_mode_group);
+		power_supply_put(ts_data->usb_psy);
+		return ret;
+	}
+
+	queue_work(system_power_efficient_wq, &ts_data->charger_work);
 
 	FTS_DEBUG("extra modes module initialized successfully");
 	return 0;
@@ -467,6 +535,9 @@ int fts_ex_mode_exit(struct fts_ts_data *ts_data)
 		return -EINVAL;
 	}
 
+	power_supply_unreg_notifier(&ts_data->psy_notif);
+	cancel_work_sync(&ts_data->charger_work);
 	sysfs_remove_group(&ts_data->dev->kobj, &fts_touch_mode_group);
+	power_supply_put(ts_data->usb_psy);
 	return 0;
 }

@@ -169,6 +169,9 @@ struct fts_ts_data {
 
 	struct drm_panel		*active_panel;
 	struct notifier_block		drm_notif;
+	struct notifier_block		psy_notif;
+	struct work_struct		charger_work;
+	struct power_supply		*usb_psy;
 
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	struct xiaomi_touch_interface xmi_iface;
