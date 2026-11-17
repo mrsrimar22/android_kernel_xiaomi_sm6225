@@ -1350,6 +1350,13 @@ config TOUCHSCREEN_SYNAPTICS_TCM
 	  To compile this driver as a module, choose M here: the
 	  module will be called synaptics_tcm.
 
+config TP_LCT
+	bool "Centralized LCT touchpanel procfs interface"
+	default y
+	help
+	  Say Y here if you want the unified LCT touchpanel procfs
+	  interface (/proc/tp_*) shared across touch and charger drivers.
+
 source "drivers/input/touchscreen/synaptics_tcm/Kconfig"
 
 #source "drivers/input/touchscreen/focaltech_touch/Kconfig"
