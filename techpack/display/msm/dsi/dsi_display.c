@@ -7805,6 +7805,10 @@ int dsi_display_post_enable(struct dsi_display *display)
 				display->name, rc);
 	}
 
+	if (display->panel->hbm_param)
+		dsi_panel_disp_param_send(display->panel,
+					  display->panel->hbm_param);
+
 	/* remove the clk vote for CMD mode panels */
 	if (display->config.panel_mode == DSI_OP_CMD_MODE)
 		dsi_display_clk_ctrl(display->dsi_clk_handle,
