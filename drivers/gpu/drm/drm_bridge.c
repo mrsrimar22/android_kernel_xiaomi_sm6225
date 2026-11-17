@@ -449,6 +449,47 @@ int drm_bridge_set_disp_param(struct drm_bridge *bridge, const char *buf,
 EXPORT_SYMBOL(drm_bridge_set_disp_param);
 
 /**
+ * drm_bridge_get_doze_backlight - read back the current doze brightness mode
+ * @bridge: bridge to query
+ * @buf: destination buffer
+ * @size: size of @buf
+ *
+ * Returns the number of bytes written to @buf, or a negative error code.
+ */
+int drm_bridge_get_doze_backlight(struct drm_bridge *bridge, char *buf,
+				  size_t size)
+{
+	if (!bridge || !bridge->funcs || !buf || !size)
+		return -EINVAL;
+
+	if (bridge->funcs->get_doze_backlight)
+		return bridge->funcs->get_doze_backlight(bridge, buf, size);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_get_doze_backlight);
+
+/**
+ * drm_bridge_set_doze_backlight - select the doze brightness mode
+ * @bridge: bridge to operate on
+ * @doze_brightness: doze brightness mode
+ *
+ * Returns 0 on success, or a negative error code.
+ */
+int drm_bridge_set_doze_backlight(struct drm_bridge *bridge,
+				  int doze_brightness)
+{
+	if (!bridge || !bridge->funcs)
+		return -EINVAL;
+
+	if (bridge->funcs->set_doze_backlight)
+		return bridge->funcs->set_doze_backlight(bridge, doze_brightness);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(drm_bridge_set_doze_backlight);
+
+/**
  * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  *

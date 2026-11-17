@@ -662,6 +662,29 @@ static int dsi_bridge_set_disp_param(struct drm_bridge *bridge, const char *buf,
 	return dsi_panel_disp_param_write(c_bridge->display->panel, buf, size);
 }
 
+static int dsi_bridge_get_doze_backlight(struct drm_bridge *bridge, char *buf,
+					 size_t size)
+{
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+
+	if (!c_bridge || !c_bridge->display || !c_bridge->display->panel)
+		return -ENODATA;
+
+	return dsi_panel_get_doze_backlight(c_bridge->display->panel, buf, size);
+}
+
+static int dsi_bridge_set_doze_backlight(struct drm_bridge *bridge,
+					 int doze_brightness)
+{
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+
+	if (!c_bridge || !c_bridge->display || !c_bridge->display->panel)
+		return -ENODATA;
+
+	return dsi_panel_set_doze_backlight(c_bridge->display->panel,
+					    doze_brightness);
+}
+
 static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.attach       = dsi_bridge_attach,
 	.mode_fixup   = dsi_bridge_mode_fixup,
@@ -676,6 +699,8 @@ static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.set_mipi_reg = dsi_bridge_set_mipi_reg,
 	.get_disp_param = dsi_bridge_get_disp_param,
 	.set_disp_param = dsi_bridge_set_disp_param,
+	.get_doze_backlight = dsi_bridge_get_doze_backlight,
+	.set_doze_backlight = dsi_bridge_set_doze_backlight,
 };
 
 int dsi_conn_set_info_blob(struct drm_connector *connector,

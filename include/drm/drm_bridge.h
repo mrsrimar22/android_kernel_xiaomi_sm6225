@@ -398,6 +398,29 @@ struct drm_bridge_funcs {
 	 */
 	int (*set_disp_param)(struct drm_bridge *bridge, const char *buf,
 			      size_t size);
+
+	/**
+	 * @get_doze_backlight:
+	 *
+	 * Return the current doze brightness mode of the panel. Returns
+	 * the number of bytes written to the buffer, or a negative error
+	 * code if there is no value to report.
+	 *
+	 * This callback is optional.
+	 */
+	int (*get_doze_backlight)(struct drm_bridge *bridge, char *buf,
+				  size_t size);
+
+	/**
+	 * @set_doze_backlight:
+	 *
+	 * Select the doze brightness mode of the panel. Returns 0 on
+	 * success, or a negative error code.
+	 *
+	 * This callback is optional.
+	 */
+	int (*set_doze_backlight)(struct drm_bridge *bridge,
+				  int doze_brightness);
 };
 
 /**
@@ -491,6 +514,10 @@ int drm_bridge_set_mipi_reg(struct drm_bridge *bridge, const char *buf,
 int drm_bridge_get_disp_param(struct drm_bridge *bridge, char *buf, size_t size);
 int drm_bridge_set_disp_param(struct drm_bridge *bridge, const char *buf,
 			      size_t size);
+int drm_bridge_get_doze_backlight(struct drm_bridge *bridge, char *buf,
+				  size_t size);
+int drm_bridge_set_doze_backlight(struct drm_bridge *bridge,
+				  int doze_brightness);
 
 void drm_atomic_bridge_disable(struct drm_bridge *bridge,
 			       struct drm_atomic_state *state);
