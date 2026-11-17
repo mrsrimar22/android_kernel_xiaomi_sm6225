@@ -402,4 +402,7 @@ int dsi_panel_set_doze_backlight(struct dsi_panel *panel, int doze_brightness);
 ssize_t dsi_panel_get_doze_backlight(struct dsi_panel *panel, char *buf,
 				     size_t size);
 
+void dsi_panel_set_backlight_control(struct dsi_panel *panel,
+				     struct dsi_display_mode *adj_mode);
+
 #endif /* _DSI_PANEL_H_ */
