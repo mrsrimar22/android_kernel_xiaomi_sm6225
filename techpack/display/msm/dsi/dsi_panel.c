@@ -5200,3 +5200,71 @@ ssize_t dsi_panel_disp_param_read(struct dsi_panel *panel, char *buf,
 
 	return scnprintf(buf, size, "0x%x\n", param);
 }
+
+/**
+ * dsi_panel_set_doze_backlight() - select the doze brightness mode
+ * @panel:  DSI panel
+ * @doze_brightness:  DSI_DOZE_BRIGHTNESS_HBM, DSI_DOZE_BRIGHTNESS_LBM, or
+ *                    DSI_DOZE_BRIGHTNESS_INVALID to leave doze
+ *
+ * Translates the mode to the matching display parameter and applies it
+ * through the disp_param dispatch.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+int dsi_panel_set_doze_backlight(struct dsi_panel *panel, int doze_brightness)
+{
+	u32 param;
+
+	switch (doze_brightness) {
+	case DSI_DOZE_BRIGHTNESS_INVALID:
+		param = DSI_DISP_PARAM_DOZE_OFF;
+		break;
+	case DSI_DOZE_BRIGHTNESS_HBM:
+		param = DSI_DISP_PARAM_DOZE_HBM;
+		break;
+	case DSI_DOZE_BRIGHTNESS_LBM:
+		param = DSI_DISP_PARAM_DOZE_LBM;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return dsi_panel_disp_param_send(panel, param);
+}
+
+/**
+ * dsi_panel_get_doze_backlight() - return the doze brightness mode applied
+ * @panel:  DSI panel
+ * @buf:    destination buffer
+ * @size:   size of @buf
+ *
+ * Return: number of bytes written to @buf, or a negative error code.
+ */
+ssize_t dsi_panel_get_doze_backlight(struct dsi_panel *panel, char *buf,
+				     size_t size)
+{
+	u32 param;
+	int doze_brightness;
+
+	if (!panel || !buf || !size)
+		return -EINVAL;
+
+	mutex_lock(&panel->panel_lock);
+	param = panel->disp_param;
+	mutex_unlock(&panel->panel_lock);
+
+	switch (param & 0x00F00000) {
+	case DSI_DISP_PARAM_DOZE_HBM:
+		doze_brightness = DSI_DOZE_BRIGHTNESS_HBM;
+		break;
+	case DSI_DISP_PARAM_DOZE_LBM:
+		doze_brightness = DSI_DOZE_BRIGHTNESS_LBM;
+		break;
+	default:
+		doze_brightness = DSI_DOZE_BRIGHTNESS_INVALID;
+		break;
+	}
+
+	return scnprintf(buf, size, "%d\n", doze_brightness);
+}

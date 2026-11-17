@@ -324,6 +324,53 @@ static ssize_t disp_param_store(struct device *device,
 					 count);
 }
 
+static ssize_t doze_backlight_show(struct device *device,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	int ret;
+
+	if (!connector->encoder || !connector->encoder->bridge)
+		return -ENODEV;
+
+	ret = drm_bridge_get_doze_backlight(connector->encoder->bridge, buf,
+					    PAGE_SIZE);
+	if (ret <= 0)
+		return ret < 0 ? ret : -ENODATA;
+
+	return ret;
+}
+
+/* doze_brightness reports the same state as doze_backlight */
+static ssize_t doze_brightness_show(struct device *device,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	return doze_backlight_show(device, attr, buf);
+}
+
+static ssize_t doze_backlight_store(struct device *device,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	int doze_brightness;
+	int ret;
+
+	if (!connector->encoder || !connector->encoder->bridge)
+		return -ENODEV;
+
+	ret = kstrtoint(buf, 0, &doze_brightness);
+	if (ret)
+		return ret;
+
+	ret = drm_bridge_set_doze_backlight(connector->encoder->bridge,
+					    doze_brightness);
+
+	return ret ? ret : count;
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
@@ -332,6 +379,8 @@ static DEVICE_ATTR_RO(panel_info);
 static DEVICE_ATTR_RO(dynamic_fps);
 static DEVICE_ATTR_RW(mipi_reg);
 static DEVICE_ATTR_RW(disp_param);
+static DEVICE_ATTR_RO(doze_brightness);
+static DEVICE_ATTR_RW(doze_backlight);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
@@ -342,6 +391,8 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_dynamic_fps.attr,
 	&dev_attr_mipi_reg.attr,
 	&dev_attr_disp_param.attr,
+	&dev_attr_doze_brightness.attr,
+	&dev_attr_doze_backlight.attr,
 	NULL
 };
 

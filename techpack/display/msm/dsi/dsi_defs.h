@@ -375,6 +375,18 @@ enum dsi_disp_param {
 };
 
 /**
+ * enum dsi_doze_brightness - doze brightness of the doze_backlight attribute
+ * @DSI_DOZE_BRIGHTNESS_INVALID:  leave doze, back to normal mode
+ * @DSI_DOZE_BRIGHTNESS_HBM:      doze high brightness mode
+ * @DSI_DOZE_BRIGHTNESS_LBM:      doze low brightness mode
+ */
+enum dsi_doze_brightness {
+	DSI_DOZE_BRIGHTNESS_INVALID = 0,
+	DSI_DOZE_BRIGHTNESS_HBM,
+	DSI_DOZE_BRIGHTNESS_LBM,
+};
+
+/**
  * enum dsi_clk_gate_type - Type of clock to be gated.
  * @PIXEL_CLK:  DSI pixel clock.
  * @BYTE_CLK:   DSI byte clock.

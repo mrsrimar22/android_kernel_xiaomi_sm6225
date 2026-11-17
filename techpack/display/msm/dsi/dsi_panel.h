@@ -393,4 +393,8 @@ ssize_t dsi_panel_disp_param_write(struct dsi_panel *panel, const char *buf,
 ssize_t dsi_panel_disp_param_read(struct dsi_panel *panel, char *buf,
 				  size_t size);
 
+int dsi_panel_set_doze_backlight(struct dsi_panel *panel, int doze_brightness);
+ssize_t dsi_panel_get_doze_backlight(struct dsi_panel *panel, char *buf,
+				     size_t size);
+
 #endif /* _DSI_PANEL_H_ */
