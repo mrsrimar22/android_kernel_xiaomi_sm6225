@@ -662,6 +662,35 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_TP_LCT)
+static void fts_palm_check(struct fts_ts_data *ts_data)
+{
+	u8 state = 0;
+
+	if (READ_ONCE(ts_data->suspended))
+		return;
+
+	if (!READ_ONCE(ts_data->palm_mode) ||
+	    !READ_ONCE(ts_data->palm_changed))
+		return;
+
+	WRITE_ONCE(ts_data->palm_changed, false);
+
+	if (fts_read_reg(ts_data, FTS_REG_PALM_STATE, &state) < 0 ||
+	    state != 0x01)
+		return;
+
+	input_report_key(ts_data->input_dev, KEY_SLEEP, 1);
+	input_sync(ts_data->input_dev);
+	input_report_key(ts_data->input_dev, KEY_SLEEP, 0);
+	input_sync(ts_data->input_dev);
+}
+#else
+static inline void fts_palm_check(struct fts_ts_data *ts_data)
+{
+}
+#endif
+
 static void fts_irq_read_report(struct fts_ts_data *ts_data)
 {
 	int ret;
@@ -684,6 +713,8 @@ static void fts_irq_read_report(struct fts_ts_data *ts_data)
 		fts_input_report_b(ts_data);
 		mutex_unlock(&ts_data->report_lock);
 	}
+
+	fts_palm_check(ts_data);
 
 #if FTS_ESDCHECK_EN
 	if (ts_data->esdcheck)
@@ -1778,6 +1809,182 @@ static int fts_ts_resume(struct device *dev)
 /*****************************************************************************
  * Probe / remove entry points
  *****************************************************************************/
+#if IS_ENABLED(CONFIG_TP_LCT)
+#define FTS_LOCKDOWN_ADDR	0x1E000
+
+static int fts_lct_get_info(struct tp_lct_device *lct, char *buf, size_t len)
+{
+	struct fts_ts_data *ts_data = tp_lct_get_drvdata(lct);
+	u8 fw_ver = 0, vendor_id = 0;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	if (ts_data->suspended || ts_data->suspending ||
+	    READ_ONCE(ts_data->fw_loading)) {
+		mutex_unlock(&ts_data->state_lock);
+		return -EBUSY;
+	}
+	if (fts_read_reg(ts_data, FTS_REG_FW_VER, &fw_ver) < 0 ||
+	    fts_read_reg(ts_data, FTS_REG_VENDOR_ID, &vendor_id) < 0) {
+		mutex_unlock(&ts_data->state_lock);
+		return -EIO;
+	}
+	mutex_unlock(&ts_data->state_lock);
+
+	return scnprintf(buf, len,
+			 "FocalTech FT3418 FW:0x%02X Vendor:0x%02X\n",
+			 fw_ver, vendor_id);
+}
+
+static int fts_lct_get_lockdown_info(struct tp_lct_device *lct, char *buf,
+				     size_t len)
+{
+	struct fts_ts_data *ts_data = tp_lct_get_drvdata(lct);
+	u8 values[8] = {0};
+	char out[20] = {0};
+	int ret;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	if (ts_data->lockdown_info[0])
+		return scnprintf(buf, len, "%s", ts_data->lockdown_info);
+
+	mutex_lock(&ts_data->state_lock);
+	if (ts_data->suspended || ts_data->suspending ||
+	    READ_ONCE(ts_data->fw_loading)) {
+		mutex_unlock(&ts_data->state_lock);
+		return -EBUSY;
+	}
+	ret = fts_flash_read(ts_data, FTS_LOCKDOWN_ADDR, values, sizeof(values));
+	mutex_unlock(&ts_data->state_lock);
+	if (ret < 0) {
+		FTS_ERROR("read lockdown info failed: %d", ret);
+		return ret;
+	}
+
+	snprintf(out, sizeof(out), "%02x%02x%02x%02x%02x%02x%02x%02x\n",
+		 values[0], values[1], values[2], values[3],
+		 values[4], values[5], values[6], values[7]);
+	memcpy(ts_data->lockdown_info, out, sizeof(out));
+
+	return scnprintf(buf, len, "%s", out);
+}
+
+static int fts_lct_set_gesture(struct tp_lct_device *lct, bool enable)
+{
+	struct fts_ts_data *ts_data = tp_lct_get_drvdata(lct);
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	ts_data->gesture_mode = enable;
+	if (ts_data->suspended && !ts_data->suspending) {
+		if (enable)
+			fts_gesture_suspend(ts_data->gesture);
+		else
+			fts_write_reg(ts_data, FTS_REG_GESTURE_EN, 0x00);
+	}
+	mutex_unlock(&ts_data->state_lock);
+
+	return 0;
+}
+
+static int fts_lct_get_gesture(struct tp_lct_device *lct)
+{
+	struct fts_ts_data *ts_data = tp_lct_get_drvdata(lct);
+	bool enabled;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	enabled = ts_data->gesture_mode;
+	mutex_unlock(&ts_data->state_lock);
+
+	return enabled ? 1 : 0;
+}
+
+static int fts_lct_set_palm(struct tp_lct_device *lct, bool enable)
+{
+	struct fts_ts_data *ts_data = tp_lct_get_drvdata(lct);
+	int ret;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	if (ts_data->suspended || ts_data->suspending ||
+	    READ_ONCE(ts_data->fw_loading)) {
+		mutex_unlock(&ts_data->state_lock);
+		return -EBUSY;
+	}
+
+	ret = fts_write_reg(ts_data, FTS_REG_PALM_EN, enable ? 0x05 : 0x00);
+	if (ret < 0) {
+		mutex_unlock(&ts_data->state_lock);
+		return ret;
+	}
+
+	WRITE_ONCE(ts_data->palm_mode, enable);
+	WRITE_ONCE(ts_data->palm_changed, true);
+	mutex_unlock(&ts_data->state_lock);
+
+	return 0;
+}
+
+static int fts_lct_get_palm(struct tp_lct_device *lct)
+{
+	struct fts_ts_data *ts_data = tp_lct_get_drvdata(lct);
+	bool enabled;
+
+	if (!ts_data)
+		return -ENODEV;
+
+	mutex_lock(&ts_data->state_lock);
+	enabled = READ_ONCE(ts_data->palm_mode);
+	mutex_unlock(&ts_data->state_lock);
+
+	return enabled ? 1 : 0;
+}
+
+static const struct tp_lct_ops fts_lct_ops = {
+	.set_gesture		= fts_lct_set_gesture,
+	.get_gesture		= fts_lct_get_gesture,
+	.set_palm		= fts_lct_set_palm,
+	.get_palm		= fts_lct_get_palm,
+	.get_info		= fts_lct_get_info,
+	.get_lockdown_info	= fts_lct_get_lockdown_info,
+};
+
+static int fts_lct_init(struct fts_ts_data *ts_data)
+{
+	ts_data->lct = tp_lct_device_register(ts_data->dev, &fts_lct_ops,
+					      ts_data);
+	if (IS_ERR(ts_data->lct))
+		return PTR_ERR(ts_data->lct);
+
+	return 0;
+}
+
+static void fts_lct_exit(struct fts_ts_data *ts_data)
+{
+	tp_lct_device_unregister(ts_data->lct);
+}
+#else
+static inline int fts_lct_init(struct fts_ts_data *ts_data)
+{
+	return 0;
+}
+
+static inline void fts_lct_exit(struct fts_ts_data *ts_data)
+{
+}
+#endif
+
 static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 {
 	int ret;
@@ -1948,10 +2155,18 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		goto err_fwupg_init;
 	}
 
+	ret = fts_lct_init(ts_data);
+	if (ret) {
+		FTS_ERROR("init tp_lct fail: %d", ret);
+		goto err_lct_init;
+	}
+
 	fts_irq_disable(ts_data, false);
 
 	return 0;
 
+err_lct_init:
+	fts_fwupg_exit(ts_data);
 err_fwupg_init:
 	fts_irq_unregistration(ts_data);
 err_irq_reg:
@@ -2005,6 +2220,7 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 	if (!ts_data)
 		return 0;
 
+	fts_lct_exit(ts_data);
 	fts_fwupg_exit(ts_data);
 	fts_irq_unregistration(ts_data);
 

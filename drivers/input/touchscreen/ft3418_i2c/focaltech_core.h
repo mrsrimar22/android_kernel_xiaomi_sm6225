@@ -17,6 +17,9 @@
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 #include <xiaomi_touch.h>
 #endif
+#if IS_ENABLED(CONFIG_TP_LCT)
+#include <linux/input/tp_lct.h>
+#endif
 
 /*****************************************************************************
  * Constants and macros
@@ -177,6 +180,12 @@ struct fts_ts_data {
 	struct xiaomi_touch_interface xmi_iface;
 	bool				gamemode_enabled;
 #endif
+#if IS_ENABLED(CONFIG_TP_LCT)
+	struct tp_lct_device		*lct;
+	bool				palm_mode;
+	bool				palm_changed;
+	char				lockdown_info[20];
+#endif
 
 	/*
 	 * Submodule state pointers.
@@ -189,6 +198,17 @@ struct fts_ts_data {
 	struct fts_ex_fun_data	*ex_fun;
 	struct fts_prc_data		*prc;
 };
+
+#if IS_ENABLED(CONFIG_TP_LCT)
+static inline void fts_lct_invalidate_lockdown(struct fts_ts_data *ts_data)
+{
+	ts_data->lockdown_info[0] = '\0';
+}
+#else
+static inline void fts_lct_invalidate_lockdown(struct fts_ts_data *ts_data)
+{
+}
+#endif
 
 enum _FTS_BUS_TYPE {
 	BUS_TYPE_NONE,
