@@ -1182,6 +1182,12 @@ int dsi_conn_post_kickoff(struct drm_connector *connector,
 			}
 		}
 
+		if (display && display->panel &&
+		    dsi_panel_initialized(display->panel) &&
+		    adj_mode.timing.refresh_rate == 90)
+			dsi_panel_set_backlight_control(display->panel,
+							&adj_mode);
+
 		c_bridge->dsi_mode.dsi_mode_flags &= ~DSI_MODE_FLAG_VRR;
 	}
 

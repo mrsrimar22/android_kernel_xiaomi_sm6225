@@ -5567,3 +5567,29 @@ ssize_t dsi_panel_get_doze_backlight(struct dsi_panel *panel, char *buf,
 
 	return scnprintf(buf, size, "%d\n", doze_brightness);
 }
+
+/**
+ * dsi_panel_set_backlight_control() - apply the backlight control of a mode
+ * @panel:     DSI panel
+ * @adj_mode:  mode the display is switching to
+ *
+ * Applies the backlight control parameter matching the refresh rate of
+ * @adj_mode through the disp_param path.
+ */
+void dsi_panel_set_backlight_control(struct dsi_panel *panel,
+				     struct dsi_display_mode *adj_mode)
+{
+	if (!panel || !adj_mode)
+		return;
+
+	switch (adj_mode->timing.refresh_rate) {
+	case 60:
+		dsi_panel_disp_param_send(panel, DSI_DISP_PARAM_BC_60HZ);
+		break;
+	case 90:
+		dsi_panel_disp_param_send(panel, DSI_DISP_PARAM_BC_90HZ);
+		break;
+	default:
+		break;
+	}
+}
