@@ -375,23 +375,25 @@ static inline int pte_unused(pte_t pte)
 #endif
 
 #ifndef __HAVE_ARCH_PMD_SAME
-#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+#if defined(CONFIG_TRANSPARENT_HUGEPAGE) || defined(CONFIG_SPECULATIVE_PAGE_FAULT)
 static inline int pmd_same(pmd_t pmd_a, pmd_t pmd_b)
 {
 	return pmd_val(pmd_a) == pmd_val(pmd_b);
 }
-
-static inline int pud_same(pud_t pud_a, pud_t pud_b)
-{
-	return pud_val(pud_a) == pud_val(pud_b);
-}
-#else /* CONFIG_TRANSPARENT_HUGEPAGE */
+#else /* !CONFIG_TRANSPARENT_HUGEPAGE && !CONFIG_SPECULATIVE_PAGE_FAULT */
 static inline int pmd_same(pmd_t pmd_a, pmd_t pmd_b)
 {
 	BUILD_BUG();
 	return 0;
 }
+#endif /* CONFIG_TRANSPARENT_HUGEPAGE || CONFIG_SPECULATIVE_PAGE_FAULT */
 
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+static inline int pud_same(pud_t pud_a, pud_t pud_b)
+{
+	return pud_val(pud_a) == pud_val(pud_b);
+}
+#else /* CONFIG_TRANSPARENT_HUGEPAGE */
 static inline int pud_same(pud_t pud_a, pud_t pud_b)
 {
 	BUILD_BUG();
