@@ -128,8 +128,19 @@ obj-$(CONFIG_RSEQ) += rseq.o
 $(obj)/configs.o: $(obj)/config_data.h
 
 targets += config_data.gz
+ifdef CONFIG_TARGET_PROJECT_K7T
+ikconfig_hash := \#
+quiet_cmd_ikconfig_gzip = GZIP    $@
+      cmd_ikconfig_gzip = (sed \
+	's/^$(ikconfig_hash) CONFIG_SCHED_DEBUG is not set$$/CONFIG_SCHED_DEBUG=y/' \
+	$< | gzip -n -f -9 > $@) || (rm -f $@ ; false)
+
+$(obj)/config_data.gz: $(KCONFIG_CONFIG) FORCE
+	$(call if_changed,ikconfig_gzip)
+else
 $(obj)/config_data.gz: $(KCONFIG_CONFIG) FORCE
 	$(call if_changed,gzip)
+endif
 
       filechk_ikconfiggz = (echo "static const char kernel_config_data[] __used = MAGIC_START"; cat $< | scripts/bin2c; echo "MAGIC_END;")
 targets += config_data.h
